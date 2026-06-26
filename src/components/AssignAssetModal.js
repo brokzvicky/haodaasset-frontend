@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 
-const API = "https://haodaasset-backend-1.onrender.com";
+const API = "http://localhost:8080";
 
 export default function AssignAssetModal({
   open,

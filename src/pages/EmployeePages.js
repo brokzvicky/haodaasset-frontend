@@ -680,4 +680,3 @@ export function EmployeePassword() {
     </Layout>
   );
 }
-

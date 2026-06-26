@@ -109,4 +109,3 @@ export function AssetTypeBarChart({ data, color = "#2563eb" }) {
     </ResponsiveContainer>
   );
 }
-

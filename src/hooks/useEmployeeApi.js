@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import axios from "axios";
 
-const BASE = "https://haodaasset-backend-1.onrender.com/api/employee";
+const BASE = "http://localhost:8080/api/employee";
 
 /**
  * Tiny wrapper around axios for employee self-service endpoints.
@@ -49,4 +49,3 @@ export async function postRequest(body) {
 }
 
 export default BASE;
-
