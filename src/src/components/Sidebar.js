@@ -1,0 +1,203 @@
+import React from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+import { useNotifications } from "../context/NotificationContext";
+
+/* ── SVG Icons ────────────────────────────────────────────────────── */
+const Icons = {
+  dashboard: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="3" width="7" height="7" rx="1.5"/>
+      <rect x="14" y="3" width="7" height="7" rx="1.5"/>
+      <rect x="3" y="14" width="7" height="7" rx="1.5"/>
+      <rect x="14" y="14" width="7" height="7" rx="1.5"/>
+    </svg>
+  ),
+  assets: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="4" width="20" height="14" rx="2"/>
+      <path d="M8 20h8M12 18v2"/>
+    </svg>
+  ),
+  employees: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+      <circle cx="9" cy="7" r="4"/>
+      <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>
+    </svg>
+  ),
+  requests: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+      <polyline points="14 2 14 8 20 8"/>
+      <line x1="16" y1="13" x2="8" y2="13"/>
+      <line x1="16" y1="17" x2="8" y2="17"/>
+      <line x1="10" y1="9" x2="8" y2="9"/>
+    </svg>
+  ),
+  reports: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="18" y1="20" x2="18" y2="10"/>
+      <line x1="12" y1="20" x2="12" y2="4"/>
+      <line x1="6" y1="20" x2="6" y2="14"/>
+    </svg>
+  ),
+  settings: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="3"/>
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+    </svg>
+  ),
+  myassets: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="4" width="20" height="14" rx="2"/>
+      <path d="M8 20h8M12 18v2"/>
+    </svg>
+  ),
+  profile: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+      <circle cx="12" cy="7" r="4"/>
+    </svg>
+  ),
+  request: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10"/>
+      <line x1="12" y1="8" x2="12" y2="16"/>
+      <line x1="8" y1="12" x2="16" y2="12"/>
+    </svg>
+  ),
+  password: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+      <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+    </svg>
+  ),
+  logout: (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+      <polyline points="16 17 21 12 16 7"/>
+      <line x1="21" y1="12" x2="9" y2="12"/>
+    </svg>
+  ),
+};
+
+const ADMIN_NAV = [
+  { to: "/dashboard",      label: "Dashboard",      icon: "dashboard",  section: "MAIN"      },
+  { to: "/assets",         label: "Assets",         icon: "assets",     section: "MAIN"      },
+  { to: "/employees",      label: "Employees",      icon: "employees",  section: "MAIN"      },
+  { to: "/asset-requests", label: "Asset Requests", icon: "requests",   section: "MAIN"      },
+  { to: "/reports",        label: "Reports",        icon: "reports",    section: "ANALYTICS" },
+  { to: "/settings",       label: "Settings",       icon: "settings",   section: "SYSTEM"    },
+];
+
+const EMP_NAV = [
+  { to: "/emp/dashboard", label: "My Dashboard",    icon: "dashboard", section: "MAIN"    },
+  { to: "/emp/assets",    label: "My Assets",       icon: "myassets",  section: "MAIN"    },
+  { to: "/emp/profile",   label: "My Profile",      icon: "profile",   section: "MAIN"    },
+  { to: "/emp/request",   label: "Asset Request",   icon: "request",   section: "MAIN"    },
+  { to: "/emp/password",  label: "Change Password", icon: "password",  section: "ACCOUNT" },
+];
+
+function avatarColor(name) {
+  const colors = [
+    "linear-gradient(135deg,#2563eb,#60a5fa)",
+    "linear-gradient(135deg,#16a34a,#4ade80)",
+    "linear-gradient(135deg,#7c3aed,#a78bfa)",
+    "linear-gradient(135deg,#d97706,#fbbf24)",
+    "linear-gradient(135deg,#be185d,#f472b6)",
+  ];
+  return colors[(name || "A").charCodeAt(0) % colors.length];
+}
+
+function initials(name) {
+  return (name || "U").split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2);
+}
+
+export default function Sidebar({ open = false, onClose }) {
+  const { user, logout } = useAuth();
+  const location  = useLocation();
+  const navigate  = useNavigate();
+  const notifCtx  = useNotifications();
+  const unread    = notifCtx?.unread ?? 0;
+
+  const nav = user?.role === "admin" ? ADMIN_NAV : EMP_NAV;
+
+  const handleLogout = () => { logout(); navigate("/"); };
+  const handleNavClick = () => { if (onClose) onClose(); };
+
+  const sections = [...new Set(nav.map((n) => n.section))];
+
+  return (
+    <>
+      <aside className={`sidebar ${open ? "sidebar-open" : ""}`} aria-label="Main navigation">
+        {/* Logo */}
+        <div className="sidebar-logo">
+          <div className="sidebar-logo-icon">AT</div>
+          <div className="sidebar-logo-text">
+            <div className="sidebar-logo-name">AssetTower</div>
+            <div className="sidebar-logo-sub">IT Asset Management</div>
+          </div>
+        </div>
+
+        {/* Nav items */}
+        <nav className="sidebar-nav">
+          {sections.map((section) => (
+            <React.Fragment key={section}>
+              <div className="sidebar-section-label">{section}</div>
+              {nav.filter((n) => n.section === section).map((item) => {
+                const active =
+                  location.pathname === item.to ||
+                  (item.to !== "/dashboard" && item.to !== "/emp/dashboard" &&
+                   location.pathname.startsWith(item.to));
+                return (
+                  <Link
+                    key={item.to}
+                    to={item.to}
+                    className={`sidebar-item ${active ? "active" : ""}`}
+                    onClick={handleNavClick}
+                    aria-current={active ? "page" : undefined}
+                  >
+                    <span className="sidebar-item-icon" aria-hidden="true">
+                      {Icons[item.icon]}
+                    </span>
+                    {item.label}
+                    {item.to === "/asset-requests" && unread > 0 && (
+                      <span className="sidebar-item-badge">{unread > 9 ? "9+" : unread}</span>
+                    )}
+                  </Link>
+                );
+              })}
+            </React.Fragment>
+          ))}
+        </nav>
+
+        {/* Footer */}
+        <div className="sidebar-footer">
+          <div className="sidebar-user">
+            <div className="sidebar-avatar" style={{ background: avatarColor(user?.name) }}>
+              {initials(user?.name)}
+            </div>
+            <div className="sidebar-user-info">
+              <div className="sidebar-user-name">{user?.name || "User"}</div>
+              <div className="sidebar-user-role">
+                {user?.role === "admin" ? "Administrator" : user?.id || "Employee"}
+              </div>
+            </div>
+          </div>
+          <button className="sidebar-logout" onClick={handleLogout}>
+            <span aria-hidden="true">{Icons.logout}</span>
+            Sign Out
+          </button>
+        </div>
+      </aside>
+
+      {/* Mobile scrim */}
+      <div
+        className={`sidebar-scrim ${open ? "visible" : ""}`}
+        onClick={onClose}
+        aria-hidden="true"
+      />
+    </>
+  );
+}

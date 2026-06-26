@@ -3,7 +3,8 @@ import axios from "axios";
 
 const AuthContext = createContext(null);
 
-const API = "https://haodaasset-backend-1.onrender.com";
+const API = "http://localhost:8080";
+
 const STORAGE_KEY = "iam_user";
 const TOKEN_KEY = "iam_token";
 
