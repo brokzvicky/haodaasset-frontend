@@ -5,7 +5,7 @@ import { useToast } from "../utils/Toast";
 import { useNotifications } from "../context/NotificationContext";
 import AssignAssetModal from "../components/AssignAssetModal";
 
-const API = "http://localhost:8080";
+const API = "https://haodaasset-backend-1.onrender.com";
 
 const STATUS_CFG = {
   PENDING:  { label:"Pending",  bg:"#fffbeb", color:"#d97706", border:"#fde68a", dot:"#f59e0b" },
@@ -424,3 +424,4 @@ const reject =(id)=>updateStatus(id,"REJECTED");
     </Layout>
   );
 }
+

@@ -4,7 +4,7 @@ import Layout from "../components/Layout";
 import StatusPill from "../components/StatusPill";
 import { useToast } from "../utils/Toast";
 
-const API = "http://localhost:8080";
+const API = "https://haodaasset-backend-1.onrender.com";
 
 const ASSET_STATUSES = ["Available","Assigned","Spare","Under Repair","Faulty","Lost","Retired","Disposed"];
 const ASSET_CONDITIONS = ["New","Excellent","Good","Fair","Faulty","Damaged"];

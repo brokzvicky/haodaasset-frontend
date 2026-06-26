@@ -4,7 +4,7 @@ import Layout from "../components/Layout";
 import { useToast } from "../utils/Toast";
 import StatusPill from "../components/StatusPill";
 
-const API = "http://localhost:8080";
+const API = "https://haodaasset-backend-1.onrender.com";
 
 const EMPTY_FORM = {
   employeeId: "", employeeName: "", email: "",
@@ -691,3 +691,4 @@ export default function Employees() {
     </Layout>
   );
 }
+

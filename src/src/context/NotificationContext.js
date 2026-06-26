@@ -11,7 +11,7 @@ import { useAuth } from "./AuthContext";
 
 const NotificationContext = createContext(null);
 
-const API = "http://localhost:8080";
+const API = "https://haodaasset-backend-1.onrender.com";
 const POLL_MS = 15_000; // poll every 15 s
 const SEEN_KEY = "iam_seen_requests"; // localStorage key for read IDs
 
@@ -95,3 +95,4 @@ export function NotificationProvider({ children }) {
 }
 
 export const useNotifications = () => useContext(NotificationContext);
+

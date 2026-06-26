@@ -5,7 +5,7 @@ import Layout from "../components/Layout";
 import { StatusPieChart, AssetTypeBarChart } from "../components/DashboardChart";
 import { useAuth } from "../context/AuthContext";
 
-const API = "http://localhost:8080";
+const API = "https://haodaasset-backend-1.onrender.com";
 
 /* ── KPI Card ─────────────────────────────────────────────────────── */
 function KpiCard({ icon, label, value, sub, color, bg, onClick, badge }) {
@@ -335,3 +335,4 @@ export default function Dashboard() {
     </Layout>
   );
 }
+

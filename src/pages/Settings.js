@@ -5,7 +5,7 @@ import { useToast } from "../utils/Toast";
 export default function Settings() {
   const toast = useToast();
   const [orgName, setOrgName] = useState("Haoda Tech Solutions");
-  const [apiUrl, setApiUrl] = useState("http://localhost:8080");
+  const [apiUrl, setApiUrl] = useState("https://haodaasset-backend-1.onrender.com");
   const [pwd, setPwd] = useState({ current: "", next: "", confirm: "" });
 
   const saveOrg = () => {
@@ -77,3 +77,4 @@ export default function Settings() {
     </Layout>
   );
 }
+

@@ -3,7 +3,7 @@ import axios from "axios";
 import Layout from "../components/Layout";
 import { AssetTypeBarChart } from "../components/DashboardChart";
 
-const API = "http://localhost:8080";
+const API = "https://haodaasset-backend-1.onrender.com";
 
 export default function Reports() {
   const [assets, setAssets] = useState([]);
@@ -165,3 +165,4 @@ export default function Reports() {
     </Layout>
   );
 }
+
