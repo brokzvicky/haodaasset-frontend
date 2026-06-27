@@ -4,7 +4,7 @@ import Layout from "../components/Layout";
 import { useToast } from "../utils/Toast";
 import StatusPill from "../components/StatusPill";
 
-const API = "https://haodaasset.in";
+const API = "https://haodaasset-backend-1.onrender.com";
 
 const EMPTY_FORM = {
   employeeId: "", employeeName: "", email: "",
@@ -50,7 +50,9 @@ function AssignAssetModal({ employee, onClose, onSuccess }) {
       (a.location || "").toLowerCase().includes(q)
     );
   }, [availableAssets, assetSearch]);
-  
+
+  const selectedAsset = availableAssets.find((a) => a.assetId === selectedAssetId);
+
   const handleAssign = () => {
     if (!selectedAssetId) {
       toast("Please select an asset to assign.", "error");

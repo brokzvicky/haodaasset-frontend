@@ -54,6 +54,7 @@ function avatarBg(name){const c=["#1a56db","#059669","#7c3aed","#b45309","#be185
 // ── Detail Drawer ─────────────────────────────────────────────────
 function DetailDrawer({ request, onClose, onApprove, onReject, saving }) {
   if(!request) return null;
+  const s = STATUS_CFG[request.status]||STATUS_CFG.PENDING;
   return (
     <>
       <div onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(15,23,42,0.35)",zIndex:400,backdropFilter:"blur(2px)"}}/>

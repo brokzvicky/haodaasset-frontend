@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import Layout from "../components/Layout";
 import { useToast } from "../utils/Toast";
-  
+
 export default function Settings() {
   const toast = useToast();
   const [orgName, setOrgName] = useState("Haoda Tech Solutions");

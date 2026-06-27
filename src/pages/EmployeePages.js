@@ -124,7 +124,7 @@ export function EmployeeProfile() {
 // My Assets Page
 // ─────────────────────────────────────────────────────────────────
 export function EmployeeAssets() {
-  const { data: assets, loading, error, reload } = useGet("/assets");
+ const { data: assets, loading, error } = useGet("/assets");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
 
@@ -680,3 +680,4 @@ export function EmployeePassword() {
     </Layout>
   );
 }
+
