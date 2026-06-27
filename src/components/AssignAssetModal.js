@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
+import "./AssignAssetModal.css";
 
 const API = "https://haodaasset-backend-1.onrender.com";
 
@@ -13,11 +14,14 @@ export default function AssignAssetModal({
   const [selectedAsset, setSelectedAsset] = useState("");
   const [loading, setLoading] = useState(false);
   const [assigning, setAssigning] = useState(false);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     if (!open) return;
 
     setLoading(true);
+    setError("");
+    setSelectedAsset("");
 
     axios
       .get(`${API}/assets/available`)
@@ -26,7 +30,7 @@ export default function AssignAssetModal({
       })
       .catch((err) => {
         console.error(err);
-        alert("Failed to load available assets.");
+        setError("Failed to load available assets.");
       })
       .finally(() => setLoading(false));
   }, [open]);
@@ -35,11 +39,12 @@ export default function AssignAssetModal({
 
   const assignAsset = async () => {
     if (!selectedAsset) {
-      alert("Please select an asset.");
+      setError("Please select an asset.");
       return;
     }
 
     setAssigning(true);
+    setError("");
 
     try {
       await axios.put(`${API}/assets/assign/${selectedAsset}`, {
@@ -53,103 +58,88 @@ export default function AssignAssetModal({
       onAssigned(selectedAsset);
     } catch (err) {
       console.error(err);
-      alert(
-        err.response?.data?.message ||
-          "Unable to assign asset."
-      );
+      setError(err.response?.data?.message || "Unable to assign asset.");
     } finally {
       setAssigning(false);
     }
   };
 
   return (
-    <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        background: "rgba(0,0,0,.45)",
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-        zIndex: 9999,
-      }}
-    >
-      <div
-        style={{
-          width: 520,
-          background: "#fff",
-          borderRadius: 12,
-          padding: 24,
-        }}
-      >
-        <h2 style={{ marginTop: 0 }}>
-          Assign Asset
-        </h2>
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header">
+          <h2 className="modal-title">Assign Asset</h2>
+        </div>
 
-        <hr />
+        <div className="modal-body">
+          <div className="modal-grid">
+            <div className="modal-info-group">
+              <span className="modal-label">Employee</span>
+              <span className="modal-value">{request.employeeName}</span>
+            </div>
+            <div className="modal-info-group">
+              <span className="modal-label">Employee ID</span>
+              <span className="modal-value">{request.employeeId}</span>
+            </div>
+            <div className="modal-info-group" style={{ gridColumn: "1 / -1" }}>
+              <span className="modal-label">Requested Asset Type</span>
+              <span className="modal-value">{request.assetType}</span>
+            </div>
+          </div>
 
-        <p>
-          <strong>Employee</strong>
-        </p>
-
-        <p>{request.employeeName}</p>
-
-        <p>{request.employeeId}</p>
-
-        <p>
-          Requested Asset:
-          <strong> {request.assetType}</strong>
-        </p>
-
-        <br />
-
-        {loading ? (
-          <p>Loading available assets...</p>
-        ) : (
-          <select
-            style={{
-              width: "100%",
-              height: 42,
-            }}
-            value={selectedAsset}
-            onChange={(e) =>
-              setSelectedAsset(e.target.value)
-            }
-          >
-            <option value="">
+          <div className="form-group">
+            <label className="modal-label" htmlFor="assign-asset-select">
               Select Available Asset
-            </option>
+            </label>
 
-            {assets.map((asset) => (
-              <option
-                key={asset.assetId}
-                value={asset.assetId}
+            {loading ? (
+              <div className="empty-state" style={{ padding: "24px 0" }}>
+                <div className="empty-title">Loading available assets…</div>
+              </div>
+            ) : assets.length === 0 ? (
+              <div className="empty-state" style={{ padding: "24px 0" }}>
+                <div className="empty-title">No available assets</div>
+                <div className="empty-sub">
+                  Add a new asset to inventory or wait for one to be returned.
+                </div>
+              </div>
+            ) : (
+              <select
+                id="assign-asset-select"
+                className="form-select"
+                value={selectedAsset}
+                onChange={(e) => {
+                  setSelectedAsset(e.target.value);
+                  setError("");
+                }}
               >
-                {asset.laptopName} | {asset.serialNumber}
-              </option>
-            ))}
-          </select>
-        )}
+                <option value="">Select an asset…</option>
+                {assets.map((asset) => (
+                  <option key={asset.assetId} value={asset.assetId}>
+                    {asset.laptopName} · {asset.brand} · {asset.serialNumber}
+                  </option>
+                ))}
+              </select>
+            )}
 
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "flex-end",
-            gap: 10,
-            marginTop: 25,
-          }}
-        >
-          <button onClick={onClose}>
+            {error && (
+              <div style={{ fontSize: 12.5, color: "var(--danger)", marginTop: 4 }}>
+                ⚠ {error}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="modal-footer">
+          <button className="btn btn-secondary" onClick={onClose} disabled={assigning}>
             Cancel
           </button>
-
           <button
+            className="btn btn-primary"
             onClick={assignAsset}
-            disabled={assigning}
+            disabled={assigning || loading || assets.length === 0}
           >
-            {assigning
-              ? "Assigning..."
-              : "Assign Asset"}
+            {assigning ? "Assigning…" : "Assign Asset"}
           </button>
         </div>
       </div>

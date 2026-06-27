@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import Layout from "../components/Layout";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../utils/Toast";
@@ -125,7 +125,8 @@ export function EmployeeProfile() {
 // ─────────────────────────────────────────────────────────────────
 export function EmployeeAssets() {
  const { data: assets, loading, error } = useGet("/assets");
-  const [search, setSearch] = useState("");
+  const [searchParams] = useSearchParams();
+  const [search, setSearch] = useState(searchParams.get("q") || "");
   const [statusFilter, setStatusFilter] = useState("All");
 
   const filtered = useMemo(() => {

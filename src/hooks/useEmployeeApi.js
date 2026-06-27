@@ -3,6 +3,15 @@ import axios from "axios";
 
 const BASE = "https://haodaasset-backend-1.onrender.com";
 
+// All employee self-service routes live under /api/employee/** on the
+// backend (see EmployeeSelfController). Previously this hook called paths
+// like `${BASE}/dashboard` directly, missing this prefix entirely — every
+// employee page (dashboard, assets, profile, request history) was 404ing
+// against the real API. Centralizing the prefix here means callers keep
+// passing short paths ("/dashboard", "/assets", etc.) and only this one
+// constant needs to be correct.
+const EMPLOYEE_API = `${BASE}/api/employee`;
+
 /**
  * Tiny wrapper around axios for employee self-service endpoints.
  * The Authorization header is already set by AuthContext on login.
@@ -23,7 +32,7 @@ export function useGet(path) {
     cancelRef.current = controller;
 
     axios
-      .get(`${BASE}${path}`, { signal: controller.signal })
+      .get(`${EMPLOYEE_API}${path}`, { signal: controller.signal })
       .then((r) => setData(r.data))
       .catch((err) => {
         if (axios.isCancel(err)) return;
@@ -44,7 +53,7 @@ export function useGet(path) {
 }
 
 export async function postRequest(body) {
-  const { data } = await axios.post(`${BASE}/request`, body);
+  const { data } = await axios.post(`${EMPLOYEE_API}/request`, body);
   return data;
 }
 

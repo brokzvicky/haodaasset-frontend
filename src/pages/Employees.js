@@ -349,7 +349,7 @@ export default function Employees() {
         // Load asset counts for all employees
         Promise.all(
           emps.map((emp) =>
-            axios.get(`${API}/api/employee/${emp.employeeId}/assets`)
+            axios.get(`${API}/api/admin/employees/${emp.employeeId}/assets`)
               .then((res) => ({ id: emp.employeeId, count: res.data.length }))
               .catch(() => ({ id: emp.employeeId, count: 0 }))
           )
@@ -422,7 +422,7 @@ export default function Employees() {
     if (expanded === key) { setExpanded(null); return; }
     setExpanded(key);
     if (!expandedAssets[key]) {
-      axios.get(`${API}/api/employee/${key}/assets`)
+      axios.get(`${API}/api/admin/employees/${key}/assets`)
         .then((r) => setExpandedAssets((prev) => ({ ...prev, [key]: r.data })))
         .catch(() => setExpandedAssets((prev) => ({ ...prev, [key]: [] })));
     }

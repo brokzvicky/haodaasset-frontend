@@ -66,6 +66,29 @@
   --font:      'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   --font-data: 'Inter', -apple-system, sans-serif;
   --font-mono: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+
+  /* ── Transitions ───────────────────────────────────────────── */
+  --transition-fast: 0.15s ease;
+  --transition-base: 0.25s ease;
+
+  /* ── Compat aliases ────────────────────────────────────────────
+     Several component stylesheets (Dashboard.css, Layout.css,
+     Sidebar.css, NotificationBell.css, AssignAssetModal.css) were
+     written against a --color-* naming scheme that was never added
+     here, so those rules silently resolved to nothing (no background,
+     no border, no text color) instead of erroring. These aliases map
+     that scheme onto the actual tokens above so existing rules work
+     without having to rewrite every file that references them. */
+  --color-bg-app:        var(--gray-50);
+  --color-surface:       #ffffff;
+  --color-border:        var(--gray-200);
+  --color-text-main:     var(--gray-800);
+  --color-text-muted:    var(--gray-500);
+  --color-primary:       var(--primary);
+  --color-primary-hover: var(--primary-dark);
+  --color-primary-light: var(--primary-light);
+  --color-danger:        var(--danger);
+  --radius-md:           var(--radius);
 }
 
 /* ── Reset ─────────────────────────────────────────────────────── */

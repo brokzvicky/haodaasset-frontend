@@ -1,8 +1,10 @@
 import React, { useEffect, useMemo, useState, useCallback } from "react";
 import axios from "axios";
+import { useSearchParams } from "react-router-dom";
 import Layout from "../components/Layout";
 import StatusPill from "../components/StatusPill";
 import { useToast } from "../utils/Toast";
+import "./Assets.css";
 
 const API = "https://haodaasset-backend-1.onrender.com";
 
@@ -169,13 +171,14 @@ const ReturnDialog = ({ asset, onClose, onConfirm, saving }) => {
 // ── Main Component ──────────────────────────────────────────────
 export default function Assets() {
   const toast = useToast();
+  const [searchParams] = useSearchParams();
   const [assets, setAssets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [showForm, setShowForm] = useState(false);
-  const [searchText, setSearchText] = useState("");
+  const [searchText, setSearchText] = useState(searchParams.get("q") || "");
   const [statusFilter, setStatusFilter] = useState("All");
   const [typeFilter, setTypeFilter] = useState("All");
   const [returnTarget, setReturnTarget] = useState(null);

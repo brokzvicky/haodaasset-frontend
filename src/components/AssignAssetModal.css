@@ -1,7 +1,7 @@
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(9, 30, 66, 0.54);
+  background: rgba(15, 23, 42, 0.5);
   backdrop-filter: blur(4px);
   display: flex;
   justify-content: center;
@@ -18,8 +18,8 @@
 .modal-content {
   width: 100%;
   max-width: 520px;
-  background: var(--color-surface);
-  border-radius: var(--radius-md);
+  background: #fff;
+  border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg);
   display: flex;
   flex-direction: column;
@@ -34,14 +34,14 @@
 
 .modal-header {
   padding: 20px 24px;
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--gray-100);
 }
 
 .modal-title {
   margin: 0;
   font-size: 18px;
-  font-weight: 600;
-  color: var(--color-text-main);
+  font-weight: 700;
+  color: var(--gray-900);
 }
 
 .modal-body {
@@ -53,7 +53,7 @@
   grid-template-columns: 1fr 1fr;
   gap: 16px;
   margin-bottom: 24px;
-  background: #f4f5f7;
+  background: var(--gray-50);
   padding: 16px;
   border-radius: var(--radius-sm);
 }
@@ -65,17 +65,17 @@
 }
 
 .modal-label {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--gray-400);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.06em;
 }
 
 .modal-value {
   font-size: 14px;
-  color: var(--color-text-main);
-  font-weight: 500;
+  color: var(--gray-900);
+  font-weight: 600;
 }
 
 .form-group {
@@ -89,27 +89,28 @@
   height: 40px;
   padding: 0 12px;
   font-size: 14px;
-  color: var(--color-text-main);
-  background-color: var(--color-surface);
-  border: 2px solid var(--color-border);
+  color: var(--gray-900);
+  background-color: #fff;
+  border: 1.5px solid var(--gray-200);
   border-radius: var(--radius-sm);
   outline: none;
-  transition: border-color var(--transition-fast);
+  transition: border-color 0.15s ease;
   cursor: pointer;
 }
 
 .form-select:focus {
-  border-color: var(--color-primary);
+  border-color: var(--primary);
 }
 
 .modal-footer {
   padding: 16px 24px;
-  border-top: 1px solid var(--color-border);
+  border-top: 1px solid var(--gray-100);
   display: flex;
   justify-content: flex-end;
   gap: 12px;
-  background: #fafbfc;
+  background: var(--gray-50);
 }
+
 
 .btn {
   height: 36px;
