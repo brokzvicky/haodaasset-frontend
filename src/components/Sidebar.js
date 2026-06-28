@@ -1,5 +1,6 @@
 import React from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import { ShieldCheck } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useNotifications } from "../context/NotificationContext";
 import "./Sidebar.css";
@@ -23,6 +24,7 @@ const ADMIN_NAV = [
   { to: "/assets",         label: "Assets",         icon: "assets",     section: "MAIN"      },
   { to: "/employees",      label: "Employees",      icon: "employees",  section: "MAIN"      },
   { to: "/asset-requests", label: "Asset Requests", icon: "requests",   section: "MAIN"      },
+  { to: "/network-credentials", label: "Network Credentials", icon: "networkCredentials", section: "MAIN" },
   { to: "/reports",        label: "Reports",        icon: "reports",    section: "ANALYTICS" },
   { to: "/settings",       label: "Settings",       icon: "settings",   section: "SYSTEM"    },
 ];
@@ -92,7 +94,11 @@ export default function Sidebar({ open = false, onClose }) {
                     onClick={handleNavClick}
                     aria-current={active ? "page" : undefined}
                   >
-                    <span className="sidebar-item-icon" aria-hidden="true">{Ico[item.icon]}</span>
+                    <span className="sidebar-item-icon" aria-hidden="true">
+                      {item.icon === "networkCredentials"
+                        ? <ShieldCheck size={16} strokeWidth={1.9} />
+                        : Ico[item.icon]}
+                    </span>
                     {item.label}
                     {item.to === "/asset-requests" && unread > 0 && (
                       <span className="sidebar-item-badge">{unread > 9 ? "9+" : unread}</span>

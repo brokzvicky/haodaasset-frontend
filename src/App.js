@@ -10,6 +10,7 @@ import Dashboard from "./pages/Dashboard";
 import Assets from "./pages/Assets";
 import Employees from "./pages/Employees";
 import AdminAssetRequests from "./pages/AdminAssetRequests";
+import NetworkCredentials from "./pages/NetworkCredentials";
 import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
 import EmployeeDashboard from "./pages/EmployeeDashboard";
@@ -30,6 +31,7 @@ function App() {
               <Route path="/assets"        element={<AdminRoute><Assets /></AdminRoute>} />
               <Route path="/employees"     element={<AdminRoute><Employees /></AdminRoute>} />
               <Route path="/asset-requests" element={<AdminRoute><AdminAssetRequests /></AdminRoute>} />
+              <Route path="/network-credentials" element={<AdminRoute><NetworkCredentials /></AdminRoute>} />
               <Route path="/reports"       element={<AdminRoute><Reports /></AdminRoute>} />
               <Route path="/settings"      element={<AdminRoute><Settings /></AdminRoute>} />
 
