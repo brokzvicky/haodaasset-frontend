@@ -489,14 +489,19 @@ export default function NetworkCredentials() {
 
             <div className="form-section-label" style={{ marginTop: 20 }}>Location & Network</div>
             <div className="form-grid">
-              <div className="field">
-             <label className="field-label">Location</label>
-             <input
-                    className="input"
-                 {...field("location")}
-                 placeholder="e.g. Chennai HQ - Server Room"
-             />
-           </div>
+             <div className="field">
+              <label className="field-label">Location</label>
+
+               <select className="input" {...field("location")}>
+               <option value="">Select Location</option>
+
+             {LOCATIONS.map((loc) => (
+               <option key={loc} value={loc}>
+            {loc}
+           </option>
+             ))}
+               </select>
+               </div>
               <div className="field">
                 <label className="field-label">VLAN</label>
                 <input className="input" {...field("vlan")} placeholder="e.g. VLAN 10" />
