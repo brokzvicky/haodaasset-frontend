@@ -17,6 +17,11 @@ const DEVICE_TYPES = [
 ];
 
 const DEVICE_STATUSES = ["Active", "Inactive", "Maintenance"];
+const LOCATIONS = [
+  "Chennai - Kilpauk",
+  "Chennai - Chetpet",
+  "Mumbai"
+];
 
 const DEVICE_TYPE_ICON = {
   Router: Router, Switch: Network, Firewall: Shield, "Access Point": Wifi,
@@ -485,9 +490,13 @@ export default function NetworkCredentials() {
             <div className="form-section-label" style={{ marginTop: 20 }}>Location & Network</div>
             <div className="form-grid">
               <div className="field">
-                <label className="field-label">Location</label>
-                <input className="input" {...field("location")} placeholder="e.g. Chennai HQ - Server Room" />
-              </div>
+             <label className="field-label">Location</label>
+             <input
+                    className="input"
+                 {...field("location")}
+                 placeholder="e.g. Chennai HQ - Server Room"
+             />
+           </div>
               <div className="field">
                 <label className="field-label">VLAN</label>
                 <input className="input" {...field("vlan")} placeholder="e.g. VLAN 10" />
