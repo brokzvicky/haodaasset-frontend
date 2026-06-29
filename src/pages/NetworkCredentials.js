@@ -3,7 +3,7 @@ import axios from "axios";
 import {
   Router, Network, Shield, Wifi, Server, HardDrive, Printer, Lock,
   Plus, X, Search, RefreshCw, Eye, EyeOff, Copy, Pencil, Trash2,
-  ChevronDown, ChevronUp, Check, AlertTriangle, KeyRound,
+  ChevronDown, ChevronUp, Check, AlertTriangle, KeyRound, MoreVertical,
 } from "lucide-react";
 import Layout from "../components/Layout";
 import { useToast } from "../utils/Toast";
@@ -46,10 +46,14 @@ function DeviceStatusPill({ status }) {
   return (
     <span style={{
       display: "inline-flex", alignItems: "center", gap: 5,
-      padding: "3px 10px", borderRadius: 999, whiteSpace: "nowrap",
-      background: s.bg, color: s.color, fontSize: 11.5, fontWeight: 700,
+      padding: "2.5px 9px 2.5px 7px", borderRadius: 999, whiteSpace: "nowrap",
+      background: s.bg, color: s.color, fontSize: 11, fontWeight: 600,
+      letterSpacing: "0.01em", lineHeight: 1.4,
     }}>
-      <span style={{ width: 6, height: 6, borderRadius: "50%", background: s.dot, flexShrink: 0 }} />
+      <span style={{
+        width: 6, height: 6, borderRadius: "50%", background: s.dot, flexShrink: 0,
+        boxShadow: status === "Active" ? `0 0 0 2.5px ${s.dot}26` : "none",
+      }} />
       {status}
     </span>
   );
@@ -115,6 +119,13 @@ export default function NetworkCredentials() {
   const [revealingId, setRevealingId] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
   const [openMenuId, setOpenMenuId] = useState(null);
+  // Briefly flags which icon button just completed a copy, e.g. "user-12"
+  const [copiedKey, setCopiedKey] = useState(null);
+
+  const flashCopied = (key) => {
+    setCopiedKey(key);
+    setTimeout(() => setCopiedKey((k) => (k === key ? null : k)), 900);
+  };
 
   // ── Data loading ──────────────────────────────────────────────
   const loadData = useCallback(() => {
@@ -270,6 +281,7 @@ export default function NetworkCredentials() {
     setOpenMenuId(null);
     try {
       await navigator.clipboard.writeText(cred.username || "");
+      flashCopied(`user-${cred.id}`);
       toast("Username copied to clipboard.", "success");
     } catch {
       toast("Couldn't copy to clipboard.", "error");
@@ -287,6 +299,7 @@ export default function NetworkCredentials() {
         setRevealed((rv) => ({ ...rv, [cred.id]: { password: pwd, visible: rv[cred.id]?.visible || false } }));
       }
       await navigator.clipboard.writeText(pwd || "");
+      flashCopied(`pwd-${cred.id}`);
       toast("Password copied to clipboard.", "success");
     } catch {
       toast("Couldn't copy password.", "error");
@@ -381,9 +394,13 @@ export default function NetworkCredentials() {
               key={k.label}
               className={`kpi-card ${k.type ? "clickable" : ""}`}
               onClick={k.type ? () => setTypeFilter(active ? "All" : k.type) : undefined}
+              title={k.type ? (active ? `Showing ${k.type} only — click to clear` : `Filter to ${k.type}`) : undefined}
               style={{
                 borderLeft: `4px solid ${k.color}`,
-                boxShadow: active ? `0 0 0 2px ${k.color}30, var(--shadow-sm)` : undefined,
+                borderTopLeftRadius: "var(--radius, 10px)",
+                borderBottomLeftRadius: "var(--radius, 10px)",
+                background: active ? `${k.color}0c` : undefined,
+                boxShadow: active ? `0 0 0 2px ${k.color}33, var(--shadow-sm)` : undefined,
                 borderColor: active ? `${k.color}40` : undefined,
               }}
             >
@@ -489,19 +506,15 @@ export default function NetworkCredentials() {
 
             <div className="form-section-label" style={{ marginTop: 20 }}>Location & Network</div>
             <div className="form-grid">
-             <div className="field">
-              <label className="field-label">Location</label>
-
-               <select className="input" {...field("location")}>
-               <option value="">Select Location</option>
-
-             {LOCATIONS.map((loc) => (
-               <option key={loc} value={loc}>
-            {loc}
-           </option>
-             ))}
-               </select>
-               </div>
+              <div className="field">
+                <label className="field-label">Location</label>
+                <select className="input" {...field("location")}>
+                  <option value="">Select Location</option>
+                  {LOCATIONS.map((loc) => (
+                    <option key={loc} value={loc}>{loc}</option>
+                  ))}
+                </select>
+              </div>
               <div className="field">
                 <label className="field-label">VLAN</label>
                 <input className="input" {...field("vlan")} placeholder="e.g. VLAN 10" />
@@ -546,7 +559,7 @@ export default function NetworkCredentials() {
                 onChange={(e) => setSearchText(e.target.value)}
               />
               {searchText && (
-                <button onClick={() => setSearchText("")} style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "var(--gray-400)", display: "flex" }}>
+                <button className="netcred-search-clear" onClick={() => setSearchText("")} title="Clear search">
                   <X size={13} />
                 </button>
               )}
@@ -558,11 +571,7 @@ export default function NetworkCredentials() {
             >
               Filters {showFilters ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
               {activeFilterCount > 0 && (
-                <span style={{
-                  position: "absolute", top: -6, right: -6, background: "var(--primary)", color: "#fff",
-                  fontSize: 10, fontWeight: 700, borderRadius: 999, minWidth: 16, height: 16,
-                  display: "flex", alignItems: "center", justifyContent: "center", padding: "0 4px",
-                }}>{activeFilterCount}</span>
+                <span className="netcred-filter-badge">{activeFilterCount}</span>
               )}
             </button>
             <button className="btn btn-secondary btn-icon" onClick={loadData} disabled={loading} title="Refresh">
@@ -572,10 +581,7 @@ export default function NetworkCredentials() {
         </div>
 
         {showFilters && (
-          <div style={{
-            display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center",
-            padding: "14px 20px", borderBottom: "1px solid var(--gray-100)", background: "var(--gray-50)",
-          }}>
+          <div className="netcred-filter-bar">
             <div className="field" style={{ minWidth: 150 }}>
               <label className="field-label">Device Type</label>
               <select className="input" value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
@@ -669,11 +675,11 @@ export default function NetworkCredentials() {
                   const isRevealing = revealingId === cred.id;
                   const isDeleting = deletingId === cred.id;
                   return (
-                    <tr key={cred.id} className="netcred-row">
+                    <tr key={cred.id} className={`netcred-row ${openMenuId === cred.id ? "is-active" : ""}`}>
                       <td style={{ textAlign: "center", fontWeight: 600, color: "var(--gray-400)", fontSize: 12 }}>{index + 1}</td>
                       <td>
-                        <div style={{ fontWeight: 600, color: "var(--gray-900)", fontSize: 13.5 }}>{cred.deviceName}</div>
-                        <div style={{ marginTop: 2 }}><DeviceStatusPill status={cred.deviceStatus} /></div>
+                        <div className="netcred-device-name">{cred.deviceName}</div>
+                        <div className="netcred-device-sub"><DeviceStatusPill status={cred.deviceStatus} /></div>
                       </td>
                       <td>
                         <span className="tag tag-blue" style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
@@ -682,19 +688,24 @@ export default function NetworkCredentials() {
                       </td>
                       <td style={{ color: "var(--gray-700)" }}>{cred.brand || "—"}</td>
                       <td style={{ color: "var(--gray-600)" }}>{cred.model || "—"}</td>
-                      <td className="mono" style={{ fontSize: 12 }}>{cred.ipAddress || "—"}</td>
-                      <td className="mono" style={{ fontSize: 12 }}>{cred.hostname || "—"}</td>
+                      <td className="netcred-mono">{cred.ipAddress || "—"}</td>
+                      <td className="netcred-mono">{cred.hostname || "—"}</td>
                       <td>
-                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                          <span style={{ fontWeight: 500 }}>{cred.username}</span>
-                          <button className="icon-btn" title="Copy username" onClick={() => copyUsername(cred)}>
-                            <Copy size={12} />
+                        <div className="netcred-secret">
+                          <span style={{ fontWeight: 500, fontSize: 12.5 }}>{cred.username}</span>
+                          <button
+                            className={"icon-btn" + (copiedKey === "user-" + cred.id ? " is-copied" : "")}
+                            title="Copy username"
+                            onClick={() => copyUsername(cred)}
+                          >
+                            {copiedKey === "user-" + cred.id ? <Check size={12} /> : <Copy size={12} />}
                           </button>
                         </div>
                       </td>
                       <td>
-                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                          <span className="mono" style={{ fontSize: 12, letterSpacing: rev?.visible ? "normal" : "2px", color: "var(--gray-700)" }}>
+                        <div className="netcred-secret">
+                          <Lock size={11} className="netcred-secret-lock" />
+                          <span className={`netcred-secret-value ${isRevealing ? "is-pending" : !rev?.visible ? "is-masked" : ""}`}>
                             {isRevealing ? "Decrypting…" : rev?.visible ? rev.password : "••••••••"}
                           </span>
                           <button
@@ -705,8 +716,13 @@ export default function NetworkCredentials() {
                           >
                             {rev?.visible ? <EyeOff size={12} /> : <Eye size={12} />}
                           </button>
-                          <button className="icon-btn" title="Copy password" onClick={() => copyPassword(cred)} disabled={isRevealing}>
-                            <Copy size={12} />
+                          <button
+                            className={"icon-btn" + (copiedKey === "pwd-" + cred.id ? " is-copied" : "")}
+                            title="Copy password"
+                            onClick={() => copyPassword(cred)}
+                            disabled={isRevealing}
+                          >
+                            {copiedKey === "pwd-" + cred.id ? <Check size={12} /> : <Copy size={12} />}
                           </button>
                         </div>
                       </td>
@@ -721,7 +737,7 @@ export default function NetworkCredentials() {
                           onClick={(e) => { e.stopPropagation(); setOpenMenuId(openMenuId === cred.id ? null : cred.id); }}
                           disabled={isDeleting}
                         >
-                          ⋯
+                          <MoreVertical size={14} />
                         </button>
                         {openMenuId === cred.id && (
                           <div className="netcred-menu" onClick={(e) => e.stopPropagation()}>
