@@ -302,12 +302,12 @@ export default function NetworkCredentials() {
   }), [credentials]);
 
   const kpis = [
-    { label: "Total Devices",  value: counts.total,        icon: <Network size={18} />,  color: "#2563eb", bg: "linear-gradient(135deg,#dbeafe,#eff6ff)", type: null },
-    { label: "Routers",        value: counts.routers,      icon: <Router size={18} />,   color: "#1d4ed8", bg: "linear-gradient(135deg,#dbeafe,#bfdbfe)", type: "Router" },
-    { label: "Switches",       value: counts.switches,     icon: <Network size={18} />,  color: "#7c3aed", bg: "linear-gradient(135deg,#f3e8ff,#ede9fe)", type: "Switch" },
-    { label: "Firewalls",      value: counts.firewalls,    icon: <Shield size={18} />,   color: "#b91c1c", bg: "linear-gradient(135deg,#fee2e2,#fecaca)", type: "Firewall" },
-    { label: "Access Points",  value: counts.accessPoints, icon: <Wifi size={18} />,     color: "#a16207", bg: "linear-gradient(135deg,#fef9c3,#fef3c7)", type: "Access Point" },
-    { label: "Servers",        value: counts.servers,      icon: <Server size={18} />,   color: "#0f766e", bg: "linear-gradient(135deg,#ccfbf1,#d1fae5)", type: "Server" },
+    { label: "Total Devices",  value: counts.total,        icon: <Network size={18} />,  cardGradient: "linear-gradient(135deg,#3b82f6,#1d4ed8)",   glow: "#3b82f640", type: null },
+    { label: "Routers",        value: counts.routers,      icon: <Router size={18} />,   cardGradient: "linear-gradient(135deg,#60a5fa,#2563eb)",   glow: "#2563eb40", type: "Router" },
+    { label: "Switches",       value: counts.switches,     icon: <Network size={18} />,  cardGradient: "linear-gradient(135deg,#a78bfa,#7c3aed)",   glow: "#7c3aed40", type: "Switch" },
+    { label: "Firewalls",      value: counts.firewalls,    icon: <Shield size={18} />,   cardGradient: "linear-gradient(135deg,#f87171,#dc2626)",   glow: "#ef444440", type: "Firewall" },
+    { label: "Access Points",  value: counts.accessPoints, icon: <Wifi size={18} />,     cardGradient: "linear-gradient(135deg,#fbbf24,#d97706)",   glow: "#f59e0b40", type: "Access Point" },
+    { label: "Servers",        value: counts.servers,      icon: <Server size={18} />,   cardGradient: "linear-gradient(135deg,#34d399,#059669)",   glow: "#10b98140", type: "Server" },
   ];
 
   const activeFilterCount = [typeFilter, brandFilter, locationFilter, statusFilter].filter((v) => v !== "All").length;
@@ -357,46 +357,20 @@ export default function NetworkCredentials() {
           return (
             <div
               key={k.label}
-              className={`kpi-card ${k.type ? "clickable" : ""}`}
+              className={`kpi-card-vivid ${k.type ? "clickable" : ""} ${active ? "is-active" : ""}`}
               onClick={k.type ? () => setTypeFilter(active ? "All" : k.type) : undefined}
               title={k.type ? (active ? `Showing ${k.type} only — click to clear` : `Filter to ${k.type}`) : undefined}
               style={{
-                borderLeft: `4px solid ${k.color}`,
+                background: k.cardGradient,
                 boxShadow: active
-                  ? `0 0 0 2px ${k.color}33, 0 8px 24px rgba(29,78,216,0.12)`
-                  : undefined,
+                  ? `0 0 0 3px #fff, 0 0 0 5px ${k.glow.replace("40","99")}, 0 12px 32px ${k.glow}`
+                  : `0 8px 24px ${k.glow}`,
               }}
             >
-              <div style={{ padding: "16px 18px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <div>
-                  <div style={{
-                    fontSize: 26, fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1,
-                    color: loading ? "#cbd5e1" : k.color,
-                    fontVariantNumeric: "tabular-nums",
-                  }}>
-                    {loading ? "—" : k.value}
-                  </div>
-                  <div style={{
-                    fontSize: 10, fontWeight: 700, letterSpacing: "0.06em",
-                    textTransform: "uppercase", color: "#64748b", marginTop: 5,
-                  }}>
-                    {k.label}
-                  </div>
-                  {active && (
-                    <div style={{ fontSize: 10, color: k.color, marginTop: 4, fontWeight: 600 }}>
-                      ✓ Filtered
-                    </div>
-                  )}
-                </div>
-                <div style={{
-                  width: 40, height: 40, borderRadius: 12,
-                  background: k.bg, color: k.color,
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  flexShrink: 0, border: "1px solid rgba(0,0,0,0.06)",
-                }}>
-                  {k.icon}
-                </div>
-              </div>
+              <div className="kpi-vivid-icon">{k.icon}</div>
+              <div className="kpi-vivid-value">{loading ? "—" : k.value}</div>
+              <div className="kpi-vivid-label">{k.label}</div>
+              {active && <div className="kpi-vivid-active-badge">✓ Filtered</div>}
             </div>
           );
         })}
