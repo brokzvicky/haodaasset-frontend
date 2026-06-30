@@ -13,24 +13,25 @@ import "./Dashboard.css";
 
 const API = "https://haodaasset-backend-1.onrender.com";
 
-function KpiCard({ icon, label, value, sub, gradA, gradB, glow, onClick, badge }) {
+function KpiCard({ icon, label, value, sub, gradA, gradB, glow, onClick, badge, wide }) {
   const count = useCountUp(value, 900);
   return (
     <div
-      className={`kpi-card ${onClick ? "clickable" : ""}`}
+      className={`kpi-card ${onClick ? "clickable" : ""} ${wide ? "kpi-card--wide" : ""}`}
       onClick={onClick}
       style={{
         "--kpi-a": gradA, "--kpi-b": gradB, "--kpi-glow": glow,
         backgroundImage: `linear-gradient(146deg, ${gradA} 0%, ${gradB} 100%)`,
       }}
     >
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-        <div className="kpi-icon-wrapper">{icon}</div>
-        {badge && <span className="kpi-badge">{badge}</span>}
+      {!wide && badge && <span className="kpi-badge">{badge}</span>}
+      <div className="kpi-icon-wrapper">{icon}</div>
+      <div className="kpi-card-body">
+        <div className="kpi-value">{count}</div>
+        <div className="kpi-label">{label}</div>
+        <div className="kpi-sub">{sub}</div>
+        {wide && badge && <span className="kpi-badge kpi-badge--inline">{badge}</span>}
       </div>
-      <div className="kpi-value">{count}</div>
-      <div className="kpi-label">{label}</div>
-      <div className="kpi-sub">{sub}</div>
     </div>
   );
 }
@@ -200,10 +201,10 @@ export default function Dashboard() {
       </div>
 
       <div className="kpi-row kpi-row-2" style={{ marginBottom: 20 }}>
-        <KpiCard icon={<Users size={19} />}    label="Total Employees"  value={V(dashboard.totalEmployees)} sub="Active directory"
-          gradA="#581c87" gradB="#9333ea" glow="rgba(147,51,234,0.4)" />
-        <KpiCard icon={<FileText size={19} />} label="Pending Requests" value={V(pendingRequests)}          sub="Awaiting your review"
-          gradA="#9d174d" gradB="#ec4899" glow="rgba(236,72,153,0.4)"
+        <KpiCard icon={<Users size={24} />}    label="Total Employees"  value={V(dashboard.totalEmployees)} sub="Active directory"
+          gradA="#581c87" gradB="#9333ea" glow="rgba(147,51,234,0.4)" wide />
+        <KpiCard icon={<FileText size={24} />} label="Pending Requests" value={V(pendingRequests)}          sub="Awaiting your review"
+          gradA="#9d174d" gradB="#ec4899" glow="rgba(236,72,153,0.4)" wide
           badge={pendingRequests > 0 ? "Action needed" : undefined}
           onClick={() => navigate("/asset-requests")} />
       </div>

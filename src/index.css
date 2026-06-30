@@ -499,6 +499,23 @@ input, select, textarea { font-family: var(--font); }
 }
 .kpi-card:hover .kpi-icon-wrapper { transform: scale(1.08) rotate(-4deg); }
 
+/* Wide variant (used in 2-up rows like Total Employees / Pending
+   Requests) — icon sits beside the number instead of above it, so
+   the card's width is actually used instead of leaving a void. */
+.kpi-card--wide {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+.kpi-card--wide .kpi-icon-wrapper {
+  margin-bottom: 0;
+  width: 52px; height: 52px;
+  flex-shrink: 0;
+}
+.kpi-card--wide .kpi-icon-wrapper svg { width: 24px; height: 24px; }
+.kpi-card--wide .kpi-card-body { display: flex; flex-direction: column; }
+.kpi-card--wide .kpi-value { font-size: 32px; }
+
 .kpi-value  {
   font-size: 30px; font-weight: 800; line-height: 1;
   letter-spacing: -1px; font-family: var(--font-data);
@@ -517,6 +534,14 @@ input, select, textarea { font-family: var(--font); }
   -webkit-backdrop-filter: blur(4px);
   backdrop-filter: blur(4px);
   z-index: 1;
+}
+
+.kpi-card-body { position: relative; z-index: 1; min-width: 0; }
+
+.kpi-badge--inline {
+  position: static !important;
+  display: inline-flex;
+  margin-top: 6px;
 }
 
 /* Active / selected state for clickable filter-style KPI cards */
