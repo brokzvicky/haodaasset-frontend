@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useState, useCallback } from "react";
+import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { createPortal } from "react-dom";
 import axios from "axios";
 import {
   Router, Network, Shield, Wifi, Server, HardDrive, Printer, Lock,
@@ -125,6 +126,7 @@ export default function NetworkCredentials() {
   const [revealingId, setRevealingId]   = useState(null);
   const [deletingId, setDeletingId]     = useState(null);
   const [openMenuId, setOpenMenuId]     = useState(null);
+  const [menuPos, setMenuPos]           = useState(null);
   const [copiedKey, setCopiedKey]       = useState(null);
 
   // ── Sensitive-credential unlock (OTP-gated, 60s window) ──────────
@@ -203,9 +205,15 @@ export default function NetworkCredentials() {
 
   useEffect(() => {
     if (!openMenuId) return;
-    const close = () => setOpenMenuId(null);
+    const close = () => { setOpenMenuId(null); setMenuPos(null); };
     document.addEventListener("click", close);
-    return () => document.removeEventListener("click", close);
+    window.addEventListener("scroll", close, true);
+    window.addEventListener("resize", close);
+    return () => {
+      document.removeEventListener("click", close);
+      window.removeEventListener("scroll", close, true);
+      window.removeEventListener("resize", close);
+    };
   }, [openMenuId]);
 
   // ── Form ──────────────────────────────────────────────────────
@@ -873,29 +881,48 @@ export default function NetworkCredentials() {
                         <button
                           className="icon-btn"
                           title="More actions"
-                          onClick={(e) => { e.stopPropagation(); setOpenMenuId(openMenuId === cred.id ? null : cred.id); }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (openMenuId === cred.id) {
+                              setOpenMenuId(null);
+                              setMenuPos(null);
+                            } else {
+                              const rect = e.currentTarget.getBoundingClientRect();
+                              const menuWidth = 196;
+                              setMenuPos({
+                                top: rect.bottom + 8,
+                                left: Math.max(8, Math.min(rect.right - menuWidth, window.innerWidth - menuWidth - 8)),
+                              });
+                              setOpenMenuId(cred.id);
+                            }
+                          }}
                           disabled={isDeleting}
                           style={openMenuId === cred.id ? { background: "#dbeafe", color: "#2563eb" } : undefined}
                         >
                           <MoreVertical size={14} />
                         </button>
-                        {openMenuId === cred.id && (
-                          <div className="netcred-menu" onClick={(e) => e.stopPropagation()}>
-                            <button className="netcred-menu-item" onClick={() => openEditForm(cred)}>
+                        {openMenuId === cred.id && menuPos && createPortal(
+                          <div
+                            className="netcred-menu"
+                            style={{ position: "fixed", top: menuPos.top, left: menuPos.left }}
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <button className="netcred-menu-item" onClick={() => { openEditForm(cred); setOpenMenuId(null); setMenuPos(null); }}>
                               <Pencil size={13} /> Edit
                             </button>
-                            <button className="netcred-menu-item" onClick={() => togglePasswordVisible(cred)}>
+                            <button className="netcred-menu-item" onClick={() => { togglePasswordVisible(cred); setOpenMenuId(null); setMenuPos(null); }}>
                               {rev?.visible ? <EyeOff size={13} /> : <Eye size={13} />}
                               {rev?.visible ? "Hide Password" : "Show Password"}
                             </button>
-                            <button className="netcred-menu-item" onClick={() => copyPassword(cred)}>
+                            <button className="netcred-menu-item" onClick={() => { copyPassword(cred); setOpenMenuId(null); setMenuPos(null); }}>
                               <KeyRound size={13} /> Copy Password
                             </button>
                             <div className="netcred-menu-divider" />
-                            <button className="netcred-menu-item danger" onClick={() => deleteCredential(cred)}>
+                            <button className="netcred-menu-item danger" onClick={() => { deleteCredential(cred); setOpenMenuId(null); setMenuPos(null); }}>
                               <Trash2 size={13} /> Delete
                             </button>
-                          </div>
+                          </div>,
+                          document.body
                         )}
                       </td>
                     </tr>
