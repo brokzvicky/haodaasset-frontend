@@ -274,33 +274,32 @@ const reject =(id)=>updateStatus(id,"REJECTED");
       )}
 
       {/* KPI Strip — clickable filters */}
-      <div className="kpi-row kpi-row-4" style={{marginBottom:22}}>
+      <div className="kpi-row kpi-row-4 stagger-in" style={{marginBottom:22}}>
         {[
-          {key:"ALL",      label:"Total Requests", color:"#1a56db", bg:"#eff6ff", icon:"📋"},
-          {key:"PENDING",  label:"Pending",        color:"#d97706", bg:"#fffbeb", icon:"⏳"},
-          {key:"APPROVED", label:"Approved",       color:"#15803d", bg:"#dcfce7", icon:"✅"},
-          {key:"REJECTED", label:"Rejected",       color:"#b91c1c", bg:"#fee2e2", icon:"✕"},
+          {key:"ALL",      label:"Total Requests", gradient:"linear-gradient(135deg,#60a5fa,#1d4ed8)", glow:"#1d4ed840", icon:"📋"},
+          {key:"PENDING",  label:"Pending",        gradient:"linear-gradient(135deg,#fbbf24,#d97706)", glow:"#d9770640", icon:"⏳"},
+          {key:"APPROVED", label:"Approved",       gradient:"linear-gradient(135deg,#34d399,#15803d)", glow:"#15803d40", icon:"✅"},
+          {key:"REJECTED", label:"Rejected",       gradient:"linear-gradient(135deg,#f87171,#b91c1c)", glow:"#b91c1c40", icon:"✕"},
         ].map((s)=>(
           <div
             key={s.key}
             onClick={()=>setStatusFilter(s.key)}
+            className={`kpi-card-vivid clickable ${statusFilter===s.key?"is-active":""}`}
             style={{
-              background:"#fff",
-              border:`1px solid ${statusFilter===s.key?s.color+"60":"var(--gray-200)"}`,
-              borderTop:`3px solid ${s.color}`,
-              borderRadius:10,padding:"16px 18px",cursor:"pointer",
-              transition:"all 0.15s",
-              boxShadow:statusFilter===s.key?`0 0 0 3px ${s.color}18`:"var(--shadow-card)",
+              background:s.gradient,
+              boxShadow:statusFilter===s.key
+                ? `0 0 0 3px #fff, 0 0 0 5px ${s.glow.replace("40","99")}, 0 12px 32px ${s.glow}`
+                : `0 8px 24px ${s.glow}`,
             }}
           >
-            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
-              <span style={{fontSize:20}}>{s.icon}</span>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+              <div className="kpi-vivid-icon">{s.icon}</div>
               {s.key==="PENDING"&&counts.PENDING>0&&(
-                <span style={{background:s.color,color:"#fff",fontSize:10,fontWeight:800,padding:"1px 7px",borderRadius:20}}>Action needed</span>
+                <span className="kpi-vivid-active-badge" style={{marginTop:0}}>Action needed</span>
               )}
             </div>
-            <div style={{fontSize:28,fontWeight:800,color:loading?"var(--gray-300)":s.color,lineHeight:1}}>{loading?"—":counts[s.key]}</div>
-            <div style={{fontSize:11.5,fontWeight:600,color:"var(--gray-400)",marginTop:5,textTransform:"uppercase",letterSpacing:"0.05em"}}>{s.label}</div>
+            <div className="kpi-vivid-value">{loading?"—":counts[s.key]}</div>
+            <div className="kpi-vivid-label">{s.label}</div>
           </div>
         ))}
       </div>
@@ -332,9 +331,17 @@ const reject =(id)=>updateStatus(id,"REJECTED");
         </div>
 
         {loading?(
-          <div style={{textAlign:"center",padding:"64px 20px",color:"var(--gray-400)"}}>
-            <div style={{fontSize:28,marginBottom:10}}>⏳</div>
-            <div style={{fontSize:14,fontWeight:600}}>Loading requests…</div>
+          <div style={{padding:"18px 20px",display:"flex",flexDirection:"column",gap:10}}>
+            {[1,2,3,4,5].map((i)=>(
+              <div key={i} style={{display:"flex",alignItems:"center",gap:12}}>
+                <div className="skeleton skeleton-circle" style={{width:32,height:32}}/>
+                <div style={{flex:1,display:"flex",flexDirection:"column",gap:6}}>
+                  <div className="skeleton skeleton-text medium"/>
+                  <div className="skeleton skeleton-text short"/>
+                </div>
+                <div className="skeleton" style={{width:70,height:22,borderRadius:20}}/>
+              </div>
+            ))}
           </div>
         ):filtered.length===0?(
           <div style={{textAlign:"center",padding:"64px 20px"}}>

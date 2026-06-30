@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import ForgotPasswordModal from "../components/ForgotPasswordModal";
 
 export default function Login() {
   const { login }  = useAuth();
@@ -11,6 +12,7 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [error, setError]       = useState("");
   const [loading, setLoading]   = useState("");
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -146,6 +148,13 @@ export default function Login() {
                     onChange={(e) => setPassword(e.target.value)}
                     required
                   />
+                  <button
+                    type="button"
+                    className="login-forgot-link"
+                    onClick={() => setShowForgotPassword(true)}
+                  >
+                    Forgot Password?
+                  </button>
                 </div>
               </>
             ) : (
@@ -195,6 +204,10 @@ export default function Login() {
           </p>
         </div>
       </div>
+
+      {showForgotPassword && (
+        <ForgotPasswordModal onClose={() => setShowForgotPassword(false)} />
+      )}
     </div>
   );
 }

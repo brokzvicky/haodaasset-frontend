@@ -141,7 +141,7 @@ function AssignAssetModal({ employee, onClose, onSuccess }) {
             <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: "#1d4ed8", marginBottom: 12 }}>
               Employee Information
             </div>
-            <div className="kpi-row kpi-row-4">
+            <div className="kpi-row kpi-row-4 stagger-in">
               {[
                 { label: "Employee ID", value: employee.employeeId },
                 { label: "Employee Name", value: employee.employeeName },
@@ -194,7 +194,8 @@ function AssignAssetModal({ employee, onClose, onSuccess }) {
             <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 300, overflowY: "auto", paddingRight: 2 }}>
               {loadingAssets ? (
                 <div style={{ textAlign: "center", padding: "32px 0", color: "var(--gray-400)", fontSize: 13 }}>
-                  ⏳ Loading available assets…
+                  <div className="loading-spinner" style={{ margin: "0 auto 10px", width: 22, height: 22 }} />
+                  Loading available assets…
                 </div>
               ) : filteredAssets.length === 0 ? (
                 <div style={{ textAlign: "center", padding: "32px 0" }}>
@@ -533,7 +534,20 @@ export default function Employees() {
 
       {/* Employee Cards */}
       {loading ? (
-        <div className="empty-state"><div className="empty-icon">⏳</div><div className="empty-title">Loading…</div></div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          {[1,2,3,4].map((i) => (
+            <div key={i} className="card">
+              <div style={{ display: "flex", alignItems: "center", gap: 16, padding: "18px 22px" }}>
+                <div className="skeleton skeleton-circle" style={{ width: 44, height: 44, borderRadius: 12 }} />
+                <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 8 }}>
+                  <div className="skeleton skeleton-text short" />
+                  <div className="skeleton skeleton-text medium" style={{ height: 9 }} />
+                </div>
+                <div className="skeleton" style={{ width: 60, height: 24, borderRadius: 8 }} />
+              </div>
+            </div>
+          ))}
+        </div>
       ) : directory.length === 0 ? (
         <div className="empty-state">
           <div className="empty-icon">👥</div>

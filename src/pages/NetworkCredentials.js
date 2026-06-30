@@ -4,10 +4,11 @@ import {
   Router, Network, Shield, Wifi, Server, HardDrive, Printer, Lock,
   Plus, X, Search, RefreshCw, Eye, EyeOff, Copy, Pencil, Trash2,
   ChevronDown, ChevronUp, Check, AlertTriangle, KeyRound, MoreVertical,
-  SlidersHorizontal, ShieldCheck,
+  SlidersHorizontal, ShieldCheck, Unlock, TimerReset,
 } from "lucide-react";
 import Layout from "../components/Layout";
 import { useToast } from "../utils/Toast";
+import CredentialUnlockDialog from "../components/CredentialUnlockDialog";
 import "./NetworkCredentials.css";
 
 const API = "https://haodaasset-backend-1.onrender.com";
@@ -126,6 +127,64 @@ export default function NetworkCredentials() {
   const [openMenuId, setOpenMenuId]     = useState(null);
   const [copiedKey, setCopiedKey]       = useState(null);
 
+  // ── Sensitive-credential unlock (OTP-gated, 60s window) ──────────
+  const [unlocked, setUnlocked]                 = useState(false);
+  const [unlockSecondsLeft, setUnlockSecondsLeft] = useState(0);
+  const [showUnlockDialog, setShowUnlockDialog] = useState(false);
+  const [pendingAction, setPendingAction]       = useState(null);
+
+  // Restore unlock state on mount (e.g. after a refresh, if the 60s window is still live server-side).
+  useEffect(() => {
+    axios.get(`${API}/api/network/credential-access/status`)
+      .then((r) => {
+        if (r.data?.unlocked) {
+          setUnlocked(true);
+          setUnlockSecondsLeft(r.data.secondsRemaining || 0);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  // Tick the unlock countdown; auto re-lock (and re-mask everything) when it hits zero.
+  useEffect(() => {
+    if (!unlocked) return;
+    const t = setInterval(() => {
+      setUnlockSecondsLeft((s) => {
+        if (s <= 1) {
+          setUnlocked(false);
+          setRevealed({});
+          return 0;
+        }
+        return s - 1;
+      });
+    }, 1000);
+    return () => clearInterval(t);
+  }, [unlocked]);
+
+  /** Runs `action` immediately if already unlocked, otherwise opens the OTP dialog and queues it. */
+  const requireUnlock = useCallback((action) => {
+    if (unlocked) { action(); return; }
+    setPendingAction(() => action);
+    setShowUnlockDialog(true);
+  }, [unlocked]);
+
+  const handleUnlocked = (secondsRemaining) => {
+    setUnlocked(true);
+    setUnlockSecondsLeft(secondsRemaining || 60);
+    setShowUnlockDialog(false);
+    toast("Verified — credentials unlocked for 60 seconds.", "success");
+    if (pendingAction) {
+      const action = pendingAction;
+      setPendingAction(null);
+      action();
+    }
+  };
+
+  const closeUnlockDialog = () => {
+    setShowUnlockDialog(false);
+    setPendingAction(null);
+  };
+
   const flashCopied = (key) => {
     setCopiedKey(key);
     setTimeout(() => setCopiedKey((k) => (k === key ? null : k)), 900);
@@ -235,35 +294,41 @@ export default function NetworkCredentials() {
     setOpenMenuId(null);
     const cur = revealed[cred.id];
     if (cur?.visible) { setRevealed((r) => ({ ...r, [cred.id]: { ...cur, visible: false } })); return; }
-    if (cur?.password !== undefined) { setRevealed((r) => ({ ...r, [cred.id]: { ...cur, visible: true } })); return; }
-    setRevealingId(cred.id);
-    axios.get(`${API}/api/network/${cred.id}/reveal-password`)
-      .then((r) => setRevealed((rv) => ({ ...rv, [cred.id]: { password: r.data.value, visible: true } })))
-      .catch(() => toast("Couldn't decrypt password.", "error"))
-      .finally(() => setRevealingId(null));
+    requireUnlock(() => {
+      if (cur?.password !== undefined) { setRevealed((r) => ({ ...r, [cred.id]: { ...cur, visible: true } })); return; }
+      setRevealingId(cred.id);
+      axios.get(`${API}/api/network/${cred.id}/reveal-password`)
+        .then((r) => setRevealed((rv) => ({ ...rv, [cred.id]: { password: r.data.value, visible: true } })))
+        .catch((e) => toast(e.response?.data?.message || "Couldn't decrypt password.", "error"))
+        .finally(() => setRevealingId(null));
+    });
   };
 
-  const copyUsername = async (cred) => {
+  const copyUsername = (cred) => {
     setOpenMenuId(null);
-    try { await navigator.clipboard.writeText(cred.username || ""); flashCopied(`user-${cred.id}`); toast("Username copied.", "success"); }
-    catch { toast("Couldn't copy to clipboard.", "error"); }
+    requireUnlock(async () => {
+      try { await navigator.clipboard.writeText(cred.username || ""); flashCopied(`user-${cred.id}`); toast("Username copied.", "success"); }
+      catch { toast("Couldn't copy to clipboard.", "error"); }
+    });
   };
 
-  const copyPassword = async (cred) => {
+  const copyPassword = (cred) => {
     setOpenMenuId(null);
-    try {
-      let pwd = revealed[cred.id]?.password;
-      if (pwd === undefined) {
-        setRevealingId(cred.id);
-        const r = await axios.get(`${API}/api/network/${cred.id}/reveal-password`);
-        pwd = r.data.value;
-        setRevealed((rv) => ({ ...rv, [cred.id]: { password: pwd, visible: rv[cred.id]?.visible || false } }));
-      }
-      await navigator.clipboard.writeText(pwd || "");
-      flashCopied(`pwd-${cred.id}`);
-      toast("Password copied.", "success");
-    } catch { toast("Couldn't copy password.", "error"); }
-    finally { setRevealingId(null); }
+    requireUnlock(async () => {
+      try {
+        let pwd = revealed[cred.id]?.password;
+        if (pwd === undefined) {
+          setRevealingId(cred.id);
+          const r = await axios.get(`${API}/api/network/${cred.id}/reveal-password`);
+          pwd = r.data.value;
+          setRevealed((rv) => ({ ...rv, [cred.id]: { password: pwd, visible: rv[cred.id]?.visible || false } }));
+        }
+        await navigator.clipboard.writeText(pwd || "");
+        flashCopied(`pwd-${cred.id}`);
+        toast("Password copied.", "success");
+      } catch (e) { toast(e.response?.data?.message || "Couldn't copy password.", "error"); }
+      finally { setRevealingId(null); }
+    });
   };
 
   // ── Derived ───────────────────────────────────────────────────
@@ -329,6 +394,7 @@ export default function NetworkCredentials() {
   );
 
   return (
+    <>
     <Layout
       title={pageTitle}
       subtitle="Securely manage IT infrastructure device access"
@@ -350,8 +416,22 @@ export default function NetworkCredentials() {
         </div>
       )}
 
+      {/* ── Unlock status banner ── */}
+      {unlocked && (
+        <div className="netcred-unlock-banner">
+          <Unlock size={14} />
+          Sensitive credentials unlocked — auto-locks in {unlockSecondsLeft}s
+          <button
+            className="netcred-unlock-banner-btn"
+            onClick={() => { setUnlocked(false); setRevealed({}); axios.post(`${API}/api/network/credential-access/lock`).catch(() => {}); }}
+          >
+            <TimerReset size={12} /> Lock now
+          </button>
+        </div>
+      )}
+
       {/* ── KPI Cards ── */}
-      <div className="kpi-row kpi-row-6" style={{ marginBottom: 28 }}>
+      <div className="kpi-row kpi-row-6 stagger-in" style={{ marginBottom: 28 }}>
         {kpis.map((k) => {
           const active = k.type && typeFilter === k.type;
           return (
@@ -737,7 +817,9 @@ export default function NetworkCredentials() {
                       {/* Username */}
                       <td>
                         <div className="netcred-secret">
-                          <span style={{ fontWeight: 600, fontSize: 12.5, color: "#1e293b" }}>{cred.username}</span>
+                          <span style={{ fontWeight: 600, fontSize: 12.5, color: unlocked ? "#1e293b" : "#94a3b8", letterSpacing: unlocked ? 0 : 1 }}>
+                            {unlocked ? cred.username : "••••••••"}
+                          </span>
                           <button
                             className={"icon-btn" + (copiedKey === `user-${cred.id}` ? " is-copied" : "")}
                             title="Copy username"
@@ -824,5 +906,10 @@ export default function NetworkCredentials() {
         )}
       </div>
     </Layout>
+
+      {showUnlockDialog && (
+        <CredentialUnlockDialog onUnlocked={handleUnlocked} onClose={closeUnlockDialog} />
+      )}
+    </>
   );
 }

@@ -20,7 +20,7 @@ function initials(name) {
 function Spinner() {
   return (
     <div className="empty-state" style={{ padding: "56px 0" }}>
-      <div style={{ fontSize: 32 }}>⏳</div>
+      <div className="loading-spinner" style={{ margin: "0 auto 14px" }} />
       <div className="empty-title">Loading…</div>
     </div>
   );

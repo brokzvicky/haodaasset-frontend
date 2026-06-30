@@ -66,16 +66,17 @@ export default function Reports() {
       )}
 
       {/* KPI Strip */}
-      <div className="kpi-row kpi-row-4" style={{ marginBottom: 24 }}>
+      <div className="kpi-row kpi-row-4 stagger-in" style={{ marginBottom: 24 }}>
         {[
-          { label: "Total Assets",  value: loading ? "—" : totalAssets,     color: "#1a56db", bg: "#eff6ff" },
-          { label: "Assigned",      value: loading ? "—" : assignedAssets,  color: "#d97706", bg: "#fffbeb" },
-          { label: "Available",     value: loading ? "—" : availableAssets, color: "#059669", bg: "#ecfdf5" },
-          { label: "Utilization",   value: loading ? "—" : `${utilization}%`,color: "#7c3aed", bg: "#f5f3ff" },
+          { label: "Total Assets",  value: loading ? "—" : totalAssets,     gradient: "linear-gradient(135deg,#60a5fa,#1d4ed8)", glow: "#1d4ed840", icon: "📦" },
+          { label: "Assigned",      value: loading ? "—" : assignedAssets,  gradient: "linear-gradient(135deg,#fbbf24,#d97706)", glow: "#d9770640", icon: "🔗" },
+          { label: "Available",     value: loading ? "—" : availableAssets, gradient: "linear-gradient(135deg,#34d399,#059669)", glow: "#10b98140", icon: "✅" },
+          { label: "Utilization",   value: loading ? "—" : `${utilization}%`,gradient: "linear-gradient(135deg,#a78bfa,#7c3aed)", glow: "#7c3aed40", icon: "📊" },
         ].map((s) => (
-          <div key={s.label} className="card" style={{ padding: "18px 22px", borderLeft: `4px solid ${s.color}` }}>
-            <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--gray-400)", marginBottom: 8 }}>{s.label}</div>
-            <div style={{ fontSize: 30, fontWeight: 800, color: s.color, letterSpacing: "-1px" }}>{s.value}</div>
+          <div key={s.label} className="kpi-card-vivid" style={{ background: s.gradient, boxShadow: `0 8px 24px ${s.glow}` }}>
+            <div className="kpi-vivid-icon">{s.icon}</div>
+            <div className="kpi-vivid-value">{s.value}</div>
+            <div className="kpi-vivid-label">{s.label}</div>
           </div>
         ))}
       </div>
@@ -89,7 +90,14 @@ export default function Reports() {
           </div>
           <div className="card-body">
             {loading ? (
-              <div className="empty-state" style={{ padding: "32px 0" }}><div>⏳</div><div className="empty-title">Loading…</div></div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: "8px 0" }}>
+                <div className="skeleton skeleton-block" style={{ height: 180 }} />
+                <div style={{ display: "flex", gap: 8 }}>
+                  <div className="skeleton skeleton-text short" />
+                  <div className="skeleton skeleton-text short" />
+                  <div className="skeleton skeleton-text short" />
+                </div>
+              </div>
             ) : (
               <AssetTypeBarChart data={typeData} />
             )}
@@ -103,7 +111,9 @@ export default function Reports() {
           </div>
           <div className="card-body" style={{ padding: 0 }}>
             {loading ? (
-              <div className="empty-state" style={{ padding: "32px 0" }}><div>⏳</div><div className="empty-title">Loading…</div></div>
+              <div style={{ padding: "16px 20px", display: "flex", flexDirection: "column", gap: 10 }}>
+                {[1,2,3,4].map((i) => <div key={i} className="skeleton skeleton-row" />)}
+              </div>
             ) : deptData.length === 0 ? (
               <div className="empty-state" style={{ padding: "32px 0" }}>
                 <div className="empty-title">No data yet</div>

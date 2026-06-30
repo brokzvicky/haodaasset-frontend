@@ -77,38 +77,26 @@ export default function EmployeeDashboard() {
       )}
 
       {/* KPI Cards */}
-      <div className="kpi-row kpi-row-3" style={{marginBottom:24}}>
-        <div style={{background:"#fff",borderRadius:12,border:"1px solid #bfdbfe",borderTop:"3px solid #1a56db",padding:"20px 22px",boxShadow:"var(--shadow-card)"}}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
-            <div>
-              <div style={{fontSize:10.5,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.07em",color:"var(--gray-400)",marginBottom:10}}>Assigned Assets</div>
-              <div style={{fontSize:34,fontWeight:800,color:"#1a56db",lineHeight:1}}>{loading?"—":(db?.assignedAssets??0)}</div>
-              <div style={{fontSize:12,color:"var(--gray-500)",marginTop:6}}>Devices in your care</div>
-            </div>
-            <div style={{width:46,height:46,borderRadius:12,background:"#eff6ff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20}}>💻</div>
-          </div>
+      <div className="kpi-row kpi-row-3 stagger-in" style={{marginBottom:24}}>
+        <div className="kpi-card-vivid" style={{background:"linear-gradient(135deg,#60a5fa,#1d4ed8)",boxShadow:"0 8px 24px #1d4ed840"}}>
+          <div className="kpi-vivid-icon">💻</div>
+          <div className="kpi-vivid-value">{loading?"—":(db?.assignedAssets??0)}</div>
+          <div className="kpi-vivid-label">Assigned Assets</div>
+          <div style={{fontSize:11,color:"rgba(255,255,255,0.7)",marginTop:4}}>Devices in your care</div>
         </div>
 
-        <div style={{background:"#fff",borderRadius:12,border:"1px solid #fde68a",borderTop:"3px solid #d97706",padding:"20px 22px",boxShadow:"var(--shadow-card)"}}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
-            <div>
-              <div style={{fontSize:10.5,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.07em",color:"var(--gray-400)",marginBottom:10}}>Pending Requests</div>
-              <div style={{fontSize:34,fontWeight:800,color:"#d97706",lineHeight:1}}>{loading?"—":(db?.pendingRequests??0)}</div>
-              <div style={{fontSize:12,color:"var(--gray-500)",marginTop:6}}>Awaiting IT team review</div>
-            </div>
-            <div style={{width:46,height:46,borderRadius:12,background:"#fffbeb",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20}}>📋</div>
-          </div>
+        <div className="kpi-card-vivid" style={{background:"linear-gradient(135deg,#fbbf24,#d97706)",boxShadow:"0 8px 24px #d9770640"}}>
+          <div className="kpi-vivid-icon">📋</div>
+          <div className="kpi-vivid-value">{loading?"—":(db?.pendingRequests??0)}</div>
+          <div className="kpi-vivid-label">Pending Requests</div>
+          <div style={{fontSize:11,color:"rgba(255,255,255,0.7)",marginTop:4}}>Awaiting IT team review</div>
         </div>
 
-        <div style={{background:"#fff",borderRadius:12,border:"1px solid #86efac",borderTop:"3px solid #16a34a",padding:"20px 22px",boxShadow:"var(--shadow-card)"}}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
-            <div>
-              <div style={{fontSize:10.5,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.07em",color:"var(--gray-400)",marginBottom:10}}>Profile Status</div>
-              <div style={{fontSize:34,fontWeight:800,color:"#16a34a",lineHeight:1}}>{loading?"—":(db?.profileStatus||"Active")}</div>
-              <div style={{fontSize:12,color:"var(--gray-500)",marginTop:6}}>{db?.designation||user?.roleTitle||"Employee"}</div>
-            </div>
-            <div style={{width:46,height:46,borderRadius:12,background:"#dcfce7",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20}}>✅</div>
-          </div>
+        <div className="kpi-card-vivid" style={{background:"linear-gradient(135deg,#34d399,#059669)",boxShadow:"0 8px 24px #10b98140"}}>
+          <div className="kpi-vivid-icon">✅</div>
+          <div className="kpi-vivid-value">{loading?"—":(db?.profileStatus||"Active")}</div>
+          <div className="kpi-vivid-label">Profile Status</div>
+          <div style={{fontSize:11,color:"rgba(255,255,255,0.7)",marginTop:4}}>{db?.designation||user?.roleTitle||"Employee"}</div>
         </div>
       </div>
 
@@ -157,7 +145,7 @@ export default function EmployeeDashboard() {
 
         {aLoading?(
           <div style={{padding:"40px 0",textAlign:"center",color:"var(--gray-400)"}}>
-            <div style={{fontSize:24,marginBottom:8}}>⏳</div>
+            <div className="loading-spinner" style={{margin:"0 auto 10px"}} />
             <div style={{fontSize:13,fontWeight:600}}>Loading your assets…</div>
           </div>
         ):recentAssets.length===0?(

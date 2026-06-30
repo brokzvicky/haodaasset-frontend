@@ -89,6 +89,10 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html, body, #root { height: 100%; }
 
+html { scroll-behavior: smooth; }
+
+::selection { background: var(--primary-200); color: var(--gray-900); }
+
 body {
   font-family: var(--font);
   background: var(--gray-50);
@@ -282,7 +286,6 @@ input, select, textarea { font-family: var(--font); }
   position: fixed; inset: 0;
   background: rgba(0,0,0,0.45);
   z-index: 99;
-  -webkit-backdrop-filter: blur(2px);
   backdrop-filter: blur(2px);
   animation: fadeIn 0.18s ease;
 }
@@ -301,7 +304,6 @@ input, select, textarea { font-family: var(--font); }
 .topbar {
   height: var(--topbar-height);
   background: rgba(255,255,255,0.95);
-  -webkit-backdrop-filter: blur(16px);
   backdrop-filter: blur(16px);
   border-bottom: 1px solid var(--gray-100);
   display: flex;
@@ -384,7 +386,10 @@ input, select, textarea { font-family: var(--font); }
   border: 1px solid var(--gray-100);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-card);
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
 }
+
+.card:hover { box-shadow: var(--shadow-md); border-color: var(--gray-200); }
 
 .card-header {
   display: flex; align-items: center; justify-content: space-between;
@@ -427,129 +432,47 @@ input, select, textarea { font-family: var(--font); }
 .stat-card-trend  { display: flex; align-items: center; gap: 3px; font-size: 11px; font-weight: 600; color: var(--success); background: var(--success-bg); padding: 2px 7px; border-radius: 20px; }
 
 /* KPI row class system */
-.kpi-row   { display: grid; gap: 16px; }
+.kpi-row   { display: grid; gap: 14px; }
 .kpi-row-2 { grid-template-columns: repeat(2, 1fr); }
 .kpi-row-3 { grid-template-columns: repeat(3, 1fr); }
 .kpi-row-4 { grid-template-columns: repeat(4, 1fr); }
 .kpi-row-6 { grid-template-columns: repeat(6, 1fr); }
 
-/* ── Premium gradient KPI card ─────────────────────────────────────
-   Pass --kpi-a / --kpi-b (gradient stops) and --kpi-glow via inline
-   style from the component. Card itself stays a single reusable
-   class so every KPI across the app looks identical.
-──────────────────────────────────────────────────────────────────── */
 .kpi-card {
-  background: #2563eb; /* solid fallback so the card is never blank/white */
-  background-image: linear-gradient(146deg, var(--kpi-a, #1d4ed8) 0%, var(--kpi-b, #2563eb) 100%);
+  background: #fff;
+  border: 1px solid var(--gray-100);
   border-radius: var(--radius-lg);
-  padding: 20px 20px 18px;
-  box-shadow:
-    0 1px 0 rgba(255,255,255,0.12) inset,
-    0 10px 24px -8px var(--kpi-glow, rgba(37,99,235,0.45));
-  transition: transform 0.28s cubic-bezier(0.16,1,0.3,1), box-shadow 0.28s cubic-bezier(0.16,1,0.3,1);
+  padding: 18px 20px;
+  box-shadow: var(--shadow-card);
+  transition: all 0.16s ease;
   position: relative;
   overflow: hidden;
-  color: #fff;
-  isolation: isolate;
-}
-
-/* soft decorative orb, top-right */
-.kpi-card::before {
-  content: '';
-  position: absolute;
-  top: -34px; right: -34px;
-  width: 120px; height: 120px;
-  border-radius: 50%;
-  background: rgba(255,255,255,0.14);
-  pointer-events: none;
-  z-index: 0;
-  transition: transform 0.4s ease;
-}
-/* faint diagonal sheen */
-.kpi-card::after {
-  content: '';
-  position: absolute; inset: 0;
-  background: linear-gradient(125deg, rgba(255,255,255,0.10) 0%, transparent 45%);
-  pointer-events: none;
-  z-index: 0;
 }
 
 .kpi-card.clickable { cursor: pointer; }
 
 .kpi-card.clickable:hover,
 .kpi-card:hover {
-  transform: translateY(-4px);
-  box-shadow:
-    0 1px 0 rgba(255,255,255,0.16) inset,
-    0 18px 36px -10px var(--kpi-glow, rgba(37,99,235,0.55));
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
 }
-.kpi-card:hover::before { transform: scale(1.15); }
 
 .kpi-icon-wrapper {
   width: 40px; height: 40px;
-  border-radius: 11px;
+  border-radius: 10px;
   display: flex; align-items: center; justify-content: center;
-  background: rgba(255,255,255,0.16);
-  -webkit-backdrop-filter: blur(6px);
-  backdrop-filter: blur(6px);
-  color: #fff;
-  margin-bottom: 16px;
-  position: relative; z-index: 1;
-  transition: transform 0.28s cubic-bezier(0.34,1.56,0.64,1);
+  font-size: 18px;
+  margin-bottom: 14px;
 }
-.kpi-card:hover .kpi-icon-wrapper { transform: scale(1.08) rotate(-4deg); }
 
-/* Wide variant (used in 2-up rows like Total Employees / Pending
-   Requests) — icon sits beside the number instead of above it, so
-   the card's width is actually used instead of leaving a void. */
-.kpi-card--wide {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-}
-.kpi-card--wide .kpi-icon-wrapper {
-  margin-bottom: 0;
-  width: 52px; height: 52px;
-  flex-shrink: 0;
-}
-.kpi-card--wide .kpi-icon-wrapper svg { width: 24px; height: 24px; }
-.kpi-card--wide .kpi-card-body { display: flex; flex-direction: column; }
-.kpi-card--wide .kpi-value { font-size: 32px; }
-
-.kpi-value  {
-  font-size: 30px; font-weight: 800; line-height: 1;
-  letter-spacing: -1px; font-family: var(--font-data);
-  margin-bottom: 6px; color: #fff;
-  position: relative; z-index: 1;
-}
-.kpi-label  { font-size: 12.5px; font-weight: 700; color: rgba(255,255,255,0.92); margin-bottom: 3px; position: relative; z-index: 1; }
-.kpi-sub    { font-size: 11.5px; color: rgba(255,255,255,0.62); position: relative; z-index: 1; }
+.kpi-value  { font-size: 30px; font-weight: 800; line-height: 1; letter-spacing: -1px; font-family: var(--font-data); margin-bottom: 6px; }
+.kpi-label  { font-size: 12.5px; font-weight: 700; color: var(--gray-700); margin-bottom: 3px; }
+.kpi-sub    { font-size: 11.5px; color: var(--gray-400); }
 
 .kpi-badge {
-  position: absolute; top: 19px; right: 19px;
-  padding: 3px 9px; border-radius: 20px;
+  position: absolute; top: 18px; right: 18px;
+  padding: 2px 8px; border-radius: 12px;
   font-size: 10.5px; font-weight: 700;
-  background: rgba(255,255,255,0.18) !important;
-  color: #fff !important;
-  -webkit-backdrop-filter: blur(4px);
-  backdrop-filter: blur(4px);
-  z-index: 1;
-}
-
-.kpi-card-body { position: relative; z-index: 1; min-width: 0; }
-
-.kpi-badge--inline {
-  position: static !important;
-  display: inline-flex;
-  margin-top: 6px;
-}
-
-/* Active / selected state for clickable filter-style KPI cards */
-.kpi-card.kpi-active {
-  box-shadow:
-    0 0 0 2.5px rgba(255,255,255,0.55),
-    0 18px 36px -10px var(--kpi-glow, rgba(37,99,235,0.55));
-  transform: translateY(-4px);
 }
 
 .stat-grid-6 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 20px; }
@@ -622,36 +545,29 @@ select.input { cursor: pointer; }
 .btn-icon { width: 34px; height: 34px; padding: 0; }
 
 /* ════════════════════════════════════════════════════════════════════
-   TABLE — premium enterprise styling
+   TABLE
 ════════════════════════════════════════════════════════════════════ */
-.table-wrap {
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  border-radius: var(--radius-lg);
-}
+.table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 
 .data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-.data-table thead { position: sticky; top: 0; z-index: 2; }
+.data-table thead { position: sticky; top: 0; z-index: 1; }
 
 .data-table th {
-  text-align: left; padding: 13px 16px;
+  text-align: left; padding: 10px 14px;
   font-size: 10.5px; font-weight: 700; text-transform: uppercase;
-  letter-spacing: 0.07em; color: var(--gray-500);
-  background: linear-gradient(180deg, #f8fafc 0%, var(--gray-50) 100%);
-  border-bottom: 1.5px solid var(--gray-200);
+  letter-spacing: 0.06em; color: var(--gray-400);
+  background: var(--gray-50); border-bottom: 1px solid var(--gray-100);
   white-space: nowrap;
 }
 
 .data-table td {
-  padding: 13px 16px;
-  border-bottom: 1px solid var(--gray-100);
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--gray-50);
   color: var(--gray-700); vertical-align: middle;
-  transition: background 0.13s ease;
 }
 
 .data-table tr:last-child td { border-bottom: none; }
-.data-table tbody tr:nth-child(even) td { background: #fafbfd; }
-.data-table tbody tr:hover td { background: var(--primary-50); }
+.data-table tr:hover td { background: #fafbfc; }
 .data-table .mono { font-family: var(--font-mono); font-size: 12px; }
 .data-table .muted { color: var(--gray-400); }
 
@@ -685,36 +601,30 @@ select.input { cursor: pointer; }
    WELCOME BANNER
 ════════════════════════════════════════════════════════════════════ */
 .welcome-banner {
-  background: linear-gradient(125deg, #1e3a8a 0%, #1d4ed8 35%, #2563eb 70%, #3b82f6 100%);
-  border-radius: var(--radius-xl); padding: 26px 30px; margin-bottom: 22px;
+  background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 55%, #3b82f6 100%);
+  border-radius: var(--radius-lg); padding: 22px 26px; margin-bottom: 20px;
   display: flex; align-items: center; justify-content: space-between;
   color: #fff; position: relative; overflow: hidden;
-  box-shadow: 0 14px 40px -8px rgba(29,78,216,0.4), 0 1px 0 rgba(255,255,255,0.08) inset;
+  box-shadow: 0 6px 28px rgba(37,99,235,0.28);
 }
 
 .welcome-banner::before {
-  content: ''; position: absolute; right: -60px; top: -60px;
-  width: 260px; height: 260px; background: rgba(255,255,255,0.07);
+  content: ''; position: absolute; right: -50px; top: -50px;
+  width: 220px; height: 220px; background: rgba(255,255,255,0.055);
   border-radius: 50%; pointer-events: none;
 }
 
 .welcome-banner::after {
-  content: ''; position: absolute; right: 90px; bottom: -90px;
-  width: 180px; height: 180px; background: rgba(255,255,255,0.045);
+  content: ''; position: absolute; right: 70px; bottom: -70px;
+  width: 160px; height: 160px; background: rgba(255,255,255,0.035);
   border-radius: 50%; pointer-events: none;
 }
 
 .welcome-banner-text       { position: relative; z-index: 1; }
-.welcome-banner-greeting   { font-size: 13px; color: rgba(255,255,255,0.75); font-weight: 500; margin-bottom: 4px; letter-spacing: 0.01em; }
-.welcome-banner-title      { font-size: 24px; font-weight: 800; letter-spacing: -0.6px; line-height: 1.2; }
-.welcome-banner-sub        { font-size: 13px; color: rgba(255,255,255,0.78); margin-top: 6px; }
-.welcome-banner-icon       {
-  font-size: 44px; position: relative; z-index: 1;
-  width: 76px; height: 76px; display: flex; align-items: center; justify-content: center;
-  background: rgba(255,255,255,0.14); border-radius: 20px;
-  -webkit-backdrop-filter: blur(8px);
-  backdrop-filter: blur(8px); box-shadow: 0 1px 0 rgba(255,255,255,0.2) inset;
-}
+.welcome-banner-greeting   { font-size: 12.5px; color: rgba(255,255,255,0.7); font-weight: 500; margin-bottom: 3px; }
+.welcome-banner-title      { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; line-height: 1.2; }
+.welcome-banner-sub        { font-size: 12.5px; color: rgba(255,255,255,0.7); margin-top: 4px; }
+.welcome-banner-icon       { font-size: 46px; position: relative; z-index: 1; opacity: 0.82; }
 
 /* ════════════════════════════════════════════════════════════════════
    ACTIVITY FEED
@@ -883,7 +793,6 @@ select.input { cursor: pointer; }
 .modal-overlay {
   position: fixed; inset: 0;
   background: rgba(15,23,42,0.5);
-  -webkit-backdrop-filter: blur(5px);
   backdrop-filter: blur(5px);
   display: flex; justify-content: center; align-items: center;
   z-index: 9999;
@@ -945,8 +854,7 @@ select.input { cursor: pointer; }
 .login-brand-sub  { font-size: 10.5px; color: rgba(255,255,255,0.45); margin-top: 1px; }
 
 .login-hero { position: relative; z-index: 1; }
-.login-hero-tag { display: inline-flex; align-items: center; gap: 7px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.12); padding: 5px 13px; border-radius: 20px; font-size: 11.5px; color: rgba(255,255,255,0.65); margin-bottom: 22px; -webkit-backdrop-filter: blur(8px);
- backdrop-filter: blur(8px); }
+.login-hero-tag { display: inline-flex; align-items: center; gap: 7px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.12); padding: 5px 13px; border-radius: 20px; font-size: 11.5px; color: rgba(255,255,255,0.65); margin-bottom: 22px; backdrop-filter: blur(8px); }
 
 .login-hero-tag-dot { width: 6px; height: 6px; border-radius: 50%; background: #34d399; box-shadow: 0 0 6px #34d399; animation: pulse 2s ease infinite; }
 
@@ -977,6 +885,8 @@ select.input { cursor: pointer; }
 .login-input { height: 42px; border: 1.5px solid var(--gray-200); border-radius: 9px; padding: 0 14px; font-size: 14px; color: var(--gray-800); background: #fff; transition: all 0.13s; outline: none; }
 .login-input:hover { border-color: var(--gray-300); }
 .login-input:focus { border-color: var(--primary-500); box-shadow: 0 0 0 3px rgba(37,99,235,0.09); }
+.login-forgot-link { align-self: flex-end; margin-top: 6px; background: none; border: none; padding: 0; cursor: pointer; font-size: 12px; font-weight: 600; color: var(--primary-600); }
+.login-forgot-link:hover { color: var(--primary-700); text-decoration: underline; }
 
 .login-btn { height: 42px; background: var(--primary); color: #fff; border: none; border-radius: 9px; font-size: 14px; font-weight: 700; cursor: pointer; transition: all 0.13s; box-shadow: var(--shadow-blue); letter-spacing: -0.2px; }
 .login-btn:hover { background: var(--primary-dark); box-shadow: 0 6px 20px rgba(37,99,235,0.3); transform: translateY(-1px); }
@@ -1043,6 +953,61 @@ select:focus-visible, textarea:focus-visible, [tabindex]:focus-visible {
 @keyframes dropIn    { from { opacity: 0; transform: scale(0.97) translateY(-6px); } to { opacity: 1; transform: scale(1) translateY(0); } }
 
 .fade-in { animation: fadeIn 0.22s ease; }
+
+/* ════════════════════════════════════════════════════════════════════
+   SKELETON LOADERS — replaces bare "Loading…" text/emoji states
+════════════════════════════════════════════════════════════════════ */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(90deg, var(--gray-100) 25%, var(--gray-50) 37%, var(--gray-100) 63%);
+  background-size: 400% 100%;
+  animation: shimmer 1.4s ease infinite;
+  border-radius: var(--radius-sm);
+}
+
+.skeleton-text   { height: 12px; width: 100%; margin: 4px 0; }
+.skeleton-text.short  { width: 40%; }
+.skeleton-text.medium { width: 65%; }
+.skeleton-title  { height: 18px; width: 50%; margin-bottom: 10px; border-radius: 6px; }
+.skeleton-circle { border-radius: 50%; width: 38px; height: 38px; }
+.skeleton-block  { height: 80px; width: 100%; border-radius: var(--radius-md); }
+.skeleton-row    { height: 38px; width: 100%; margin-bottom: 6px; border-radius: var(--radius-sm); }
+
+.skeleton-card {
+  background: #fff;
+  border: 1px solid var(--gray-100);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   STAGGERED ENTRANCE — apply to a grid/list container; direct children
+   fade + rise in sequence instead of popping in all at once
+════════════════════════════════════════════════════════════════════ */
+.stagger-in > * {
+  animation: fadeIn 0.32s cubic-bezier(0.22,1,0.36,1) both;
+}
+.stagger-in > *:nth-child(1)  { animation-delay: 0.00s; }
+.stagger-in > *:nth-child(2)  { animation-delay: 0.04s; }
+.stagger-in > *:nth-child(3)  { animation-delay: 0.08s; }
+.stagger-in > *:nth-child(4)  { animation-delay: 0.12s; }
+.stagger-in > *:nth-child(5)  { animation-delay: 0.16s; }
+.stagger-in > *:nth-child(6)  { animation-delay: 0.20s; }
+.stagger-in > *:nth-child(n+7){ animation-delay: 0.24s; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
 
 /* ════════════════════════════════════════════════════════════════════
    RESPONSIVE
@@ -1116,4 +1081,142 @@ select:focus-visible, textarea:focus-visible, [tabindex]:focus-visible {
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; }
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   VIVID GRADIENT KPI CARDS — shared system used across Dashboard,
+   Network Credentials, and other KPI strips. Saturated two-tone
+   gradients, white text, glassmorphism icon bubble, glowing shadow.
+════════════════════════════════════════════════════════════════════ */
+/* ════════════════════════════════════════════════════════════════════
+   Vivid gradient KPI cards — bright full-color version
+   Replaces the pale glassmorphism cards with saturated gradients,
+   white text, and a glowing drop shadow per card color.
+═══════════════════════════════════════════════════════════════════════ */
+
+@keyframes kpiVividIn {
+  from { opacity: 0; transform: translateY(16px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes kpiVividHoverBounce {
+  0%   { transform: translateY(0); }
+  40%  { transform: translateY(-5px); }
+  70%  { transform: translateY(-3px); }
+  100% { transform: translateY(-4px); }
+}
+
+.kpi-card-vivid {
+  border-radius: 18px;
+  padding: 20px 20px 18px;
+  position: relative;
+  overflow: hidden;
+  cursor: default;
+  color: #fff;
+  animation: kpiVividIn 0.4s cubic-bezier(0.34, 1.2, 0.64, 1) both;
+  transition: transform 0.2s cubic-bezier(0.34, 1.4, 0.64, 1),
+              box-shadow 0.2s ease;
+}
+
+/* Staggered entrance */
+.kpi-card-vivid:nth-child(1) { animation-delay: 0.04s; }
+.kpi-card-vivid:nth-child(2) { animation-delay: 0.08s; }
+.kpi-card-vivid:nth-child(3) { animation-delay: 0.12s; }
+.kpi-card-vivid:nth-child(4) { animation-delay: 0.16s; }
+.kpi-card-vivid:nth-child(5) { animation-delay: 0.20s; }
+.kpi-card-vivid:nth-child(6) { animation-delay: 0.24s; }
+
+/* Soft shimmer overlay — premium feel */
+.kpi-card-vivid::before {
+  content: "";
+  position: absolute;
+  top: -40%;
+  left: -30%;
+  width: 90%;
+  height: 90%;
+  background: radial-gradient(circle, rgba(255,255,255,0.18) 0%, transparent 70%);
+  pointer-events: none;
+  border-radius: 50%;
+}
+
+/* Bottom-right decorative circle */
+.kpi-card-vivid::after {
+  content: "";
+  position: absolute;
+  bottom: -28px;
+  right: -28px;
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.08);
+  pointer-events: none;
+}
+
+.kpi-card-vivid.clickable { cursor: pointer; }
+.kpi-card-vivid.clickable:hover {
+  transform: translateY(-4px);
+}
+.kpi-card-vivid.clickable:active { transform: translateY(-1px); }
+.kpi-card-vivid.is-active {
+  outline: 3px solid rgba(255,255,255,0.7);
+  outline-offset: 2px;
+}
+
+/* ── Icon bubble ─────────────────────────────────────────────────── */
+.kpi-vivid-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 13px;
+  background: rgba(255, 255, 255, 0.22);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+  border: 1px solid rgba(255,255,255,0.25);
+  backdrop-filter: blur(4px);
+}
+
+/* ── Value number ────────────────────────────────────────────────── */
+.kpi-vivid-value {
+  font-size: 34px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+  margin-bottom: 6px;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.15);
+}
+
+/* ── Label ───────────────────────────────────────────────────────── */
+.kpi-vivid-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.82);
+}
+
+/* ── Active filter badge ─────────────────────────────────────────── */
+.kpi-vivid-active-badge {
+  margin-top: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #fff;
+  background: rgba(255,255,255,0.22);
+  border: 1px solid rgba(255,255,255,0.3);
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+/* ── Reduced motion ──────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .kpi-card-vivid {
+    animation: none !important;
+    transition: none !important;
+  }
+  .kpi-card-vivid::before,
+  .kpi-card-vivid::after { display: none; }
 }
