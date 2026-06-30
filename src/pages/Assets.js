@@ -1,9 +1,14 @@
 import React, { useEffect, useMemo, useState, useCallback } from "react";
 import axios from "axios";
 import { useSearchParams } from "react-router-dom";
+import {
+  LayoutGrid, CheckCircle2, UserCheck, Archive, Wrench, AlertTriangle,
+  Search, X, RotateCcw, Trash2, Undo2, Plus, PackageSearch, PackageX,
+} from "lucide-react";
 import Layout from "../components/Layout";
 import StatusPill from "../components/StatusPill";
 import { useToast } from "../utils/Toast";
+import useCountUp from "../hooks/useCountUp";
 import "./Assets.css";
 
 const API = "https://haodaasset-backend-1.onrender.com";
@@ -26,6 +31,22 @@ const conditionStyles = {
   "Fair":       { bg: "#fef3c7", border: "#f59e0b", text: "#92400e" },
   "Faulty":     { bg: "#fee2e2", border: "#ef4444", text: "#991b1b" },
   "Damaged":    { bg: "#f3f4f6", border: "#6b7280", text: "#374151" }
+};
+
+// ── Premium gradient KPI/filter card ──────────────────────────────
+const AssetKpiCard = ({ icon, label, value, gradA, gradB, glow, active, loading, onClick }) => {
+  const count = useCountUp(loading ? 0 : value, 800);
+  return (
+    <div
+      className={`kpi-card clickable${active ? " kpi-active" : ""}`}
+      onClick={onClick}
+      style={{ "--kpi-a": gradA, "--kpi-b": gradB, "--kpi-glow": glow }}
+    >
+      <div className="kpi-icon-wrapper">{icon}</div>
+      <div className="kpi-value">{loading ? "—" : count}</div>
+      <div className="kpi-label">{label}</div>
+    </div>
+  );
 };
 
 // ── Skeleton loader ──────────────────────────────────────────────
@@ -91,12 +112,12 @@ const ReturnDialog = ({ asset, onClose, onConfirm, saving }) => {
               width:32, height:32, borderRadius:8,
               border:"1px solid var(--gray-200)",
               background:"#fff",
-              cursor:"pointer", fontSize:16, color:"var(--gray-400)",
+              cursor:"pointer", color:"var(--gray-400)",
               transition:"0.15s",
               display:"flex", alignItems:"center", justifyContent:"center",
             }}
           >
-            ✕
+            <X size={16} />
           </button>
         </div>
 
@@ -149,11 +170,11 @@ const ReturnDialog = ({ asset, onClose, onConfirm, saving }) => {
             </button>
             <button
               className="btn btn-primary"
-              style={{ flex:1 }}
+              style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}
               onClick={() => onConfirm(asset.assetId, { condition, nextStatus })}
               disabled={saving}
             >
-              {saving ? "Processing…" : "↩ Confirm Return"}
+              {saving ? "Processing…" : <><Undo2 size={15} /> Confirm Return</>}
             </button>
           </div>
         </div>
@@ -324,12 +345,12 @@ export default function Assets() {
   }), [assets]);
 
   const kpis = [
-    { label: "Total", value: counts.total, icon: "📊", color: "var(--primary)", bg: "var(--primary-50)" },
-    { label: "Available", value: counts.available, icon: "✅", color: "var(--success)", bg: "var(--success-bg)" },
-    { label: "Assigned", value: counts.assigned, icon: "👤", color: "#3b82f6", bg: "#dbeafe" },
-    { label: "Spare", value: counts.spare, icon: "🔧", color: "#f59e0b", bg: "#fef3c7" },
-    { label: "Under Repair", value: counts.underRepair, icon: "🔨", color: "#f97316", bg: "#ffedd5" },
-    { label: "Faulty", value: counts.faulty, icon: "⚠️", color: "#ef4444", bg: "#fee2e2" },
+    { label: "Total", value: counts.total, icon: <LayoutGrid size={19} />, gradA: "#1e3a8a", gradB: "#2563eb", glow: "rgba(37,99,235,0.45)" },
+    { label: "Available", value: counts.available, icon: <CheckCircle2 size={19} />, gradA: "#065f46", gradB: "#10b981", glow: "rgba(16,185,129,0.4)" },
+    { label: "Assigned", value: counts.assigned, icon: <UserCheck size={19} />, gradA: "#3730a3", gradB: "#6366f1", glow: "rgba(99,102,241,0.4)" },
+    { label: "Spare", value: counts.spare, icon: <Archive size={19} />, gradA: "#92400e", gradB: "#d97706", glow: "rgba(217,119,6,0.4)" },
+    { label: "Under Repair", value: counts.underRepair, icon: <Wrench size={19} />, gradA: "#9a3412", gradB: "#ea580c", glow: "rgba(234,88,12,0.4)" },
+    { label: "Faulty", value: counts.faulty, icon: <AlertTriangle size={19} />, gradA: "#991b1b", gradB: "#ef4444", glow: "rgba(239,68,68,0.4)" },
   ];
 
   // ── Render ────────────────────────────────────────────────────
@@ -343,7 +364,7 @@ export default function Assets() {
           onClick={() => { setShowForm(v => !v); setForm(EMPTY_FORM); }}
           style={{ display:"flex", alignItems:"center", gap:6 }}
         >
-          {showForm ? "✕ Cancel" : "+ Add Asset"}
+          {showForm ? <><X size={15} /> Cancel</> : <><Plus size={15} /> Add Asset</>}
         </button>
       }
     >
@@ -358,63 +379,22 @@ export default function Assets() {
           color:"#991b1b",
           display:"flex", gap:8, alignItems:"center",
         }}>
-          <span>⚠️</span> {error}
+          <AlertTriangle size={15} /> {error}
         </div>
       )}
 
       {/* ── KPI Cards ── */}
-      <div style={{
-        display:"grid",
-        gridTemplateColumns:"repeat(6, 1fr)",
-        gap:14,
-        marginBottom:28,
-      }}>
+      <div className="kpi-row kpi-row-6" style={{ marginBottom:28 }}>
         {kpis.map(s => {
           const active = statusFilter === s.label;
           return (
-            <div
+            <AssetKpiCard
               key={s.label}
+              {...s}
+              active={active}
+              loading={loading}
               onClick={() => setStatusFilter(active ? "All" : s.label)}
-              style={{
-                background:"#fff",
-                borderRadius:12,
-                padding:"16px 18px",
-                borderLeft: `4px solid ${s.color}`,
-                boxShadow: active
-                  ? `0 0 0 2px ${s.color}30, var(--shadow-sm)`
-                  : "var(--shadow-xs)",
-                cursor:"pointer",
-                transition:"all 0.15s ease",
-                transform: active ? "translateY(-2px)" : "none",
-                border: active ? `1px solid ${s.color}40` : "1px solid transparent",
-              }}
-              onMouseEnter={(e) => { if (!active) e.currentTarget.style.transform = "translateY(-2px)"; }}
-              onMouseLeave={(e) => { if (!active) e.currentTarget.style.transform = "translateY(0)"; }}
-            >
-              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-                <div>
-                  <div style={{
-                    fontSize:24,
-                    fontWeight:800,
-                    color: loading ? "var(--gray-300)" : s.color,
-                    lineHeight:1.2,
-                  }}>
-                    {loading ? "—" : s.value}
-                  </div>
-                  <div style={{
-                    fontSize:10,
-                    fontWeight:700,
-                    color:"var(--gray-400)",
-                    marginTop:4,
-                    textTransform:"uppercase",
-                    letterSpacing:"0.05em",
-                  }}>
-                    {s.label}
-                  </div>
-                </div>
-                <div style={{ fontSize:28, opacity:0.5 }}>{s.icon}</div>
-              </div>
-            </div>
+            />
           );
         })}
       </div>
@@ -485,8 +465,8 @@ export default function Assets() {
             </div>
 
             <div style={{ display:"flex", gap:12, marginTop:24, paddingTop:20, borderTop:"1px solid var(--gray-100)" }}>
-              <button className="btn btn-primary" onClick={saveAsset} disabled={saving}>
-                {saving ? "Saving…" : "✓ Add to Inventory"}
+              <button className="btn btn-primary" onClick={saveAsset} disabled={saving} style={{ display:"flex", alignItems:"center", gap:6 }}>
+                {saving ? "Saving…" : <><CheckCircle2 size={15} /> Add to Inventory</>}
               </button>
               <button className="btn btn-secondary" onClick={() => { setForm(EMPTY_FORM); setShowForm(false); }}>
                 Cancel
@@ -524,15 +504,12 @@ export default function Assets() {
               {ASSET_STATUSES.map(s => <option key={s}>{s}</option>)}
             </select>
             <div style={{ position:"relative" }}>
-              <svg style={{
+              <Search size={14} style={{
                 position:"absolute", left:12, top:"50%",
                 transform:"translateY(-50%)",
                 color:"var(--gray-400)",
                 pointerEvents:"none",
-              }} width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                <circle cx="11" cy="11" r="8" />
-                <path d="m21 21-4.35-4.35" />
-              </svg>
+              }} />
               <input
                 className="input"
                 style={{ paddingLeft:34, width:200 }}
@@ -544,14 +521,14 @@ export default function Assets() {
                 <button
                   onClick={() => setSearchText("")}
                   style={{
-                    position:"absolute", right:10, top:"50%",
+                    position:"absolute", right:8, top:"50%",
                     transform:"translateY(-50%)",
                     background:"none", border:"none",
                     cursor:"pointer", color:"var(--gray-400)",
-                    fontSize:14,
+                    display:"flex", alignItems:"center",
                   }}
                 >
-                  ✕
+                  <X size={14} />
                 </button>
               )}
             </div>
@@ -559,9 +536,8 @@ export default function Assets() {
               className="btn btn-secondary btn-icon"
               onClick={loadData}
               disabled={loading}
-              style={{ fontSize:16 }}
             >
-              ↻
+              <RotateCcw size={15} className={loading ? "spin-icon" : ""} />
             </button>
           </div>
         </div>
@@ -589,8 +565,10 @@ export default function Assets() {
           </div>
         ) : filtered.length === 0 ? (
           <div className="empty-state">
-            <div className="empty-icon" style={{ opacity:0.3 }}>
-              {searchText || statusFilter !== "All" || typeFilter !== "All" ? "🔍" : "📦"}
+            <div className="empty-icon" style={{ opacity:0.35, display:"flex", justifyContent:"center" }}>
+              {searchText || statusFilter !== "All" || typeFilter !== "All"
+                ? <PackageX size={40} />
+                : <PackageSearch size={40} />}
             </div>
             <div className="empty-title">
               {searchText || statusFilter !== "All" || typeFilter !== "All"
@@ -719,7 +697,7 @@ export default function Assets() {
                               className="action-return"
                               onClick={() => setReturnTarget(asset)}
                             >
-                              ↩ Return
+                              <Undo2 size={13} /> Return
                             </button>
                           )}
                           <button
@@ -727,7 +705,7 @@ export default function Assets() {
                             onClick={() => deleteAsset(asset.assetId)}
                             title="Delete asset"
                           >
-                            🗑
+                            <Trash2 size={15} />
                           </button>
                         </div>
                       </td>
@@ -753,24 +731,30 @@ export default function Assets() {
           0% { background-position: 200% 0; }
           100% { background-position: -200% 0; }
         }
+        @keyframes spin-icon {
+          from { transform: rotate(0deg); }
+          to   { transform: rotate(360deg); }
+        }
+        .spin-icon { animation: spin-icon 0.7s linear infinite; }
         .asset-row td {
-          padding: 12px 14px;
+          padding: 13px 14px;
           border-bottom: 1px solid var(--gray-100);
           font-size: 13px;
+          transition: background 0.15s ease;
         }
         .asset-row:hover td {
-          background: var(--gray-50);
+          background: var(--primary-50);
         }
         .asset-row:nth-child(even) td {
-          background: #fafcfd;
+          background: #fafbfd;
         }
         .asset-row:nth-child(even):hover td {
-          background: var(--gray-50);
+          background: var(--primary-50);
         }
         .condition-select {
-          padding: 5px 10px;
+          padding: 6px 10px;
           border-radius: 8px;
-          border: 1px solid var(--gray-200);
+          border: 1.5px solid var(--gray-200);
           font-size: 12px;
           background: #fff;
           width: 100%;
@@ -778,9 +762,12 @@ export default function Assets() {
           transition: 0.15s;
           cursor: pointer;
         }
+        .condition-select:hover {
+          box-shadow: var(--shadow-xs);
+        }
         .condition-select:focus {
           border-color: var(--primary);
-          box-shadow: 0 0 0 3px rgba(79,70,229,0.1);
+          box-shadow: 0 0 0 3px rgba(37,99,235,0.12);
           outline: none;
         }
         .condition-select:disabled {
@@ -788,36 +775,40 @@ export default function Assets() {
           cursor: wait;
         }
         .action-return {
-          background: var(--success-bg);
+          background: linear-gradient(135deg, #dcfce7, #bbf7d0);
           color: #065f46;
           border: none;
-          padding: 4px 14px;
+          padding: 5px 14px;
           border-radius: 20px;
           font-size: 12px;
-          font-weight: 600;
+          font-weight: 700;
           cursor: pointer;
-          transition: 0.15s;
+          transition: 0.18s cubic-bezier(0.16,1,0.3,1);
           display: inline-flex;
           align-items: center;
-          gap: 4px;
+          gap: 5px;
+          box-shadow: 0 1px 2px rgba(16,185,129,0.15);
         }
         .action-return:hover {
-          background: #a7f3d0;
-          transform: scale(1.04);
+          background: linear-gradient(135deg, #bbf7d0, #86efac);
+          transform: translateY(-1px) scale(1.03);
+          box-shadow: 0 4px 10px rgba(16,185,129,0.25);
         }
         .action-delete {
           background: transparent;
           border: none;
           color: var(--gray-400);
           cursor: pointer;
-          font-size: 18px;
-          padding: 4px 6px;
-          border-radius: 6px;
+          padding: 6px;
+          border-radius: 8px;
           transition: 0.15s;
+          display: inline-flex;
+          align-items: center;
         }
         .action-delete:hover {
-          background: #fee2e2;
-          color: #ef4444;
+          background: var(--danger-bg);
+          color: var(--danger);
+          transform: scale(1.06);
         }
       `}</style>
     </Layout>
