@@ -19,7 +19,10 @@ function KpiCard({ icon, label, value, sub, gradA, gradB, glow, onClick, badge }
     <div
       className={`kpi-card ${onClick ? "clickable" : ""}`}
       onClick={onClick}
-      style={{ "--kpi-a": gradA, "--kpi-b": gradB, "--kpi-glow": glow }}
+      style={{
+        "--kpi-a": gradA, "--kpi-b": gradB, "--kpi-glow": glow,
+        backgroundImage: `linear-gradient(146deg, ${gradA} 0%, ${gradB} 100%)`,
+      }}
     >
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
         <div className="kpi-icon-wrapper">{icon}</div>
