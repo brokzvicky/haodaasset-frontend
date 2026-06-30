@@ -17,19 +17,26 @@ export default function CredentialUnlockDialog({ onUnlocked, onClose }) {
   const [error, setError] = useState("");
   const [resendCooldown, setResendCooldown] = useState(0);
   const [expirySeconds, setExpirySeconds] = useState(300);
+  const [otpSent, setOtpSent] = useState(false);
   const otpRefs = useRef([]);
 
   const requestOtp = async (isResend = false) => {
     setSending(true);
     setError("");
+    setOtpSent(false);
     try {
       const { data } = await axios.post(`${API}/api/network/credential-access/request-otp`);
+      setOtpSent(true);
       setResendCooldown(data.resendAfterSeconds ?? 30);
       setExpirySeconds(data.expiresInSeconds ?? 300);
       setOtp(["", "", "", "", "", ""]);
       setTimeout(() => otpRefs.current[0]?.focus(), 50);
     } catch (err) {
       setError(err.response?.data?.message || "Couldn't send the verification code.");
+      setOtpSent(false);
+       setTimeout(() => {
+       onClose();
+    }, 2000);
     } finally {
       setSending(false);
     }
@@ -113,7 +120,7 @@ export default function CredentialUnlockDialog({ onUnlocked, onClose }) {
                 inputMode="numeric"
                 maxLength={1}
                 value={d}
-                disabled={sending || verifying}
+                disabled={sending || verifying || !otpSent}
                 onChange={(e) => handleChange(i, e.target.value)}
                 onKeyDown={(e) => handleKeyDown(i, e)}
               />
@@ -136,7 +143,7 @@ export default function CredentialUnlockDialog({ onUnlocked, onClose }) {
 
           <button
             className="cud-btn-primary"
-            disabled={sending || verifying || otp.some((d) => !d)}
+            disabled={sending || verifying || !otpSent || otp.some((d) => !d)}
             onClick={() => verify(otp.join(""))}
           >
             {verifying ? <><RefreshCw size={15} className="cud-spin" /> Verifying…</> : "Verify & unlock"}
