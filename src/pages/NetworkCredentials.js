@@ -409,6 +409,7 @@ export default function NetworkCredentials() {
         </button>
       }
     >
+      <div className="netcred-page">
       {/* ── Error banner ── */}
       {error && (
         <div className="netcred-error-banner">
@@ -904,6 +905,7 @@ export default function NetworkCredentials() {
             </table>
           </div>
         )}
+      </div>
       </div>
     </Layout>
 
