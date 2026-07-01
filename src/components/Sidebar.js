@@ -70,12 +70,31 @@ export default function Sidebar({ open = false, onClose }) {
     <>
       <aside className={`sidebar ${open ? "sidebar-open" : ""}`} aria-label="Main navigation">
         <div className="sidebar-logo">
-          <div className="sidebar-logo-icon">AT</div>
-          <div className="sidebar-logo-text">
-            <div className="sidebar-logo-name">AssetTower</div>
-            <div className="sidebar-logo-sub">IT Asset Management</div>
-          </div>
-        </div>
+  <div
+    className="sidebar-logo-icon"
+    style={{
+      background: "transparent",
+      padding: 0,
+      overflow: "hidden",
+    }}
+  >
+    <img
+      src="/haoda-logo.png"
+      alt="Haoda Asset"
+      style={{
+        width: "40px",
+        height: "40px",
+        objectFit: "contain",
+        borderRadius: "10px",
+      }}
+    />
+  </div>
+
+  <div className="sidebar-logo-text">
+    <div className="sidebar-logo-name">Haoda Asset</div>
+    <div className="sidebar-logo-sub">IT Asset Management</div>
+  </div>
+</div>
 
         <nav className="sidebar-nav">
           {sections.map((section) => (

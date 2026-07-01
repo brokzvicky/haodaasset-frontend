@@ -50,14 +50,27 @@ export default function Login() {
         {/* Dot grid */}
         <div className="login-left-grid" />
 
-        {/* Brand */}
+        {/* Brand */} 
         <div className="login-brand">
-          <div className="login-brand-icon">AT</div>
-          <div>
-            <div className="login-brand-name">AssetTower</div>
-            <div className="login-brand-sub">Enterprise IT Asset Management</div>
-          </div>
-        </div>
+  <div className="login-brand-icon">
+    <img
+      src="/haoda-logo.png"
+      alt="Haoda Asset"
+      style={{
+        width: "34px",
+        height: "34px",
+        objectFit: "contain"
+      }}
+    />
+  </div>
+
+  <div>
+    <div className="login-brand-name">Haoda Asset</div>
+    <div className="login-brand-sub">
+      Enterprise IT Asset Management
+    </div>
+  </div>
+</div>
 
         {/* Hero */}
         <div className="login-hero">
