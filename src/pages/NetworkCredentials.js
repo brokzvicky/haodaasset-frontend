@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { createPortal } from "react-dom";
 import axios from "axios";
-// import {useref} from "react";
 import {
   Router, Network, Shield, Wifi, Server, HardDrive, Printer, Lock,
   Plus, X, Search, RefreshCw, Eye, EyeOff, Copy, Pencil, Trash2,
@@ -889,11 +888,29 @@ export default function NetworkCredentials() {
                               setMenuPos(null);
                             } else {
                               const rect = e.currentTarget.getBoundingClientRect();
+
                               const menuWidth = 196;
+                              const menuHeight = 170;
+
+                              const spaceBelow = window.innerHeight - rect.bottom;
+                              const spaceAbove = rect.top;
+
+                              const openUp = spaceBelow < menuHeight && spaceAbove > menuHeight;
+
                               setMenuPos({
-                                top: rect.bottom + 8,
-                                left: Math.max(8, Math.min(rect.right - menuWidth, window.innerWidth - menuWidth - 8)),
+                                top: openUp
+                                  ? rect.top - menuHeight - 8
+                                  : rect.bottom + 8,
+
+                                left: Math.max(
+                                  8,
+                                  Math.min(
+                                    rect.right - menuWidth,
+                                    window.innerWidth - menuWidth - 8
+                                  )
+                                ),
                               });
+
                               setOpenMenuId(cred.id);
                             }
                           }}
@@ -905,7 +922,12 @@ export default function NetworkCredentials() {
                         {openMenuId === cred.id && menuPos && createPortal(
                           <div
                             className="netcred-menu"
-                            style={{ position: "fixed", top: menuPos.top, left: menuPos.left }}
+                            style={{
+                              position: "fixed",
+                              top: menuPos.top,
+                              left: menuPos.left,
+                              zIndex: 99999,
+                            }}
                             onClick={(e) => e.stopPropagation()}
                           >
                             <button className="netcred-menu-item" onClick={() => { openEditForm(cred); setOpenMenuId(null); setMenuPos(null); }}>
