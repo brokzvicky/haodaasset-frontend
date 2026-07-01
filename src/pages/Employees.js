@@ -11,6 +11,8 @@ const EMPTY_FORM = {
   department: "", designation: "", location: "",
 };
 
+const LOCATIONS = ["Chennai - Kilpauk", "Chennai - Chetpet"];
+
 function avatarBg(name) {
   const colors = ["#1a56db", "#059669", "#7c3aed", "#b45309", "#be185d", "#0284c7"];
   return colors[(name || "A").charCodeAt(0) % colors.length];
@@ -498,7 +500,10 @@ export default function Employees() {
               </div>
               <div className="field">
                 <label className="field-label">Location</label>
-                <input className="input" {...field("location")} placeholder="Chennai, IN" />
+                <select className="input" {...field("location")}>
+                  <option value="">Select branch…</option>
+                  {LOCATIONS.map(l => <option key={l} value={l}>{l}</option>)}
+                </select>
               </div>
             </div>
             <div style={{ display: "flex", gap: 10, marginTop: 20 }}>

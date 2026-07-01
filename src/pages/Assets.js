@@ -11,6 +11,7 @@ const API = "https://haodaasset-backend-1.onrender.com";
 const ASSET_STATUSES = ["Available","Assigned","Spare","Under Repair","Faulty","Lost","Retired","Disposed"];
 const ASSET_CONDITIONS = ["New","Excellent","Good","Fair","Faulty","Damaged"];
 const ASSET_TYPES = ["Laptop","Desktop","Monitor","Keyboard","Mouse","Headset","Mobile","Tablet","Printer","Server","Network Device","Other"];
+const LOCATIONS = ["Chennai - Kilpauk", "Chennai - Chetpet"];
 
 const EMPTY_FORM = {
   assetType:"", laptopName:"", brand:"", model:"", serialNumber:"",
@@ -516,7 +517,10 @@ export default function Assets() {
               </div>
               <div className="field">
                 <label className="field-label">Location *</label>
-                <input className="input" {...field("location")} placeholder="e.g. Chennai HQ" />
+                <select className="input" {...field("location")}>
+                  <option value="">Select branch…</option>
+                  {LOCATIONS.map(l => <option key={l} value={l}>{l}</option>)}
+                </select>
               </div>
             </div>
 
