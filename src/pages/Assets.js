@@ -15,7 +15,8 @@ const ASSET_TYPES = ["Laptop","Desktop","Monitor","Keyboard","Mouse","Headset","
 const EMPTY_FORM = {
   assetType:"", laptopName:"", brand:"", model:"", serialNumber:"",
   location:"", assetStatus:"Available", assetCondition:"New",
-  purchaseDate:"", warrantyExpiry:"", vendor:"", assetCost:"", remarks:"",
+  purchaseDate:"", warrantyExpiry:"", vendor:"", assetCost:"",
+  processor:"", ram:"", storage:"", remarks:"",
 };
 
 // ── Condition colour mapping ──────────────────────────────────
@@ -247,6 +248,9 @@ export default function Assets() {
       warrantyExpiry: asset.warrantyExpiry || "",
       vendor:         asset.vendor         || "",
       assetCost:      asset.assetCost      || "",
+      processor:      asset.processor      || "",
+      ram:            asset.ram            || "",
+      storage:        asset.storage        || "",
       remarks:        asset.remarks        || "",
     });
     setShowForm(true);
@@ -513,6 +517,22 @@ export default function Assets() {
               <div className="field">
                 <label className="field-label">Location *</label>
                 <input className="input" {...field("location")} placeholder="e.g. Chennai HQ" />
+              </div>
+            </div>
+
+            <div className="form-section-label" style={{ marginTop:20 }}>Hardware Specifications</div>
+            <div className="form-grid">
+              <div className="field" style={{ gridColumn:"span 2" }}>
+                <label className="field-label">Processor</label>
+                <input className="input" {...field("processor")} placeholder="e.g. Intel Core i7-10510U @1.90GHz" />
+              </div>
+              <div className="field">
+                <label className="field-label">RAM</label>
+                <input className="input" {...field("ram")} placeholder="e.g. 16GB" />
+              </div>
+              <div className="field">
+                <label className="field-label">Storage</label>
+                <input className="input" {...field("storage")} placeholder="e.g. 512GB SSD" />
               </div>
             </div>
 
