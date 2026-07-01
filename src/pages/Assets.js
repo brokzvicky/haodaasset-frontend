@@ -184,6 +184,7 @@ export default function Assets() {
   const [returnTarget, setReturnTarget] = useState(null);
   const [returning, setReturning] = useState(false);
   const [updating, setUpdating] = useState(new Set());
+  const [editingAsset, setEditingAsset] = useState(null); // null = add mode, asset obj = edit mode
 
   // ── Data loading ──────────────────────────────────────────────
   const loadData = useCallback(() => {
@@ -228,6 +229,61 @@ export default function Assets() {
       })
       .catch((err) => toast(err.response?.data?.message || "Couldn't save asset.", "error"))
       .finally(() => setSaving(false));
+  };
+
+  // ── Open edit form ──────────────────────────────────────────────
+  const openEdit = (asset) => {
+    setEditingAsset(asset);
+    setForm({
+      assetType:      asset.assetType      || "",
+      laptopName:     asset.laptopName     || "",
+      brand:          asset.brand          || "",
+      model:          asset.model          || "",
+      serialNumber:   asset.serialNumber   || "",
+      location:       asset.location       || "",
+      assetStatus:    asset.assetStatus    || "Available",
+      assetCondition: asset.assetCondition || "Good",
+      purchaseDate:   asset.purchaseDate   || "",
+      warrantyExpiry: asset.warrantyExpiry || "",
+      vendor:         asset.vendor         || "",
+      assetCost:      asset.assetCost      || "",
+      remarks:        asset.remarks        || "",
+    });
+    setShowForm(true);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  // ── Save edited asset ───────────────────────────────────────────
+  const saveEdit = () => {
+    const required = [
+      ["assetType",    "Asset Type"],
+      ["laptopName",   "Asset Name"],
+      ["brand",        "Brand"],
+      ["model",        "Model"],
+      ["serialNumber", "Serial Number"],
+      ["location",     "Location"],
+    ];
+    for (const [k, label] of required) {
+      if (!form[k]?.trim()) { toast(`${label} is required.`, "error"); return; }
+    }
+    setSaving(true);
+    axios.put(`${API}/assets/${editingAsset.assetId}`, form)
+      .then(() => {
+        toast("Asset updated successfully.", "success");
+        setShowForm(false);
+        setEditingAsset(null);
+        setForm(EMPTY_FORM);
+        loadData();
+      })
+      .catch((err) => toast(err.response?.data?.message || "Couldn't update asset.", "error"))
+      .finally(() => setSaving(false));
+  };
+
+  // ── Cancel form ─────────────────────────────────────────────────
+  const cancelForm = () => {
+    setShowForm(false);
+    setEditingAsset(null);
+    setForm(EMPTY_FORM);
   };
 
   // ── Return asset ──────────────────────────────────────────────
@@ -340,7 +396,7 @@ export default function Assets() {
       actions={
         <button
           className="btn btn-primary"
-          onClick={() => { setShowForm(v => !v); setForm(EMPTY_FORM); }}
+          onClick={() => { if (showForm) { cancelForm(); } else { setEditingAsset(null); setForm(EMPTY_FORM); setShowForm(true); } }}
           style={{ display:"flex", alignItems:"center", gap:6 }}
         >
           {showForm ? "✕ Cancel" : "+ Add Asset"}
@@ -424,8 +480,8 @@ export default function Assets() {
         <div className="card" style={{ marginBottom:28, animation:"fadeIn 0.2s ease" }}>
           <div className="card-header">
             <div>
-              <div className="card-title">Register New Asset</div>
-              <div className="card-subtitle">Fill in the details below to add a device to inventory</div>
+              <div className="card-title">{editingAsset ? "Edit Asset" : "Register New Asset"}</div>
+              <div className="card-subtitle">{editingAsset ? `Editing: ${editingAsset.laptopName} · ${editingAsset.serialNumber}` : "Fill in the details below to add a device to inventory"}</div>
             </div>
           </div>
           <div className="card-body">
@@ -485,10 +541,10 @@ export default function Assets() {
             </div>
 
             <div style={{ display:"flex", gap:12, marginTop:24, paddingTop:20, borderTop:"1px solid var(--gray-100)" }}>
-              <button className="btn btn-primary" onClick={saveAsset} disabled={saving}>
-                {saving ? "Saving…" : "✓ Add to Inventory"}
+              <button className="btn btn-primary" onClick={editingAsset ? saveEdit : saveAsset} disabled={saving}>
+                {saving ? "Saving…" : editingAsset ? "✓ Save Changes" : "✓ Add to Inventory"}
               </button>
-              <button className="btn btn-secondary" onClick={() => { setForm(EMPTY_FORM); setShowForm(false); }}>
+              <button className="btn btn-secondary" onClick={cancelForm}>
                 Cancel
               </button>
             </div>
@@ -714,6 +770,13 @@ export default function Assets() {
                       <td><StatusPill status={asset.assetStatus} /></td>
                       <td>
                         <div style={{ display:"flex", gap:8, alignItems:"center" }}>
+                          <button
+                            className="action-edit"
+                            onClick={() => openEdit(asset)}
+                            title="Edit asset"
+                          >
+                            ✏️
+                          </button>
                           {asset.assetStatus === "Assigned" && (
                             <button
                               className="action-return"
@@ -804,6 +867,22 @@ export default function Assets() {
         .action-return:hover {
           background: #a7f3d0;
           transform: scale(1.04);
+        }
+        .action-edit {
+          background: #eff6ff;
+          border: 1px solid #bfdbfe;
+          color: #1d4ed8;
+          border-radius: 7px;
+          padding: 5px 10px;
+          font-size: 13px;
+          cursor: pointer;
+          transition: all 0.15s ease;
+          display: flex; align-items: center; gap: 4px;
+        }
+        .action-edit:hover {
+          background: #dbeafe;
+          border-color: #93c5fd;
+          transform: translateY(-1px);
         }
         .action-delete {
           background: transparent;
