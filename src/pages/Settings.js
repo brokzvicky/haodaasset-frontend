@@ -43,7 +43,7 @@ export default function Settings() {
     }
     setLoading(true);
     try {
-      const token = localStorage.getItem("token");
+    const token = sessionStorage.getItem("iam_token");
       const { data } = await axios.post(
         `${API}/api/admin/change-password/request-otp`,
         { currentPassword: pwd.current, newPassword: pwd.next },
@@ -63,7 +63,7 @@ export default function Settings() {
     if (!otp.trim()) { toast("Please enter the verification code.", "error"); return; }
     setLoading(true);
     try {
-      const token = localStorage.getItem("token");
+      const token = sessionStorage.getItem("iam_token");
       await axios.post(
         `${API}/api/admin/change-password/confirm`,
         { currentPassword: pwd.current, newPassword: pwd.next, otp: otp.trim() },
