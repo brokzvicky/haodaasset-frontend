@@ -52,7 +52,7 @@ export default function Settings() {
       setOtpInfo(data.message);
       setStep(STEP_OTP);
     } catch (err) {
-      toast(err.response?.data?.message || "Couldn't send OTP. Check your current password.", "error");
+      toast(err.response?.data?.message || err.response?.data?.error || "Request failed. Please try again.", "error");
     } finally {
       setLoading(false);
     }
@@ -71,7 +71,7 @@ export default function Settings() {
       );
       setStep(STEP_DONE);
     } catch (err) {
-      toast(err.response?.data?.message || "Invalid or expired code. Please try again.", "error");
+      toast(err.response?.data?.message || err.response?.data?.error || "Invalid or expired code.", "error");
     } finally {
       setLoading(false);
     }
