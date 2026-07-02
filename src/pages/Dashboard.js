@@ -133,6 +133,25 @@ export default function Dashboard() {
     faulty:      assets.filter((a) => a.assetStatus === "Faulty").length,
   }), [assets]);
 
+  const branchStats = useMemo(() => {
+    const branches = [
+      { key: "kilpauk", label: "Chennai — Kilpauk", location: "Chennai - Kilpauk", color: "#2563eb", glow: "#2563eb", icon: "🏢" },
+      { key: "chetpet", label: "Chennai — Chetpet", location: "Chennai - Chetpet", color: "#7c3aed", glow: "#7c3aed", icon: "🏬" },
+      { key: "mumbai",  label: "Mumbai",            location: "Mumbai",             color: "#059669", glow: "#059669", icon: "🌆" },
+    ];
+    return branches.map(b => {
+      const branchAssets = assets.filter(a => (a.location || "") === b.location);
+      return {
+        ...b,
+        total:     branchAssets.length,
+        assigned:  branchAssets.filter(a => a.assetStatus === "Assigned").length,
+        available: branchAssets.filter(a => a.assetStatus === "Available").length,
+        spare:     branchAssets.filter(a => a.assetStatus === "Spare").length,
+        faulty:    branchAssets.filter(a => a.assetStatus === "Faulty" || a.assetStatus === "Disposed" || a.assetStatus === "Under Repair").length,
+      };
+    });
+  }, [assets]);
+
   const pieData = useMemo(() => [
     { name: "Available", value: dashboard.availableAssets || 0 },
     { name: "Assigned",  value: dashboard.assignedAssets  || 0 },
@@ -207,6 +226,84 @@ export default function Dashboard() {
         <KpiCard icon={<IconDoc />}   label="Pending Requests" value={V(pendingRequests)}          sub="Awaiting your review"    gradient="linear-gradient(135deg,#f87171,#dc2626)" glow="#dc262640"
           badge={pendingRequests > 0 ? "Action needed" : undefined}
           onClick={() => navigate("/asset-requests")} />
+      </div>
+
+      {/* Branch Overview */}
+      <div style={{ marginBottom: 20 }}>
+        <div style={{ marginBottom: 12, display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontSize: 15, fontWeight: 700, color: "var(--gray-800)" }}>Branch Overview</span>
+          <span style={{ fontSize: 12, color: "var(--gray-400)", background: "var(--gray-100)", padding: "2px 10px", borderRadius: 999, fontWeight: 600 }}>
+            Assets by location
+          </span>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))", gap: 14 }}>
+          {branchStats.map(b => (
+            <div key={b.key} style={{
+              background: "#fff",
+              border: `1.5px solid ${b.color}22`,
+              borderRadius: 16,
+              padding: "20px 22px",
+              boxShadow: `0 4px 20px ${b.glow}10`,
+              transition: "box-shadow 0.2s",
+            }}>
+              {/* Header */}
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <div style={{
+                    width: 38, height: 38, borderRadius: 10,
+                    background: `linear-gradient(135deg, ${b.color}22, ${b.color}44)`,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    fontSize: 18,
+                  }}>{b.icon}</div>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: "var(--gray-900)" }}>{b.label}</div>
+                    <div style={{ fontSize: 11, color: "var(--gray-400)", marginTop: 1 }}>Branch inventory</div>
+                  </div>
+                </div>
+                <div style={{
+                  fontSize: 22, fontWeight: 800, color: b.color,
+                  background: `${b.color}11`, borderRadius: 10,
+                  padding: "4px 12px", fontFamily: "var(--font-data)",
+                }}>
+                  {loading ? "—" : b.total}
+                </div>
+              </div>
+
+              {/* Progress bar */}
+              <div style={{ height: 5, borderRadius: 99, background: "var(--gray-100)", marginBottom: 14, overflow: "hidden" }}>
+                <div style={{
+                  height: "100%", borderRadius: 99,
+                  background: `linear-gradient(90deg, ${b.color}88, ${b.color})`,
+                  width: loading || b.total === 0 ? "0%" : `${Math.round((b.assigned / b.total) * 100)}%`,
+                  transition: "width 1.2s cubic-bezier(0.22,1,0.36,1)",
+                }} />
+              </div>
+
+              {/* 4-stat mini grid */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                {[
+                  { label: "Assigned",  value: b.assigned,  dot: "#2563eb" },
+                  { label: "Available", value: b.available, dot: "#059669" },
+                  { label: "Spare",     value: b.spare,     dot: "#d97706" },
+                  { label: "Faulty/Other", value: b.faulty, dot: "#dc2626" },
+                ].map(stat => (
+                  <div key={stat.label} style={{
+                    background: "var(--gray-50)", borderRadius: 8,
+                    padding: "8px 10px", display: "flex", alignItems: "center", gap: 7,
+                  }}>
+                    <span style={{ width: 7, height: 7, borderRadius: "50%", background: stat.dot, flexShrink: 0 }} />
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 800, color: "var(--gray-800)", lineHeight: 1 }}>
+                        {loading ? "—" : stat.value}
+                      </div>
+                      <div style={{ fontSize: 10.5, color: "var(--gray-400)", marginTop: 2 }}>{stat.label}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Charts */}
