@@ -440,10 +440,17 @@ export default function Employees() {
     loadEmployees();
   };
 
-  const uniqueDepts = useMemo(() =>
-    [...new Set(employees.map(e => e.department).filter(Boolean))].sort(),
-    [employees]
-  );
+  const uniqueDepts = useMemo(() => {
+    const seen = new Set();
+    const result = [];
+    employees.forEach(e => {
+      const d = (e.department || "").trim();
+      if (!d) return;
+      const key = d.toLowerCase();
+      if (!seen.has(key)) { seen.add(key); result.push(d); }
+    });
+    return result.sort((a, b) => a.localeCompare(b));
+  }, [employees]);
 
   const directory = useMemo(
     () => employees
@@ -452,7 +459,7 @@ export default function Employees() {
         (e.employeeId   || "").toLowerCase().includes(search.toLowerCase()) ||
         (e.department   || "").toLowerCase().includes(search.toLowerCase())
       )
-      .filter(e => deptFilter     === "All" || (e.department || "") === deptFilter)
+      .filter(e => deptFilter === "All" || (e.department || "").trim().toLowerCase() === deptFilter.toLowerCase())
       .filter(e => locationFilter === "All" || (e.location   || "") === locationFilter),
     [employees, search, deptFilter, locationFilter]
   );
