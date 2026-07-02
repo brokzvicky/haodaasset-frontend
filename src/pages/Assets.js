@@ -11,7 +11,7 @@ const API = "https://haodaasset-backend-1.onrender.com";
 const ASSET_STATUSES = ["Available","Assigned","Spare","Under Repair","Faulty","Lost","Retired","Disposed"];
 const ASSET_CONDITIONS = ["New","Excellent","Good","Fair","Faulty","Damaged"];
 const ASSET_TYPES = ["Laptop","Desktop","Monitor","Keyboard","Mouse","Headset","Mobile","Tablet","Printer","Server","Network Device","Other"];
-const LOCATIONS = ["Chennai - Kilpauk", "Chennai - Chetpet"];
+const LOCATIONS = ["Chennai - Kilpauk", "Chennai - Chetpet", "Mumbai"];
 
 const EMPTY_FORM = {
   assetType:"", laptopName:"", brand:"", model:"", serialNumber:"",
@@ -183,6 +183,7 @@ export default function Assets() {
   const [searchText, setSearchText] = useState(searchParams.get("q") || "");
   const [statusFilter, setStatusFilter] = useState("All");
   const [typeFilter, setTypeFilter] = useState("All");
+  const [locationFilter, setLocationFilter] = useState("All");
   const [returnTarget, setReturnTarget] = useState(null);
   const [returning, setReturning] = useState(false);
   const [updating, setUpdating] = useState(new Set());
@@ -371,8 +372,9 @@ export default function Assets() {
         (a.assetType || "").toLowerCase().includes(searchText.toLowerCase())
       )
       .filter(a => statusFilter === "All" || a.assetStatus === statusFilter)
-      .filter(a => typeFilter === "All" || a.assetType === typeFilter),
-    [assets, searchText, statusFilter, typeFilter]
+      .filter(a => typeFilter === "All" || a.assetType === typeFilter)
+      .filter(a => locationFilter === "All" || (a.location || "") === locationFilter),
+    [assets, searchText, statusFilter, typeFilter, locationFilter]
   );
 
   const counts = useMemo(() => ({
@@ -603,6 +605,15 @@ export default function Assets() {
               <option value="All">All statuses</option>
               {ASSET_STATUSES.map(s => <option key={s}>{s}</option>)}
             </select>
+            <select
+              className="input"
+              style={{ width:160 }}
+              value={locationFilter}
+              onChange={e => setLocationFilter(e.target.value)}
+            >
+              <option value="All">All locations</option>
+              {LOCATIONS.map(l => <option key={l} value={l}>{l}</option>)}
+            </select>
             <div style={{ position:"relative" }}>
               <svg style={{
                 position:"absolute", left:12, top:"50%",
@@ -670,23 +681,23 @@ export default function Assets() {
         ) : filtered.length === 0 ? (
           <div className="empty-state">
             <div className="empty-icon" style={{ opacity:0.3 }}>
-              {searchText || statusFilter !== "All" || typeFilter !== "All" ? "🔍" : "📦"}
+              {searchText || statusFilter !== "All" || typeFilter !== "All" || locationFilter !== "All" ? "🔍" : "📦"}
             </div>
             <div className="empty-title">
-              {searchText || statusFilter !== "All" || typeFilter !== "All"
+              {searchText || statusFilter !== "All" || typeFilter !== "All" || locationFilter !== "All"
                 ? "No matching assets"
                 : "Inventory is empty"}
             </div>
             <div className="empty-sub">
-              {searchText || statusFilter !== "All" || typeFilter !== "All"
+              {searchText || statusFilter !== "All" || typeFilter !== "All" || locationFilter !== "All"
                 ? "Try adjusting your filters or search terms"
                 : "Click 'Add Asset' to begin building your inventory"}
             </div>
-            {(searchText || statusFilter !== "All" || typeFilter !== "All") && (
+            {(searchText || statusFilter !== "All" || typeFilter !== "All" || locationFilter !== "All") && (
               <button
                 className="btn btn-secondary"
                 style={{ marginTop:12 }}
-                onClick={() => { setSearchText(""); setStatusFilter("All"); setTypeFilter("All"); }}
+                onClick={() => { setSearchText(""); setStatusFilter("All"); setTypeFilter("All"); setLocationFilter("All"); }}
               >
                 Clear Filters
               </button>
