@@ -441,7 +441,7 @@ export default function Employees() {
   };
 
   const uniqueDepts = useMemo(() =>
-    ["All", ...new Set(employees.map(e => e.department).filter(Boolean))].sort(),
+    [...new Set(employees.map(e => e.department).filter(Boolean))].sort(),
     [employees]
   );
 
@@ -542,8 +542,9 @@ export default function Employees() {
             value={deptFilter}
             onChange={e => setDeptFilter(e.target.value)}
           >
+            <option value="All">All departments</option>
             {uniqueDepts.map(d => (
-              <option key={d} value={d}>{d === "All" ? "All departments" : d}</option>
+              <option key={d} value={d}>{d}</option>
             ))}
           </select>
           <select
