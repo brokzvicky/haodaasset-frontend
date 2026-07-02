@@ -329,7 +329,9 @@ export default function Employees() {
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [search, setSearch] = useState("");
+  const [search, setSearch]               = useState("");
+  const [deptFilter, setDeptFilter]       = useState("All");
+  const [locationFilter, setLocationFilter] = useState("All");
   const [expanded, setExpanded] = useState(null);
   const [expandedAssets, setExpandedAssets] = useState({});
   const [assetCounts, setAssetCounts] = useState({});
@@ -438,13 +440,21 @@ export default function Employees() {
     loadEmployees();
   };
 
+  const uniqueDepts = useMemo(() =>
+    ["All", ...new Set(employees.map(e => e.department).filter(Boolean))].sort(),
+    [employees]
+  );
+
   const directory = useMemo(
-    () => employees.filter((e) =>
-      (e.employeeName || "").toLowerCase().includes(search.toLowerCase()) ||
-      (e.employeeId || "").toLowerCase().includes(search.toLowerCase()) ||
-      (e.department || "").toLowerCase().includes(search.toLowerCase())
-    ),
-    [employees, search]
+    () => employees
+      .filter((e) =>
+        (e.employeeName || "").toLowerCase().includes(search.toLowerCase()) ||
+        (e.employeeId   || "").toLowerCase().includes(search.toLowerCase()) ||
+        (e.department   || "").toLowerCase().includes(search.toLowerCase())
+      )
+      .filter(e => deptFilter     === "All" || (e.department || "") === deptFilter)
+      .filter(e => locationFilter === "All" || (e.location   || "") === locationFilter),
+    [employees, search, deptFilter, locationFilter]
   );
 
   return (
@@ -525,15 +535,44 @@ export default function Employees() {
             {directory.length} of {employees.length} employees
           </div>
         </div>
-        <div style={{ position: "relative" }}>
-          <span style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "var(--gray-400)" }}>🔍</span>
-          <input
+        <div style={{ display:"flex", gap:8, flexWrap:"wrap", alignItems:"center" }}>
+          <select
             className="input"
-            style={{ width: 240, paddingLeft: 32 }}
-            placeholder="Search employee, ID, dept…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
+            style={{ width: 160 }}
+            value={deptFilter}
+            onChange={e => setDeptFilter(e.target.value)}
+          >
+            {uniqueDepts.map(d => (
+              <option key={d} value={d}>{d === "All" ? "All departments" : d}</option>
+            ))}
+          </select>
+          <select
+            className="input"
+            style={{ width: 170 }}
+            value={locationFilter}
+            onChange={e => setLocationFilter(e.target.value)}
+          >
+            <option value="All">All locations</option>
+            {LOCATIONS.map(l => <option key={l} value={l}>{l}</option>)}
+          </select>
+          <div style={{ position: "relative" }}>
+            <span style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "var(--gray-400)" }}>🔍</span>
+            <input
+              className="input"
+              style={{ width: 220, paddingLeft: 32 }}
+              placeholder="Search employee, ID, dept…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+          {(search || deptFilter !== "All" || locationFilter !== "All") && (
+            <button
+              className="btn btn-secondary"
+              onClick={() => { setSearch(""); setDeptFilter("All"); setLocationFilter("All"); }}
+            >
+              ✕ Clear
+            </button>
+          )}
         </div>
       </div>
 
