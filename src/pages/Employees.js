@@ -497,7 +497,7 @@ export default function Employees() {
             <div className="form-grid">
               <div className="field">
                 <label className="field-label">Employee ID *</label>
-                <input className="input" {...field("employeeId")} placeholder="e.g. EMP006" disabled={!!editingId} />
+                <input className="input" {...field("employeeId")} placeholder="e.g. EMP006" />
               </div>
               <div className="field">
                 <label className="field-label">Full Name *</label>
