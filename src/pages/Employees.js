@@ -11,7 +11,7 @@ const EMPTY_FORM = {
   department: "", designation: "", location: "",
 };
 
-const LOCATIONS = ["Chennai - Kilpauk", "Chennai - Chetpet", "Mumbai"];
+const LOCATIONS = ["Chennai - Kilpauk", "Chennai - Chetpet"];
 
 function avatarBg(name) {
   const colors = ["#1a56db", "#059669", "#7c3aed", "#b45309", "#be185d", "#0284c7"];
@@ -329,9 +329,7 @@ export default function Employees() {
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [search, setSearch]               = useState("");
-  const [deptFilter, setDeptFilter]       = useState("All");
-  const [locationFilter, setLocationFilter] = useState("All");
+  const [search, setSearch] = useState("");
   const [expanded, setExpanded] = useState(null);
   const [expandedAssets, setExpandedAssets] = useState({});
   const [assetCounts, setAssetCounts] = useState({});
@@ -440,28 +438,13 @@ export default function Employees() {
     loadEmployees();
   };
 
-  const uniqueDepts = useMemo(() => {
-    const seen = new Set();
-    const result = [];
-    employees.forEach(e => {
-      const d = (e.department || "").trim();
-      if (!d) return;
-      const key = d.toLowerCase();
-      if (!seen.has(key)) { seen.add(key); result.push(d); }
-    });
-    return result.sort((a, b) => a.localeCompare(b));
-  }, [employees]);
-
   const directory = useMemo(
-    () => employees
-      .filter((e) =>
-        (e.employeeName || "").toLowerCase().includes(search.toLowerCase()) ||
-        (e.employeeId   || "").toLowerCase().includes(search.toLowerCase()) ||
-        (e.department   || "").toLowerCase().includes(search.toLowerCase())
-      )
-      .filter(e => deptFilter === "All" || (e.department || "").trim().toLowerCase() === deptFilter.toLowerCase())
-      .filter(e => locationFilter === "All" || (e.location   || "") === locationFilter),
-    [employees, search, deptFilter, locationFilter]
+    () => employees.filter((e) =>
+      (e.employeeName || "").toLowerCase().includes(search.toLowerCase()) ||
+      (e.employeeId || "").toLowerCase().includes(search.toLowerCase()) ||
+      (e.department || "").toLowerCase().includes(search.toLowerCase())
+    ),
+    [employees, search]
   );
 
   return (
@@ -542,45 +525,15 @@ export default function Employees() {
             {directory.length} of {employees.length} employees
           </div>
         </div>
-        <div style={{ display:"flex", gap:8, flexWrap:"wrap", alignItems:"center" }}>
-          <select
+        <div style={{ position: "relative" }}>
+          <span style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "var(--gray-400)" }}>🔍</span>
+          <input
             className="input"
-            style={{ width: 160 }}
-            value={deptFilter}
-            onChange={e => setDeptFilter(e.target.value)}
-          >
-            <option value="All">All departments</option>
-            {uniqueDepts.map(d => (
-              <option key={d} value={d}>{d}</option>
-            ))}
-          </select>
-          <select
-            className="input"
-            style={{ width: 170 }}
-            value={locationFilter}
-            onChange={e => setLocationFilter(e.target.value)}
-          >
-            <option value="All">All locations</option>
-            {LOCATIONS.map(l => <option key={l} value={l}>{l}</option>)}
-          </select>
-          <div style={{ position: "relative" }}>
-            <span style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "var(--gray-400)" }}>🔍</span>
-            <input
-              className="input"
-              style={{ width: 220, paddingLeft: 32 }}
-              placeholder="Search employee, ID, dept…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          </div>
-          {(search || deptFilter !== "All" || locationFilter !== "All") && (
-            <button
-              className="btn btn-secondary"
-              onClick={() => { setSearch(""); setDeptFilter("All"); setLocationFilter("All"); }}
-            >
-              ✕ Clear
-            </button>
-          )}
+            style={{ width: 240, paddingLeft: 32 }}
+            placeholder="Search employee, ID, dept…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
         </div>
       </div>
 
