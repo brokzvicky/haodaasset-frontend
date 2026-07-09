@@ -3,6 +3,8 @@ import axios from "axios";
 import { useSearchParams } from "react-router-dom";
 import Layout from "../components/Layout";
 import StatusPill from "../components/StatusPill";
+import EmailStatusPill from "../components/EmailStatusPill";
+import SendEmailModal from "../components/SendEmailModal";
 import { useToast } from "../utils/Toast";
 import "./Assets.css";
 
@@ -42,7 +44,7 @@ const SkeletonRow = () => {
       }} />
     </td>
   );
-  return <tr>{cell(30)}{cell(100)}{cell(70)}{cell(90)}{cell(80)}{cell(60)}{cell(70)}{cell(80)}{cell(90)}</tr>;
+  return <tr>{cell(30)}{cell(100)}{cell(70)}{cell(90)}{cell(80)}{cell(60)}{cell(70)}{cell(80)}{cell(90)}{cell(90)}</tr>;
 };
 
 // ── Return Dialog (Modal) ────────────────────────────────────────
@@ -186,8 +188,10 @@ export default function Assets() {
   const [locationFilter, setLocationFilter] = useState("All");
   const [returnTarget, setReturnTarget] = useState(null);
   const [returning, setReturning] = useState(false);
+  const [emailTarget, setEmailTarget] = useState(null); // asset currently in the Send Email modal
   const [updating, setUpdating] = useState(new Set());
   const [editingAsset, setEditingAsset] = useState(null); // null = add mode, asset obj = edit mode
+  const [employeeEmailById, setEmployeeEmailById] = useState({}); // employeeId -> email, for the Send Email gate/modal
 
   // ── Data loading ──────────────────────────────────────────────
   const loadData = useCallback(() => {
@@ -199,6 +203,17 @@ export default function Assets() {
   }, []);
 
   useEffect(() => { loadData(); }, [loadData]);
+
+  // Employee emails, used to gate/populate the "Send Email" action
+  useEffect(() => {
+    axios.get(`${API}/api/admin/employees`)
+      .then((r) => {
+        const map = {};
+        (r.data || []).forEach((e) => { map[e.employeeId] = e.email; });
+        setEmployeeEmailById(map);
+      })
+      .catch(() => { /* Send Email button simply stays hidden if this fails */ });
+  }, []);
 
   // ── Form helpers ──────────────────────────────────────────────
   const field = (key) => ({
@@ -303,6 +318,25 @@ export default function Assets() {
       })
       .catch(() => toast("Couldn't process return. Is the API running?", "error"))
       .finally(() => setReturning(false));
+  };
+
+  // ── Send assignment email ───────────────────────────────────────
+  const handleEmailSent = (updatedAsset, message, isError = false) => {
+    if (isError) {
+      toast(message, "error");
+      // Reflect the failure immediately without a full reload
+      setAssets((prev) => prev.map((a) =>
+        a.assetId === emailTarget?.assetId ? { ...a, emailStatus: "Failed" } : a
+      ));
+      return;
+    }
+    toast(message, "success");
+    setEmailTarget(null);
+    if (updatedAsset) {
+      setAssets((prev) => prev.map((a) => (a.assetId === updatedAsset.assetId ? updatedAsset : a)));
+    } else {
+      loadData();
+    }
   };
 
   // ── Delete asset ──────────────────────────────────────────────
@@ -716,13 +750,16 @@ export default function Assets() {
                   <th>Location</th>
                   <th style={{ minWidth:120 }}>Condition</th>
                   <th>Status</th>
-                  <th style={{ width:140 }}>Actions</th>
+                  <th>Email Status</th>
+                  <th style={{ width:170 }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.map((asset, index) => {
                   const isUpdating = updating.has(asset.assetId);
                   const style = conditionStyles[asset.assetCondition] || conditionStyles["New"];
+                  const employeeEmail = asset.employeeId ? employeeEmailById[asset.employeeId] : null;
+                  const canSendEmail = asset.assetStatus === "Assigned" && !!asset.employeeId && !!employeeEmail;
 
                   return (
                     <tr key={asset.assetId} className="asset-row">
@@ -803,6 +840,7 @@ export default function Assets() {
                         </div>
                       </td>
                       <td><StatusPill status={asset.assetStatus} /></td>
+                      <td><EmailStatusPill status={asset.emailStatus} /></td>
                       <td>
                         <div style={{ display:"flex", gap:8, alignItems:"center" }}>
                           <button
@@ -818,6 +856,15 @@ export default function Assets() {
                               onClick={() => setReturnTarget(asset)}
                             >
                               ↩ Return
+                            </button>
+                          )}
+                          {canSendEmail && (
+                            <button
+                              className="action-send-email"
+                              onClick={() => setEmailTarget({ ...asset, employeeEmail })}
+                              title="Send assignment email"
+                            >
+                              📧 Email
                             </button>
                           )}
                           <button
@@ -843,6 +890,12 @@ export default function Assets() {
         onClose={() => setReturnTarget(null)}
         onConfirm={handleReturn}
         saving={returning}
+      />
+
+      <SendEmailModal
+        asset={emailTarget}
+        onClose={() => setEmailTarget(null)}
+        onSent={handleEmailSent}
       />
 
       {/* Inline styles for component-specific classes */}
@@ -902,6 +955,26 @@ export default function Assets() {
         .action-return:hover {
           background: #a7f3d0;
           transform: scale(1.04);
+        }
+        .action-send-email {
+          background: var(--primary-50);
+          border: 1px solid var(--primary-200);
+          color: var(--primary-700);
+          border-radius: 20px;
+          padding: 4px 12px;
+          font-size: 12px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: 0.15s;
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          white-space: nowrap;
+        }
+        .action-send-email:hover {
+          background: var(--primary-100);
+          border-color: var(--primary-300, var(--primary-200));
+          transform: translateY(-1px);
         }
         .action-edit {
           background: #eff6ff;
