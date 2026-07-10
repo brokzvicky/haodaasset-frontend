@@ -330,6 +330,7 @@ export default function Employees() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
+  const [locationFilter, setLocationFilter] = useState("All");
   const [expanded, setExpanded] = useState(null);
   const [expandedAssets, setExpandedAssets] = useState({});
   const [assetCounts, setAssetCounts] = useState({});
@@ -438,13 +439,20 @@ export default function Employees() {
     loadEmployees();
   };
 
+  const uniqueLocations = useMemo(() => {
+    const fromData = employees.map((e) => e.location).filter(Boolean);
+    const combined = Array.from(new Set([...LOCATIONS, ...fromData])).sort();
+    return ["All", ...combined];
+  }, [employees]);
+
   const directory = useMemo(
     () => employees.filter((e) =>
-      (e.employeeName || "").toLowerCase().includes(search.toLowerCase()) ||
-      (e.employeeId || "").toLowerCase().includes(search.toLowerCase()) ||
-      (e.department || "").toLowerCase().includes(search.toLowerCase())
+      ((e.employeeName || "").toLowerCase().includes(search.toLowerCase()) ||
+        (e.employeeId || "").toLowerCase().includes(search.toLowerCase()) ||
+        (e.department || "").toLowerCase().includes(search.toLowerCase())) &&
+      (locationFilter === "All" || e.location === locationFilter)
     ),
-    [employees, search]
+    [employees, search, locationFilter]
   );
 
   return (
@@ -519,12 +527,37 @@ export default function Employees() {
       )}
 
       {/* Search bar */}
-      <div style={{ display: "flex", gap: 16, marginBottom: 20, alignItems: "center" }}>
-        <div style={{ flex: 1 }}>
+      <div style={{ display: "flex", gap: 12, marginBottom: 20, alignItems: "center", flexWrap: "wrap" }}>
+        <div style={{ flex: 1, minWidth: 160 }}>
           <div style={{ fontSize: 13, fontWeight: 600, color: "var(--gray-500)" }}>
             {directory.length} of {employees.length} employees
+            {locationFilter !== "All" && (
+              <span style={{ marginLeft: 8, color: "var(--primary)" }}>
+                · filtered by <strong>{locationFilter}</strong>
+                <button
+                  onClick={() => setLocationFilter("All")}
+                  style={{
+                    background: "none", border: "none", cursor: "pointer",
+                    color: "var(--primary)", fontWeight: 700, marginLeft: 6, fontSize: 13,
+                  }}
+                  title="Clear location filter"
+                >
+                  ✕
+                </button>
+              </span>
+            )}
           </div>
         </div>
+        <select
+          className="input"
+          style={{ width: 200 }}
+          value={locationFilter}
+          onChange={(e) => setLocationFilter(e.target.value)}
+        >
+          {uniqueLocations.map((loc) => (
+            <option key={loc} value={loc}>{loc === "All" ? "All locations" : loc}</option>
+          ))}
+        </select>
         <div style={{ position: "relative" }}>
           <span style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "var(--gray-400)" }}>🔍</span>
           <input
@@ -557,7 +590,11 @@ export default function Employees() {
         <div className="empty-state">
           <div className="empty-icon">👥</div>
           <div className="empty-title">No employees found</div>
-          <div className="empty-sub">Add your first employee to get started.</div>
+          <div className="empty-sub">
+            {search || locationFilter !== "All"
+              ? "Try clearing the search or location filter."
+              : "Add your first employee to get started."}
+          </div>
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
