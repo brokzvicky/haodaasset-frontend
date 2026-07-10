@@ -29,6 +29,12 @@ export function AuthProvider({ children }) {
    * 401s we don't fall through (avoids leaking which role a credential pair
    * is valid for) — the caller (Login.js) controls which endpoint to hit
    * via the `role` argument.
+   *
+   * Admin login is two-step (email OTP 2FA): this call only verifies the
+   * password. If the account has a recovery email on file, the backend
+   * returns a "challenge" (no token yet) and the caller must complete the
+   * flow with verifyAdminOtp(). If there's no recovery email registered,
+   * the backend skips 2FA and a token comes back immediately.
    */
   const login = async (identifier, password, role) => {
     try {
@@ -37,9 +43,24 @@ export function AuthProvider({ children }) {
           username: identifier,
           password,
         });
-        const adminUser = { role: "admin", name: data.name, id: "ADMIN" };
-        persist(adminUser, data.token);
-        return { success: true, role: "admin" };
+
+        if (data.twoFactorRequired) {
+          return {
+            success: true,
+            role: "admin",
+            twoFactorRequired: true,
+            challengeToken: data.challengeToken,
+            maskedEmail: data.maskedEmail,
+            expiresInSeconds: data.expiresInSeconds,
+            resendAfterSeconds: data.resendAfterSeconds,
+            message: data.message,
+          };
+        }
+
+        // No recovery email on file — backend already issued a real token.
+        const adminUser = { role: "admin", name: data.login.name, id: "ADMIN" };
+        persist(adminUser, data.login.token);
+        return { success: true, role: "admin", twoFactorRequired: false };
       } else {
         const { data } = await axios.post(`${API}/api/auth/employee/login`, {
           employeeId: identifier,
@@ -66,6 +87,40 @@ export function AuthProvider({ children }) {
       const message =
         err.response?.data?.message ||
         "Invalid credentials. Please check and try again.";
+      return { success: false, message };
+    }
+  };
+
+  /** Step 2 of admin login: submits the emailed OTP against the challenge token from login(). */
+  const verifyAdminOtp = async (challengeToken, otp) => {
+    try {
+      const { data } = await axios.post(`${API}/api/auth/admin/verify-login-otp`, {
+        challengeToken,
+        otp,
+      });
+      const adminUser = { role: "admin", name: data.name, id: "ADMIN" };
+      persist(adminUser, data.token);
+      return { success: true };
+    } catch (err) {
+      const message = err.response?.data?.message || "Invalid or expired code.";
+      return { success: false, message };
+    }
+  };
+
+  /** Resends the login OTP for a pending 2FA challenge. */
+  const resendAdminOtp = async (challengeToken) => {
+    try {
+      const { data } = await axios.post(`${API}/api/auth/admin/resend-login-otp`, {
+        challengeToken,
+      });
+      return {
+        success: true,
+        message: data.message,
+        expiresInSeconds: data.expiresInSeconds,
+        resendAfterSeconds: data.resendAfterSeconds,
+      };
+    } catch (err) {
+      const message = err.response?.data?.message || "Couldn't resend the code. Please try again.";
       return { success: false, message };
     }
   };
@@ -106,7 +161,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, changePassword }}>
+    <AuthContext.Provider value={{ user, login, verifyAdminOtp, resendAdminOtp, logout, changePassword }}>
       {children}
     </AuthContext.Provider>
   );
