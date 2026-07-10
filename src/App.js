@@ -14,6 +14,8 @@ import NetworkCredentials from "./pages/NetworkCredentials";
 import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
 import EmailLogs from "./pages/EmailLogs";
+import SendAssetEmail from "./pages/SendAssetEmail";
+import AssetEmailLogs from "./pages/AssetEmailLogs";
 import EmployeeDashboard from "./pages/EmployeeDashboard";
 import { EmployeeAssets, EmployeeProfile, EmployeeRequest, EmployeePassword } from "./pages/EmployeePages";
 
@@ -36,6 +38,8 @@ function App() {
               <Route path="/reports"       element={<AdminRoute><Reports /></AdminRoute>} />
               <Route path="/settings"      element={<AdminRoute><Settings /></AdminRoute>} />
               <Route path="/email-logs"    element={<AdminRoute><EmailLogs /></AdminRoute>} />
+              <Route path="/send-asset-email" element={<AdminRoute><SendAssetEmail /></AdminRoute>} />
+              <Route path="/asset-email-logs" element={<AdminRoute><AssetEmailLogs /></AdminRoute>} />
 
               {/* Employee Routes */}
               <Route path="/emp/dashboard" element={<EmployeeRoute><EmployeeDashboard /></EmployeeRoute>} />
