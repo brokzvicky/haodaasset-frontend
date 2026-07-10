@@ -437,10 +437,16 @@ input, select, textarea { font-family: var(--font); }
 
 /* KPI row class system */
 .kpi-row   { display: grid; gap: 14px; min-width: 0; }
-.kpi-row-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.kpi-row-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+/* Rows with few cards (2–3) used to stretch each card to fill the full
+   row width, which is what made them look oversized on wide screens.
+   Cap card width and let the row wrap naturally instead of stretching. */
+.kpi-row-2 { grid-template-columns: repeat(auto-fit, minmax(200px, 300px)); }
+.kpi-row-3 { grid-template-columns: repeat(auto-fit, minmax(180px, 260px)); }
 .kpi-row-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .kpi-row-6 { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+
+/* Safety cap so no KPI card can ever balloon, regardless of row type */
+.kpi-card-vivid, .kpi-card { max-width: 340px; }
 
 .kpi-card {
   background: #fff;
@@ -1223,4 +1229,246 @@ select:focus-visible, textarea:focus-visible, [tabindex]:focus-visible {
   }
   .kpi-card-vivid::before,
   .kpi-card-vivid::after { display: none; }
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   ✦ SENIOR DESIGN SYSTEM v2 ✦
+   A systemized, restrained pass — motion only where it clarifies
+   state, a real elevation + type scale, and quieter, more confident
+   surfaces. White + blue only. Respects prefers-reduced-motion.
+════════════════════════════════════════════════════════════════════ */
+
+:root {
+  /* Elevation scale — use ONE of these per surface, never stack ad hoc shadows */
+  --elev-1: 0 1px 2px rgba(15,23,42,0.04), 0 1px 1px rgba(15,23,42,0.03);
+  --elev-2: 0 2px 6px rgba(15,23,42,0.05), 0 1px 2px rgba(15,23,42,0.04);
+  --elev-3: 0 8px 24px rgba(15,23,42,0.08), 0 2px 6px rgba(15,23,42,0.04);
+  --elev-4: 0 20px 48px rgba(15,23,42,0.14), 0 4px 12px rgba(15,23,42,0.06);
+  --elev-focus: 0 0 0 3px rgba(37,99,235,0.14);
+
+  /* 4px base spacing scale (reference only — most components already follow this) */
+  --space-1: 4px;  --space-2: 8px;  --space-3: 12px; --space-4: 16px;
+  --space-5: 20px; --space-6: 24px; --space-8: 32px; --space-10: 40px;
+
+  /* Type scale (reference only) */
+  --text-xs: 11px; --text-sm: 12.5px; --text-base: 14px; --text-lg: 16px;
+  --text-xl: 20px; --text-2xl: 24px; --text-3xl: 32px;
+
+  --grad-brand: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%);
+}
+
+@keyframes fadeInUp   { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes ringSpin   { to { transform: rotate(360deg); } }
+@keyframes driftSlow  { 0%, 100% { transform: translate(0,0); } 50% { transform: translate(-1.5%, 1.5%); } }
+
+/* ── Ambient background — one quiet gradient wash, no moving parts ─── */
+.app-shell {
+  background:
+    radial-gradient(ellipse 900px 480px at 10% -10%, rgba(37,99,235,0.06), transparent 60%),
+    linear-gradient(160deg, #f8fbff 0%, #f2f7ff 45%, #ffffff 100%);
+}
+
+/* ── Sidebar: clean solid active state, no glow ────────────────────── */
+.sidebar-item.active {
+  background: var(--sidebar-item-active);
+  position: relative;
+}
+.sidebar-item.active::before {
+  content: '';
+  position: absolute; left: -10px; top: 50%;
+  transform: translateY(-50%);
+  width: 3px; height: 56%;
+  border-radius: 0 3px 3px 0;
+  background: #60a5fa;
+}
+.sidebar-item { transition: background 0.12s ease, color 0.12s ease, padding-left 0.12s ease; }
+.sidebar-item:hover:not(.active) { padding-left: 12px; }
+
+/* ── Buttons: confident solid fill, quiet lift, no shine ───────────── */
+.btn-primary { background: var(--primary); border-color: var(--primary); }
+.btn-primary:hover {
+  background: var(--primary-dark);
+  border-color: var(--primary-dark);
+  box-shadow: var(--elev-3);
+  transform: translateY(-1px);
+}
+.btn-primary:active { transform: translateY(0); box-shadow: var(--elev-1); }
+
+/* ── Cards: elevation change only — no gradient tricks ─────────────── */
+.card:hover, .kpi-card:hover, .stat-card:hover {
+  box-shadow: var(--elev-3);
+  border-color: var(--gray-200);
+}
+.kpi-card-vivid.clickable:hover { box-shadow: var(--elev-4); }
+.kpi-vivid-icon { transition: transform 0.18s ease; }
+.kpi-card-vivid.clickable:hover .kpi-vivid-icon { transform: translateY(-1px); }
+
+/* ── Table rows: single flat tint, not a gradient sweep ────────────── */
+.data-table tr:hover td { background: var(--gray-50); }
+.data-table th { cursor: default; user-select: none; }
+.data-table th[data-sortable] { cursor: pointer; }
+.data-table th[data-sortable]:hover { color: var(--gray-600); }
+
+/* ── Inputs: one clean focus ring ───────────────────────────────────── */
+.input:focus, .login-input:focus, .form-select:focus { box-shadow: var(--elev-focus); }
+
+/* ── Login page: very slow, low-amplitude ambient drift only ───────── */
+.login-left::before { animation: driftSlow 22s ease-in-out infinite; }
+.login-left::after  { animation: driftSlow 28s ease-in-out infinite reverse; }
+.login-hero-title span { color: #60a5fa; } /* solid, confident — no animated gradient text */
+
+/* ── Modals: elevation, not a colored header ────────────────────────── */
+.modal-content { box-shadow: var(--elev-4); }
+
+/* ── Loading spinner: gradient ring reads as more modern than a dashed circle */
+.loading-spinner {
+  border-top-color: transparent;
+  background: conic-gradient(from 0deg, transparent, #2563eb);
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px));
+  animation: ringSpin 0.7s linear infinite;
+  border: none;
+}
+
+/* ── Empty states: tinted icon container instead of a faded emoji ──── */
+.empty-icon {
+  width: 64px; height: 64px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--primary-50);
+  color: var(--primary-400, var(--primary));
+  border-radius: 50%;
+  font-size: 26px;
+  opacity: 1 !important;
+}
+
+/* ── Page entrance: one clean rise, on first paint only ─────────────── */
+.page-content.fade-in { animation: fadeInUp 0.28s cubic-bezier(0.22,1,0.36,1) both; }
+
+/* ── Reduced motion ──────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .login-left::before, .login-left::after, .loading-spinner, .page-content.fade-in,
+  .btn-primary:hover, .sidebar-item:hover:not(.active) {
+    animation: none !important; transform: none !important;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   ✦ APP-WIDE MOTION LAYER ✦
+   Every shared component gets entrance + hover motion so the whole
+   product feels alive and consistent — not just the screens shown in
+   chat. Applies via existing class names, so it reaches every page
+   automatically with no JS changes.
+════════════════════════════════════════════════════════════════════ */
+
+@keyframes riseIn   { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes popIn    { from { opacity: 0; transform: scale(0.92); } to { opacity: 1; transform: scale(1); } }
+@keyframes slideInL { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes bounceIn {
+  0%   { opacity: 0; transform: scale(0.8); }
+  60%  { opacity: 1; transform: scale(1.06); }
+  100% { transform: scale(1); }
+}
+@keyframes underlineGrow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
+/* ── Every card-based grid gets a staggered rise-in on page load ──── */
+.grid-2 > *, .grid-3 > *, .grid-2-1 > *, .grid-1-2 > *,
+.emp-grid > *, .action-grid > *, .stat-grid > * {
+  animation: riseIn 0.36s cubic-bezier(0.22,1,0.36,1) both;
+}
+.grid-2 > *:nth-child(2), .grid-2-1 > *:nth-child(2), .grid-1-2 > *:nth-child(2) { animation-delay: 0.06s; }
+.grid-3 > *:nth-child(2), .emp-grid > *:nth-child(2), .action-grid > *:nth-child(2), .stat-grid > *:nth-child(2) { animation-delay: 0.05s; }
+.grid-3 > *:nth-child(3), .emp-grid > *:nth-child(3), .action-grid > *:nth-child(3), .stat-grid > *:nth-child(3) { animation-delay: 0.10s; }
+.emp-grid > *:nth-child(4), .action-grid > *:nth-child(4), .stat-grid > *:nth-child(4) { animation-delay: 0.15s; }
+.stat-grid > *:nth-child(n+5) { animation-delay: 0.20s; }
+
+/* ── Table rows: quick cascading entrance, not just a hover tint ──── */
+.data-table tbody tr {
+  animation: slideInL 0.28s ease both;
+}
+.data-table tbody tr:nth-child(1) { animation-delay: 0.02s; }
+.data-table tbody tr:nth-child(2) { animation-delay: 0.05s; }
+.data-table tbody tr:nth-child(3) { animation-delay: 0.08s; }
+.data-table tbody tr:nth-child(4) { animation-delay: 0.11s; }
+.data-table tbody tr:nth-child(5) { animation-delay: 0.14s; }
+.data-table tbody tr:nth-child(n+6) { animation-delay: 0.16s; }
+.data-table tbody tr:hover { transform: scale(1.002); }
+.data-table tbody tr:hover td:first-child { border-left: 2px solid var(--primary); }
+.data-table td:first-child { border-left: 2px solid transparent; transition: border-color 0.15s ease; }
+
+/* ── Buttons: extra life on every variant, not just primary ───────── */
+.btn { transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease, border-color 0.12s ease; }
+.btn:active { transform: scale(0.97); }
+.btn-secondary:hover { transform: translateY(-1px); box-shadow: var(--elev-2); }
+.btn-danger:hover, .btn-success:hover, .btn-warning:hover { transform: translateY(-1px); }
+.btn-icon:hover { transform: scale(1.08); }
+.icon-btn:hover, .action-delete:hover, .action-return:hover { transform: scale(1.08); }
+
+/* ── Pills / tags: pop in on mount, tiny lift on hover ─────────────── */
+.pill, .tag { animation: popIn 0.22s cubic-bezier(0.34,1.4,0.64,1) both; transition: transform 0.12s ease; }
+.pill:hover, .tag:hover { transform: translateY(-1px); }
+
+/* ── Login tabs: sliding active underline instead of a flat swap ──── */
+.login-tabs { position: relative; }
+.login-tab { transition: color 0.15s ease; }
+.login-tab.active { animation: popIn 0.18s ease both; }
+
+/* ── Sidebar: icon nudges on hover, badge bounces in ───────────────── */
+.sidebar-item:hover .sidebar-item-icon { transform: scale(1.12); }
+.sidebar-item-icon { transition: transform 0.15s cubic-bezier(0.34,1.4,0.64,1); }
+.sidebar-item-badge { animation: bounceIn 0.4s cubic-bezier(0.34,1.4,0.64,1) both; }
+.sidebar-nav .sidebar-item { animation: slideInL 0.3s ease both; }
+.sidebar-nav .sidebar-item:nth-child(1) { animation-delay: 0.02s; }
+.sidebar-nav .sidebar-item:nth-child(2) { animation-delay: 0.05s; }
+.sidebar-nav .sidebar-item:nth-child(3) { animation-delay: 0.08s; }
+.sidebar-nav .sidebar-item:nth-child(4) { animation-delay: 0.11s; }
+.sidebar-nav .sidebar-item:nth-child(n+5) { animation-delay: 0.14s; }
+
+/* ── Topbar icons + avatar: playful hover ──────────────────────────── */
+.topbar-btn:hover { transform: translateY(-1px) scale(1.05); }
+.notif-btn:hover { transform: translateY(-1px) scale(1.05); }
+.notif-badge-icon { animation: bounceIn 0.45s cubic-bezier(0.34,1.4,0.64,1) both; }
+
+/* ── KPI value: settles in with a confident pop ────────────────────── */
+.kpi-vivid-value, .kpi-value, .stat-card-value {
+  animation: popIn 0.4s cubic-bezier(0.22,1.2,0.36,1) both;
+  animation-delay: 0.1s;
+}
+
+/* ── Welcome banner icon: gentle idle sway, not distracting ───────── */
+@keyframes idleSway { 0%, 100% { transform: rotate(0deg); } 50% { transform: rotate(-4deg); } }
+.welcome-banner-icon, .emp-welcome .welcome-banner-icon { animation: idleSway 4s ease-in-out infinite; display: inline-block; }
+
+/* ── Empty state icon: friendly bounce on mount ────────────────────── */
+.empty-icon { animation: bounceIn 0.5s cubic-bezier(0.34,1.4,0.64,1) both; }
+
+/* ── Form fields: label + input rise together when a form appears ──── */
+.field, .form-group, .login-field { animation: riseIn 0.24s ease both; }
+
+/* ── Modal content: a touch more spring on entrance ────────────────── */
+.modal-content { animation: scaleIn 0.24s cubic-bezier(0.34,1.35,0.64,1); }
+
+/* ── Notification / help dropdowns: livelier pop ───────────────────── */
+.notif-panel, .help-popover, .netcred-menu {
+  animation: dropIn 0.18s cubic-bezier(0.34,1.35,0.64,1);
+}
+.notif-item { transition: transform 0.12s ease, background 0.12s ease; }
+.notif-item:hover { transform: translateX(2px); }
+
+/* ── Reduced motion: this whole layer respects it too ──────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .grid-2 > *, .grid-3 > *, .grid-2-1 > *, .grid-1-2 > *, .emp-grid > *,
+  .action-grid > *, .stat-grid > *, .data-table tbody tr, .pill, .tag,
+  .login-tab.active, .sidebar-item-badge, .sidebar-nav .sidebar-item,
+  .notif-badge-icon, .kpi-vivid-value, .kpi-value, .stat-card-value,
+  .welcome-banner-icon, .emp-welcome .welcome-banner-icon, .empty-icon,
+  .field, .form-group, .login-field, .modal-content, .notif-panel,
+  .help-popover, .netcred-menu {
+    animation: none !important;
+  }
+  .data-table tbody tr:hover, .btn:active, .btn-secondary:hover, .btn-icon:hover,
+  .icon-btn:hover, .action-delete:hover, .action-return:hover, .pill:hover,
+  .tag:hover, .sidebar-item:hover .sidebar-item-icon, .topbar-btn:hover,
+  .notif-btn:hover, .notif-item:hover {
+    transform: none !important;
+  }
 }
