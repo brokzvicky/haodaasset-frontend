@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import Layout from "../components/Layout";
 import { AssetTypeBarChart } from "../components/DashboardChart";
+import CountUp from "../components/CountUp";
 
 const API = "https://haodaasset-backend-1.onrender.com";
 
@@ -75,7 +76,7 @@ export default function Reports() {
         ].map((s) => (
           <div key={s.label} className="kpi-card-vivid" style={{ background: s.gradient, boxShadow: `0 8px 24px ${s.glow}` }}>
             <div className="kpi-vivid-icon">{s.icon}</div>
-            <div className="kpi-vivid-value">{s.value}</div>
+            <div className="kpi-vivid-value">{typeof s.value === "number" ? <CountUp value={s.value} /> : s.value}</div>
             <div className="kpi-vivid-label">{s.label}</div>
           </div>
         ))}

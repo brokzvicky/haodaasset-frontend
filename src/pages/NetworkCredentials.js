@@ -10,6 +10,7 @@ import {
 import Layout from "../components/Layout";
 import { useToast } from "../utils/Toast";
 import CredentialUnlockDialog from "../components/CredentialUnlockDialog";
+import CountUp from "../components/CountUp";
 import "./NetworkCredentials.css";
 
 const API = "https://haodaasset-backend-1.onrender.com";
@@ -457,7 +458,7 @@ export default function NetworkCredentials() {
               }}
             >
               <div className="kpi-vivid-icon">{k.icon}</div>
-              <div className="kpi-vivid-value">{loading ? "—" : k.value}</div>
+              <div className="kpi-vivid-value">{loading ? "—" : <CountUp value={k.value} />}</div>
               <div className="kpi-vivid-label">{k.label}</div>
               {active && <div className="kpi-vivid-active-badge">✓ Filtered</div>}
             </div>

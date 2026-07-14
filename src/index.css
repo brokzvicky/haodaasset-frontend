@@ -1759,3 +1759,107 @@ select:focus-visible, textarea:focus-visible, [tabindex]:focus-visible {
   background-size: 400% 100%;
   animation: shimmer 1.4s ease infinite;
 }
+
+/* ════════════════════════════════════════════════════════════════════
+   ✦ PHASE 3 — SIGNATURE MICRO-INTERACTIONS ✦
+   Purely additive polish layer: button shine sweep, KPI glow-pulse on
+   hover, a livelier toast entrance, and a subtle animated active-nav
+   underline. Nothing here renames or removes an existing class, and
+   every effect is skipped under prefers-reduced-motion.
+════════════════════════════════════════════════════════════════════ */
+
+/* ── Primary button: light sweeps across on hover, once ─────────── */
+.btn-primary {
+  position: relative;
+  overflow: hidden;
+}
+.btn-primary::after {
+  content: '';
+  position: absolute;
+  top: 0; left: -60%;
+  width: 40%; height: 100%;
+  background: linear-gradient(120deg, transparent, rgba(255,255,255,0.35), transparent);
+  transform: skewX(-20deg);
+  transition: left 0.55s cubic-bezier(0.22,1,0.36,1);
+  pointer-events: none;
+}
+.btn-primary:hover::after { left: 130%; }
+
+/* ── KPI vivid cards: soft glow pulse + icon bubble pop on hover ─── */
+.kpi-card-vivid.clickable:hover {
+  animation: kpiGlowPulse 1.6s ease-in-out infinite;
+}
+@keyframes kpiGlowPulse {
+  0%, 100% { filter: brightness(1); }
+  50%      { filter: brightness(1.06); }
+}
+.kpi-card-vivid.clickable:hover .kpi-vivid-icon {
+  transform: translateY(-1px) scale(1.08);
+}
+
+/* ── CountUp values: tiny settle-in tick instead of a hard swap ──── */
+.kpi-vivid-value, .kpi-value, .stat-card-value {
+  font-variant-numeric: tabular-nums;
+  transition: transform 0.15s ease;
+}
+
+/* ── Cards: gentle border-glow ring sweeps in on hover ───────────── */
+.card, .kpi-card, .card-action {
+  position: relative;
+}
+.card:hover, .kpi-card:hover, .card-action:hover {
+  box-shadow: var(--elev-3), 0 0 0 1px rgba(37,99,235,0.08);
+}
+
+/* ── Data table rows: left accent bar eases in smoothly, already
+   present — add a quick row-select "settle" for clickable rows ──── */
+.data-table tbody tr[onclick],
+.data-table tbody tr.clickable-row {
+  cursor: pointer;
+}
+
+/* ── Sidebar active indicator: smooth height grow instead of a
+   snap-in bar ────────────────────────────────────────────────────── */
+.sidebar-item.active::before {
+  animation: sidebarBarGrow 0.22s cubic-bezier(0.22,1,0.36,1) both;
+}
+@keyframes sidebarBarGrow {
+  from { height: 0; opacity: 0; }
+  to   { height: 56%; opacity: 1; }
+}
+
+/* ── Toast: quick overshoot bounce instead of a flat slide-in ────── */
+.toast {
+  animation: toastBounceIn 0.32s cubic-bezier(0.34,1.4,0.64,1);
+}
+@keyframes toastBounceIn {
+  0%   { opacity: 0; transform: translateX(40px) scale(0.96); }
+  70%  { opacity: 1; transform: translateX(-4px) scale(1.01); }
+  100% { transform: translateX(0) scale(1); }
+}
+
+/* ── Avatar / icon bubbles: friendly pop whenever they mount ─────── */
+.sidebar-avatar, .topbar-avatar, .profile-avatar {
+  animation: bounceIn 0.4s cubic-bezier(0.34,1.4,0.64,1) both;
+}
+
+/* ── Checkmarks / success confirmations: quick draw-in feel ──────── */
+@keyframes checkPop {
+  0%   { transform: scale(0.5); opacity: 0; }
+  60%  { transform: scale(1.15); opacity: 1; }
+  100% { transform: scale(1); }
+}
+.badge-success, .pill-available { animation: checkPop 0.3s cubic-bezier(0.34,1.4,0.64,1) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .btn-primary::after,
+  .kpi-card-vivid.clickable:hover,
+  .kpi-card-vivid.clickable:hover .kpi-vivid-icon,
+  .sidebar-item.active::before,
+  .toast,
+  .sidebar-avatar, .topbar-avatar, .profile-avatar,
+  .badge-success, .pill-available {
+    animation: none !important;
+    transition: none !important;
+  }
+}

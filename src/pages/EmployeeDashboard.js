@@ -4,6 +4,7 @@ import Layout from "../components/Layout";
 import { useAuth } from "../context/AuthContext";
 import { useGet } from "../hooks/useEmployeeApi";
 import StatusPill from "../components/StatusPill";
+import CountUp from "../components/CountUp";
 
 function avatarBg(name){const c=["#1a56db","#059669","#7c3aed","#b45309","#be185d","#0284c7"];return c[(name||"A").charCodeAt(0)%c.length];}
 function initials(name){return(name||"U").split(" ").map((w)=>w[0]).join("").toUpperCase().slice(0,2);}
@@ -80,14 +81,14 @@ export default function EmployeeDashboard() {
       <div className="kpi-row kpi-row-3 stagger-in" style={{marginBottom:24}}>
         <div className="kpi-card-vivid" style={{background:"linear-gradient(135deg,#60a5fa,#1d4ed8)",boxShadow:"0 8px 24px #1d4ed840"}}>
           <div className="kpi-vivid-icon">💻</div>
-          <div className="kpi-vivid-value">{loading?"—":(db?.assignedAssets??0)}</div>
+          <div className="kpi-vivid-value">{loading?"—":<CountUp value={db?.assignedAssets??0} />}</div>
           <div className="kpi-vivid-label">Assigned Assets</div>
           <div style={{fontSize:11,color:"rgba(255,255,255,0.7)",marginTop:4}}>Devices in your care</div>
         </div>
 
         <div className="kpi-card-vivid" style={{background:"linear-gradient(135deg,#fbbf24,#d97706)",boxShadow:"0 8px 24px #d9770640"}}>
           <div className="kpi-vivid-icon">📋</div>
-          <div className="kpi-vivid-value">{loading?"—":(db?.pendingRequests??0)}</div>
+          <div className="kpi-vivid-value">{loading?"—":<CountUp value={db?.pendingRequests??0} />}</div>
           <div className="kpi-vivid-label">Pending Requests</div>
           <div style={{fontSize:11,color:"rgba(255,255,255,0.7)",marginTop:4}}>Awaiting IT team review</div>
         </div>

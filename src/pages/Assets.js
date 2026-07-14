@@ -36,12 +36,7 @@ const conditionStyles = {
 const SkeletonRow = () => {
   const cell = (w = 80) => (
     <td>
-      <div style={{
-        height:14, borderRadius:6,
-        background:"linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%)",
-        backgroundSize:"200% 100%", animation:"shimmer 1.4s infinite",
-        width:w
-      }} />
+      <div className="skeleton skeleton-text" style={{ width: w, margin: 0 }} />
     </td>
   );
   return <tr>{cell(30)}{cell(100)}{cell(70)}{cell(90)}{cell(80)}{cell(60)}{cell(70)}{cell(80)}{cell(90)}{cell(90)}</tr>;
@@ -54,74 +49,30 @@ const ReturnDialog = ({ asset, onClose, onConfirm, saving }) => {
   if (!asset) return null;
 
   return (
-    <>
-      <div
-        onClick={onClose}
-        style={{
-          position:"fixed", inset:0,
-          background:"rgba(15,23,42,0.5)",
-          zIndex:800,
-          backdropFilter:"blur(6px)",
-          animation:"fadeIn 0.2s ease",
-        }}
-      />
-      <div style={{
-        position:"fixed", top:"50%", left:"50%",
-        transform:"translate(-50%, -50%)",
-        background:"#fff",
-        borderRadius:16,
-        width:440, maxWidth:"90vw",
-        zIndex:900,
-        boxShadow:"0 24px 64px rgba(0,0,0,0.2)",
-        overflow:"hidden",
-        animation:"scaleIn 0.2s ease",
-      }}>
-        <div style={{
-          display:"flex", alignItems:"center", justifyContent:"space-between",
-          padding:"18px 24px",
-          borderBottom:"1px solid var(--gray-100)",
-        }}>
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-content" style={{ maxWidth: 440 }} onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
-            <div style={{ fontSize:18, fontWeight:700, color:"var(--gray-900)" }}>
-              Return Asset
-            </div>
-            <div style={{ fontSize:13, color:"var(--gray-500)", marginTop:2 }}>
+            <h3 className="modal-title">Return Asset</h3>
+            <div className="card-subtitle" style={{ marginTop: 4 }}>
               {asset.laptopName} · SN: {asset.serialNumber}
             </div>
           </div>
-          <button
-            onClick={onClose}
-            style={{
-              width:32, height:32, borderRadius:8,
-              border:"1px solid var(--gray-200)",
-              background:"#fff",
-              cursor:"pointer", fontSize:16, color:"var(--gray-400)",
-              transition:"0.15s",
-              display:"flex", alignItems:"center", justifyContent:"center",
-            }}
-          >
+          <button className="btn btn-secondary btn-icon" onClick={onClose} aria-label="Close">
             ✕
           </button>
         </div>
 
-        <div style={{ padding:"24px", display:"flex", flexDirection:"column", gap:18 }}>
-          <div>
-            <label style={{ fontSize:13, fontWeight:600, color:"var(--gray-700)", display:"block", marginBottom:6 }}>
-              Returned Condition
-            </label>
-            <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:6 }}>
+        <div className="modal-body" style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+          <div className="field">
+            <label className="field-label">Returned Condition</label>
+            <div className="selector-grid" style={{ gridTemplateColumns: "repeat(3,1fr)" }}>
               {["Excellent","Good","Fair","Faulty","Damaged"].map(c => (
                 <button
                   key={c}
+                  type="button"
+                  className={`btn btn-sm ${condition === c ? "btn-primary" : "btn-secondary"}`}
                   onClick={() => setCondition(c)}
-                  style={{
-                    padding:"8px 4px", borderRadius:8,
-                    fontSize:12, fontWeight:600,
-                    border: condition === c ? "2px solid var(--primary)" : "1px solid var(--gray-200)",
-                    background: condition === c ? "var(--primary-50)" : "#fff",
-                    color: condition === c ? "var(--primary)" : "var(--gray-600)",
-                    cursor:"pointer", transition:"0.12s",
-                  }}
                 >
                   {c}
                 </button>
@@ -129,15 +80,12 @@ const ReturnDialog = ({ asset, onClose, onConfirm, saving }) => {
             </div>
           </div>
 
-          <div>
-            <label style={{ fontSize:13, fontWeight:600, color:"var(--gray-700)", display:"block", marginBottom:6 }}>
-              Move Asset To
-            </label>
+          <div className="field">
+            <label className="field-label">Move Asset To</label>
             <select
               className="input"
               value={nextStatus}
               onChange={(e) => setNextStatus(e.target.value)}
-              style={{ width:"100%" }}
             >
               <option value="Available">Available — Ready to reassign</option>
               <option value="Spare">Spare — Keep in reserve</option>
@@ -162,13 +110,7 @@ const ReturnDialog = ({ asset, onClose, onConfirm, saving }) => {
           </div>
         </div>
       </div>
-      <style>{`
-        @keyframes scaleIn {
-          from { opacity:0; transform:translate(-50%, -50%) scale(0.95); }
-          to { opacity:1; transform:translate(-50%, -50%) scale(1); }
-        }
-      `}</style>
-    </>
+    </div>
   );
 };
 

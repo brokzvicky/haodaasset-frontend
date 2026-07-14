@@ -4,6 +4,7 @@ import Layout from "../components/Layout";
 import { useToast } from "../utils/Toast";
 import { useNotifications } from "../context/NotificationContext";
 import AssignAssetModal from "../components/AssignAssetModal";
+import CountUp from "../components/CountUp";
 
 const API = "https://haodaasset-backend-1.onrender.com";
 
@@ -298,7 +299,7 @@ const reject =(id)=>updateStatus(id,"REJECTED");
                 <span className="kpi-vivid-active-badge" style={{marginTop:0}}>Action needed</span>
               )}
             </div>
-            <div className="kpi-vivid-value">{loading?"—":counts[s.key]}</div>
+            <div className="kpi-vivid-value">{loading?"—":<CountUp value={counts[s.key]} />}</div>
             <div className="kpi-vivid-label">{s.label}</div>
           </div>
         ))}

@@ -4,6 +4,7 @@ import { useNavigate, Link } from "react-router-dom";
 import Layout from "../components/Layout";
 import { StatusPieChart, AssetTypeBarChart } from "../components/DashboardChart";
 import StatusPill from "../components/StatusPill";
+import CountUp from "../components/CountUp";
 import { useAuth } from "../context/AuthContext";
 import "./Dashboard.css";
 
@@ -38,7 +39,7 @@ function KpiCard({ icon, label, value, sub, gradient, glow, onClick, badge }) {
       </div>
       {value === null || value === undefined
         ? <div className="kpi-vivid-value-skeleton" />
-        : <div className="kpi-vivid-value">{value}</div>}
+        : <div className="kpi-vivid-value"><CountUp value={value} /></div>}
       <div className="kpi-vivid-label">{label}</div>
       {sub && <div style={{ fontSize: 11, color: "rgba(255,255,255,0.7)", marginTop: 4 }}>{sub}</div>}
     </div>

@@ -82,53 +82,23 @@ function AssignAssetModal({ employee, onClose, onSuccess }) {
   };
 
   return (
-    <>
-      {/* Backdrop */}
-      <div
-        onClick={onClose}
-        style={{
-          position: "fixed", inset: 0, background: "rgba(15,23,42,0.5)",
-          zIndex: 800, backdropFilter: "blur(4px)",
-        }}
-      />
-
+    <div className="modal-overlay" onClick={onClose}>
       {/* Modal */}
-      <div style={{
-        position: "fixed", top: "50%", left: "50%",
-        transform: "translate(-50%,-50%)",
-        background: "#fff", borderRadius: 18,
-        width: "min(780px, 96vw)", maxHeight: "90vh",
-        zIndex: 900,
-        boxShadow: "0 32px 80px rgba(0,0,0,0.22)",
-        display: "flex", flexDirection: "column",
-        overflow: "hidden",
-        animation: "modalIn 0.2s ease",
-      }}>
+      <div
+        className="modal-content"
+        style={{ width: "min(780px, 96vw)", maxHeight: "90vh", display: "flex", flexDirection: "column" }}
+        onClick={(e) => e.stopPropagation()}
+      >
 
         {/* Header */}
-        <div style={{
-          display: "flex", alignItems: "center", justifyContent: "space-between",
-          padding: "20px 26px",
-          borderBottom: "1px solid var(--gray-100)",
-          flexShrink: 0,
-        }}>
+        <div className="modal-header" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
           <div>
-            <div style={{ fontSize: 17, fontWeight: 800, color: "var(--gray-900)" }}>
-              Assign Asset
-            </div>
-            <div style={{ fontSize: 12.5, color: "var(--gray-400)", marginTop: 2 }}>
+            <h3 className="modal-title">Assign Asset</h3>
+            <div className="card-subtitle" style={{ marginTop: 4 }}>
               Select an available asset to assign to this employee
             </div>
           </div>
-          <button
-            onClick={onClose}
-            style={{
-              width: 34, height: 34, borderRadius: 9,
-              border: "1px solid var(--gray-200)", background: "#fff",
-              cursor: "pointer", fontSize: 16, color: "var(--gray-400)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-            }}
-          >✕</button>
+          <button className="btn btn-secondary btn-icon" onClick={onClose} aria-label="Close">✕</button>
         </div>
 
         {/* Scrollable body */}
@@ -312,14 +282,7 @@ function AssignAssetModal({ employee, onClose, onSuccess }) {
           </button>
         </div>
       </div>
-
-      <style>{`
-        @keyframes modalIn {
-          from { opacity: 0; transform: translate(-50%, -48%) scale(0.95); }
-          to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-        }
-      `}</style>
-    </>
+    </div>
   );
 }
 
