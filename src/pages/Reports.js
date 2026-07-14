@@ -3,13 +3,16 @@ import axios from "axios";
 import Layout from "../components/Layout";
 import { AssetTypeBarChart } from "../components/DashboardChart";
 import CountUp from "../components/CountUp";
+import { useToast } from "../utils/Toast";
 
 const API = "https://haodaasset-backend-1.onrender.com";
 
 export default function Reports() {
+  const toast = useToast();
   const [assets, setAssets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [pdfDownloading, setPdfDownloading] = useState(false);
 
   useEffect(() => {
     axios.get(`${API}/assets`)
@@ -56,6 +59,28 @@ export default function Reports() {
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement("a"); a.href = url; a.download = "asset-report.csv"; a.click();
     URL.revokeObjectURL(url);
+  };
+
+  const downloadEmployeePdf = async () => {
+    setPdfDownloading(true);
+    try {
+      const token = sessionStorage.getItem("iam_token");
+      const response = await axios.get(`${API}/api/admin/reports/employee-asset-report/pdf`, {
+        responseType: "blob",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const blob = new Blob([response.data], { type: "application/pdf" });
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement("a");
+      a.href = url;
+      a.download = `employee-asset-report-${new Date().toISOString().split("T")[0]}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      toast(err.response?.data?.message || "Couldn't generate the PDF report. Please try again.", "error");
+    } finally {
+      setPdfDownloading(false);
+    }
   };
 
   return (
@@ -162,8 +187,8 @@ export default function Reports() {
             <button className="btn btn-secondary" onClick={exportCSV} disabled={!assets.length}>
               📥 Full Asset Report (CSV)
             </button>
-            <button className="btn btn-secondary" disabled style={{ opacity: 0.5 }}>
-              📄 Employee Asset Report (PDF) — coming soon
+            <button className="btn btn-secondary" onClick={downloadEmployeePdf} disabled={pdfDownloading}>
+              {pdfDownloading ? "Generating…" : "📄 Employee Asset Report (PDF)"}
             </button>
           </div>
           {!assets.length && !loading && (
