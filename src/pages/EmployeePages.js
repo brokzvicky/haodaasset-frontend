@@ -572,7 +572,7 @@ export function EmployeePassword() {
           <span style={{ fontSize: 20 }}>🔐</span>
           <span>
             <strong>Security reminder:</strong> You're using the default password. Please set a personal
-            password before continuing to use AssetTower.
+            password before continuing to use Haoda Asset.
           </span>
         </div>
       )}

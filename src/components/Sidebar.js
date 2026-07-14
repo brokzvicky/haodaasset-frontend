@@ -78,19 +78,18 @@ export default function Sidebar({ open = false, onClose }) {
   <div
     className="sidebar-logo-icon"
     style={{
-      background: "transparent",
-      padding: 0,
+      background: "#ffffff",
+      padding: 5,
       overflow: "hidden",
     }}
   >
     <img
-      src="/haoda-logo.png"
-      alt="Haoda Asset"
+      src="/haoda-icon.png"
+      alt="Haoda Group"
       style={{
-        width: "40px",
-        height: "40px",
+        width: "100%",
+        height: "100%",
         objectFit: "contain",
-        borderRadius: "10px",
       }}
     />
   </div>

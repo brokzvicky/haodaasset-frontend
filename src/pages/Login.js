@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ShieldCheck, RefreshCw, ArrowLeft, AlertTriangle } from "lucide-react";
+import { ShieldCheck, RefreshCw, ArrowLeft, AlertTriangle, Boxes, KeyRound } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import ForgotPasswordModal from "../components/ForgotPasswordModal";
 import "../components/ForgotPasswordModal.css";
@@ -142,33 +142,22 @@ export default function Login() {
         {/* Dot grid */}
         <div className="login-left-grid" />
 
-        {/* Brand */} 
+        {/* Brand */}
         <div className="login-brand">
-  <div className="login-brand-icon">
-    <img
-      src="/haoda-logo.png"
-      alt="Haoda Asset"
-      style={{
-        width: "34px",
-        height: "34px",
-        objectFit: "contain"
-      }}
-    />
-  </div>
-
-  <div>
-    <div className="login-brand-name">Haoda Asset</div>
-    <div className="login-brand-sub">
-      Enterprise IT Asset Management
-    </div>
-  </div>
-</div>
+          <div className="login-brand-icon">
+            <img src="/haoda-icon.png" alt="Haoda Group" />
+          </div>
+          <div>
+            <div className="login-brand-name">Haoda Asset</div>
+            <div className="login-brand-sub">IT Asset Management · Haoda Group</div>
+          </div>
+        </div>
 
         {/* Hero */}
         <div className="login-hero">
           <div className="login-hero-tag">
             <span className="login-hero-tag-dot" />
-            Trusted by 500+ IT teams
+            Internal IT Operations Platform
           </div>
           <h1 className="login-hero-title">
             Manage every<br />
@@ -176,24 +165,24 @@ export default function Login() {
             effortlessly.
           </h1>
           <p className="login-hero-desc">
-            One platform to track, assign, and audit your organization's hardware
+            One platform to track, assign, and audit Haoda Group's hardware
             and software assets across every department and location.
           </p>
         </div>
 
-        {/* Stats */}
-        <div className="login-stats">
-          <div>
-            <div className="login-stat-value">99.9%</div>
-            <div className="login-stat-label">Uptime SLA</div>
+        {/* What the platform actually does — real features, not stats */}
+        <div className="login-features">
+          <div className="login-feature">
+            <div className="login-feature-icon"><Boxes size={16} /></div>
+            <div className="login-feature-text">Centralized asset tracking, end to end</div>
           </div>
-          <div style={{ borderLeft: "1px solid rgba(255,255,255,0.1)", paddingLeft: 24 }}>
-            <div className="login-stat-value">50k+</div>
-            <div className="login-stat-label">Assets Tracked</div>
+          <div className="login-feature">
+            <div className="login-feature-icon"><ShieldCheck size={16} /></div>
+            <div className="login-feature-text">Two-factor secured admin access</div>
           </div>
-          <div style={{ borderLeft: "1px solid rgba(255,255,255,0.1)", paddingLeft: 24 }}>
-            <div className="login-stat-value">ISO</div>
-            <div className="login-stat-label">27001 Certified</div>
+          <div className="login-feature">
+            <div className="login-feature-icon"><KeyRound size={16} /></div>
+            <div className="login-feature-text">Role-based access for admins &amp; employees</div>
           </div>
         </div>
       </div>
@@ -206,7 +195,7 @@ export default function Login() {
             <div className="login-box-sub">
               {stage === "2fa"
                 ? `Enter the 6-digit code sent to ${maskedEmail}`
-                : "Sign in to your AssetTower account"}
+                : "Sign in to your Haoda Asset account"}
             </div>
           </div>
 
