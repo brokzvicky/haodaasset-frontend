@@ -1,17 +1,22 @@
 import React from "react";
 
-// Asset Status config — covers every possible status value
+// Asset Status config — covers every possible status value.
+// Colors are sourced from the --badge-* design tokens in index.css
+// (single source of truth, shared with the .badge-* utility classes)
+// where a token exists; a couple of statuses (Spare, Lost, Retired,
+// Disposed) don't map to a spec'd badge yet, so they keep their
+// existing bespoke values unchanged.
 const STATUS_CONFIG = {
-  Available:    { bg: "#dcfce7", color: "#16a34a", border: "#86efac", dot: "#16a34a" },
-  Assigned:     { bg: "#dbeafe", color: "#1d4ed8", border: "#93c5fd", dot: "#1d4ed8" },
+  Available:    { bg: "var(--badge-available-bg)", color: "var(--badge-available-fg)", border: "var(--badge-available-bd)", dot: "var(--badge-available-fg)" },
+  Assigned:     { bg: "var(--badge-assigned-bg)",  color: "var(--badge-assigned-fg)",  border: "var(--badge-assigned-bd)",  dot: "var(--badge-assigned-fg)" },
   Spare:        { bg: "#fef9c3", color: "#a16207", border: "#fde047", dot: "#a16207" },
-  "Under Repair": { bg: "#ffedd5", color: "#c2410c", border: "#fdba74", dot: "#c2410c" },
-  Faulty:       { bg: "#fee2e2", color: "#b91c1c", border: "#fca5a5", dot: "#b91c1c" },
+  "Under Repair": { bg: "var(--badge-maintenance-bg)", color: "var(--badge-maintenance-fg)", border: "var(--badge-maintenance-bd)", dot: "var(--badge-maintenance-fg)" },
+  Faulty:       { bg: "var(--badge-faulty-bg)", color: "var(--badge-faulty-fg)", border: "var(--badge-faulty-bd)", dot: "var(--badge-faulty-fg)" },
   Lost:         { bg: "#1e293b", color: "#e2e8f0", border: "#334155", dot: "#94a3b8" },
   Retired:      { bg: "#f1f5f9", color: "#475569", border: "#cbd5e1", dot: "#94a3b8" },
   Disposed:     { bg: "#f8fafc", color: "#64748b", border: "#e2e8f0", dot: "#94a3b8" },
   // Legacy
-  Maintenance:  { bg: "#ffedd5", color: "#c2410c", border: "#fdba74", dot: "#c2410c" },
+  Maintenance:  { bg: "var(--badge-maintenance-bg)", color: "var(--badge-maintenance-fg)", border: "var(--badge-maintenance-bd)", dot: "var(--badge-maintenance-fg)" },
 };
 
 // Asset Condition config

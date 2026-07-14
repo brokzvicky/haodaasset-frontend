@@ -1500,3 +1500,262 @@ select:focus-visible, textarea:focus-visible, [tabindex]:focus-visible {
     transform: none !important;
   }
 }
+
+/* ════════════════════════════════════════════════════════════════════
+   ✦ PHASE 1 — ENTERPRISE DESIGN SYSTEM FOUNDATION ✦
+   Pure additions: new tokens + reusable classes for Phase 2 to consume.
+   Nothing above this line was changed, no existing class was renamed,
+   and no page markup needs to change for the app to keep working
+   exactly as it does today.
+════════════════════════════════════════════════════════════════════ */
+
+:root {
+  /* ── Extended spacing (completes the 8px scale) ──────────────────── */
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* ── Named surface tokens (spec calls these out explicitly) ───────── */
+  --color-card-bg: #ffffff;
+  --color-page-bg: var(--gray-50);
+
+  /* ── Named shadow aliases matching the spec's vocabulary ──────────── */
+  --shadow-hover: var(--elev-3);
+  --shadow-modal: var(--elev-4);
+
+  /* ── Secondary accent palette — formalizes the ad hoc gradient/dot
+     colors already used across Dashboard, KPI strips, and quick
+     actions so future work pulls from one place instead of re-picking
+     hex values per page. ─────────────────────────────────────────── */
+  --accent-purple:       #7c3aed;
+  --accent-purple-bg:    #f5f3ff;
+  --accent-purple-light: #a78bfa;
+  --accent-teal:         #059669;
+  --accent-teal-bg:      #ecfdf5;
+  --accent-teal-light:   #34d399;
+  --accent-orange:       #ea580c;
+  --accent-orange-bg:    #fff7ed;
+  --accent-orange-light: #fb923c;
+  --accent-amber:        #d97706;
+  --accent-amber-bg:     #fffbeb;
+  --accent-amber-light:  #fbbf24;
+
+  /* ── Badge tokens — one place for every status/role chip color,
+     mirrors the STATUS_CONFIG duplicated today in StatusPill.js and
+     re-declared ad hoc on Dashboard/Assets/Employees. ──────────────── */
+  --badge-available-bg: #dcfce7;  --badge-available-fg: #16a34a;  --badge-available-bd: #86efac;
+  --badge-assigned-bg:  #dbeafe;  --badge-assigned-fg:  #1d4ed8;  --badge-assigned-bd:  #93c5fd;
+  --badge-returned-bg:  #e0f2fe;  --badge-returned-fg:  #0369a1;  --badge-returned-bd:  #7dd3fc;
+  --badge-faulty-bg:    #fee2e2;  --badge-faulty-fg:    #b91c1c;  --badge-faulty-bd:    #fca5a5;
+  --badge-maintenance-bg: #ffedd5; --badge-maintenance-fg: #c2410c; --badge-maintenance-bd: #fdba74;
+  --badge-admin-bg:     #f5f3ff;  --badge-admin-fg:     #6d28d9;  --badge-admin-bd:     #c4b5fd;
+  --badge-employee-bg:  #eff6ff;  --badge-employee-fg:  #1d4ed8;  --badge-employee-bd:  #bfdbfe;
+  --badge-success-bg:   var(--success-bg); --badge-success-fg: var(--success); --badge-success-bd: var(--success-border);
+  --badge-warning-bg:   var(--warning-bg); --badge-warning-fg: var(--warning); --badge-warning-bd: var(--warning-border);
+}
+
+/* ── 1. TYPOGRAPHY SCALE ─────────────────────────────────────────────
+   Utility classes for the eight styles called out in the spec.
+   Apply directly to any heading/paragraph element. */
+.text-display  { font-size: 40px; font-weight: 800; line-height: 1.1;  letter-spacing: -0.03em; color: var(--gray-900); }
+.text-h1       { font-size: 28px; font-weight: 800; line-height: 1.2;  letter-spacing: -0.02em; color: var(--gray-900); }
+.text-h2       { font-size: 22px; font-weight: 700; line-height: 1.25; letter-spacing: -0.01em; color: var(--gray-900); }
+.text-h3       { font-size: 17px; font-weight: 700; line-height: 1.3;  color: var(--gray-900); }
+.text-subtitle { font-size: 14px; font-weight: 600; line-height: 1.4;  color: var(--gray-600); }
+.text-body     { font-size: 14px; font-weight: 400; line-height: 1.6;  color: var(--gray-700); }
+.text-small    { font-size: 12.5px; font-weight: 500; line-height: 1.5; color: var(--gray-500); }
+.text-caption  { font-size: 11px;  font-weight: 600; line-height: 1.4; letter-spacing: 0.03em; text-transform: uppercase; color: var(--gray-400); }
+
+/* ── 6. BUTTON SYSTEM — remaining variants ────────────────────────── */
+.btn-outline {
+  background: transparent; color: var(--primary); border-color: var(--primary-200);
+}
+.btn-outline:hover { background: var(--primary-50); border-color: var(--primary); }
+.btn-outline:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.btn-ghost {
+  background: transparent; color: var(--gray-600); border-color: transparent;
+}
+.btn-ghost:hover { background: var(--gray-100); color: var(--gray-800); }
+.btn-ghost:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.btn-loading {
+  position: relative; color: transparent !important; pointer-events: none;
+}
+.btn-loading::after {
+  content: ''; position: absolute; width: 15px; height: 15px; border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.4); border-top-color: #fff;
+  animation: ringSpin 0.65s linear infinite;
+}
+.btn-secondary.btn-loading::after, .btn-outline.btn-loading::after, .btn-ghost.btn-loading::after {
+  border: 2px solid var(--gray-200); border-top-color: var(--primary);
+}
+
+/* ── 7. INPUT SYSTEM — search & textarea ──────────────────────────── */
+.input-search-wrap { position: relative; display: flex; align-items: center; }
+.input-search-wrap .input { padding-left: 34px; }
+.input-search-icon {
+  position: absolute; left: 11px; color: var(--gray-400);
+  display: flex; align-items: center; justify-content: center; pointer-events: none;
+}
+.input-textarea { height: auto; min-height: 84px; padding: 9px 11px; resize: vertical; line-height: 1.5; }
+
+/* ── 8. CARD SYSTEM — remaining variants ──────────────────────────── */
+.card-glass {
+  background: rgba(255,255,255,0.6);
+  backdrop-filter: blur(14px);
+  border: 1px solid rgba(255,255,255,0.4);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--elev-2);
+}
+.card-info {
+  background: var(--primary-50); border: 1px solid var(--primary-100);
+  border-radius: var(--radius-lg); padding: var(--space-4);
+}
+.card-action {
+  background: #fff; border: 1.5px solid var(--gray-100); border-radius: var(--radius-lg);
+  padding: var(--space-4); cursor: pointer; transition: all 0.16s ease;
+}
+.card-action:hover { border-color: var(--primary-200); box-shadow: var(--shadow-hover); transform: translateY(-2px); }
+
+/* ── 9. BADGES — role/status chips beyond the .pill-* status set ──── */
+.badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 10px; border-radius: 20px; font-size: 11.5px; font-weight: 600;
+  white-space: nowrap; border: 1px solid transparent;
+}
+.badge-available   { background: var(--badge-available-bg);   color: var(--badge-available-fg);   border-color: var(--badge-available-bd); }
+.badge-assigned     { background: var(--badge-assigned-bg);    color: var(--badge-assigned-fg);    border-color: var(--badge-assigned-bd); }
+.badge-returned     { background: var(--badge-returned-bg);    color: var(--badge-returned-fg);    border-color: var(--badge-returned-bd); }
+.badge-faulty       { background: var(--badge-faulty-bg);      color: var(--badge-faulty-fg);      border-color: var(--badge-faulty-bd); }
+.badge-maintenance  { background: var(--badge-maintenance-bg); color: var(--badge-maintenance-fg); border-color: var(--badge-maintenance-bd); }
+.badge-admin        { background: var(--badge-admin-bg);       color: var(--badge-admin-fg);       border-color: var(--badge-admin-bd); }
+.badge-employee     { background: var(--badge-employee-bg);    color: var(--badge-employee-fg);    border-color: var(--badge-employee-bd); }
+.badge-success      { background: var(--badge-success-bg);     color: var(--badge-success-fg);     border-color: var(--badge-success-bd); }
+.badge-warning      { background: var(--badge-warning-bg);     color: var(--badge-warning-fg);     border-color: var(--badge-warning-bd); }
+
+/* ── 12. TOAST — class-based structure (Phase 2 can drop the inline
+   style objects in Toast.js in favor of these) ───────────────────── */
+.toast {
+  display: flex; align-items: center; gap: 12px;
+  background: #fff; border-radius: var(--radius-md);
+  padding: 12px 16px; min-width: 280px; max-width: 380px;
+  box-shadow: var(--shadow-modal);
+  border-left: 4px solid var(--toast-accent, var(--primary));
+  animation: slideRight 0.25s ease;
+}
+.toast-success { --toast-accent: var(--success); }
+.toast-error   { --toast-accent: var(--danger); }
+.toast-warning { --toast-accent: var(--warning); }
+.toast-info    { --toast-accent: var(--info); }
+.toast-icon {
+  width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0;
+  background: var(--toast-accent, var(--primary)); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700;
+}
+.toast-message { font-size: 13.5px; color: var(--gray-800); font-weight: 500; }
+
+/* ── 13. LOADING BUTTON — spinner sized for inline use in a .btn ──── */
+.spinner-inline {
+  width: 15px; height: 15px; border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.35); border-top-color: currentColor;
+  animation: ringSpin 0.65s linear infinite; display: inline-block;
+}
+
+/* ── 17. RESPONSIVE — named breakpoints for reference
+   Desktop  : > 1200px  (default)
+   Laptop   : 901px – 1200px
+   Tablet   : 481px – 900px
+   Mobile   : ≤ 480px
+   These match the breakpoints already used throughout this file. ─── */
+
+/* ════════════════════════════════════════════════════════════════════
+   ✦ PHASE 2 — SIDEBAR, HEADER & DASHBOARD ✦
+   Additive only: new classes + states layered on top of the Phase 1
+   tokens and the existing sidebar/topbar rules above. No existing
+   selector's behavior changes for anyone who doesn't opt into the new
+   props (collapsed, breadcrumb, etc).
+════════════════════════════════════════════════════════════════════ */
+
+/* ── Collapsible sidebar ─────────────────────────────────────────── */
+:root { --sidebar-width-collapsed: 74px; }
+
+.sidebar {
+  transition: width 0.22s cubic-bezier(0.22,1,0.36,1);
+}
+.sidebar.sidebar-collapsed { width: var(--sidebar-width-collapsed); }
+
+.app-main { transition: margin-left 0.22s cubic-bezier(0.22,1,0.36,1); }
+.app-shell-collapsed .app-main { margin-left: var(--sidebar-width-collapsed); }
+
+.sidebar-logo { position: relative; }
+.sidebar-collapse-btn {
+  width: 22px; height: 22px; border-radius: 6px; flex-shrink: 0;
+  margin-left: auto;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08);
+  color: rgba(255,255,255,0.55); cursor: pointer;
+  transition: all 0.15s ease;
+}
+.sidebar-collapse-btn:hover { background: rgba(255,255,255,0.12); color: #fff; }
+.sidebar.sidebar-collapsed .sidebar-logo { justify-content: center; }
+.sidebar.sidebar-collapsed .sidebar-collapse-btn { margin-left: 0; }
+
+.sidebar.sidebar-collapsed .sidebar-item { justify-content: center; padding: 9px; position: relative; }
+.sidebar.sidebar-collapsed .sidebar-item-badge { position: absolute; top: 4px; right: 4px; margin-left: 0; }
+.sidebar.sidebar-collapsed .sidebar-user { justify-content: center; }
+.sidebar.sidebar-collapsed .sidebar-logout { justify-content: center; padding: 9px; }
+.sidebar.sidebar-collapsed .sidebar-logout span { display: flex; }
+
+@media (max-width: 900px) {
+  /* Collapse is a desktop affordance; mobile keeps the existing slide-over sidebar untouched */
+  .sidebar.sidebar-collapsed { width: var(--sidebar-width); }
+  .app-shell-collapsed .app-main { margin-left: 0; }
+  .sidebar-collapse-btn { display: none; }
+}
+
+/* ── Breadcrumb ───────────────────────────────────────────────────── */
+.breadcrumb {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 11px; font-weight: 600; color: var(--gray-400);
+  margin-bottom: 2px; text-transform: uppercase; letter-spacing: 0.04em;
+}
+.breadcrumb-sep { color: var(--gray-300); }
+.breadcrumb-current { color: var(--primary); }
+
+/* ── Topbar user block (avatar + name + role) ────────────────────── */
+.topbar-user {
+  display: flex; align-items: center; gap: 9px; cursor: default;
+  padding: 3px 8px 3px 3px; border-radius: 10px;
+  transition: background 0.15s ease;
+}
+.topbar-user:hover { background: var(--gray-50); }
+.topbar-user-info { display: flex; flex-direction: column; line-height: 1.25; }
+.topbar-user-name { font-size: 12.5px; font-weight: 700; color: var(--gray-800); white-space: nowrap; }
+.topbar-user-role { font-size: 10.5px; color: var(--gray-400); font-weight: 600; }
+
+@media (max-width: 1024px) {
+  .topbar-user-info { display: none; }
+  .topbar-user { padding: 0; }
+}
+
+/* ── Activity timeline connector ──────────────────────────────────── */
+.activity-timeline { position: relative; }
+.activity-timeline .activity-item { position: relative; padding-left: 2px; }
+.activity-timeline .activity-icon { position: relative; z-index: 1; }
+.activity-timeline .activity-item:not(:last-child)::before {
+  content: '';
+  position: absolute;
+  left: 15px; top: 34px; bottom: -12px;
+  width: 1.5px;
+  background: var(--gray-100);
+}
+
+/* ── Skeleton KPI value (used while dashboard data loads) ─────────── */
+.kpi-vivid-value-skeleton {
+  width: 46px; height: 26px; border-radius: 6px;
+  margin-bottom: 6px;
+  background-image: linear-gradient(90deg, rgba(255,255,255,0.18) 25%, rgba(255,255,255,0.38) 37%, rgba(255,255,255,0.18) 63%);
+  background-size: 400% 100%;
+  animation: shimmer 1.4s ease infinite;
+}

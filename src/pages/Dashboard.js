@@ -3,6 +3,7 @@ import axios from "axios";
 import { useNavigate, Link } from "react-router-dom";
 import Layout from "../components/Layout";
 import { StatusPieChart, AssetTypeBarChart } from "../components/DashboardChart";
+import StatusPill from "../components/StatusPill";
 import { useAuth } from "../context/AuthContext";
 import "./Dashboard.css";
 
@@ -35,7 +36,9 @@ function KpiCard({ icon, label, value, sub, gradient, glow, onClick, badge }) {
           <span className="kpi-vivid-active-badge" style={{ marginTop: 0 }}>{badge}</span>
         )}
       </div>
-      <div className="kpi-vivid-value">{value}</div>
+      {value === null || value === undefined
+        ? <div className="kpi-vivid-value-skeleton" />
+        : <div className="kpi-vivid-value">{value}</div>}
       <div className="kpi-vivid-label">{label}</div>
       {sub && <div style={{ fontSize: 11, color: "rgba(255,255,255,0.7)", marginTop: 4 }}>{sub}</div>}
     </div>
@@ -175,10 +178,18 @@ export default function Dashboard() {
     return events.filter((e) => e.date).sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 6);
   }, [assets]);
 
+  const recentlyAssigned = useMemo(() => {
+    return assets
+      .filter((a) => a.assignedDate)
+      .slice()
+      .sort((a, b) => new Date(b.assignedDate) - new Date(a.assignedDate))
+      .slice(0, 6);
+  }, [assets]);
+
   const utilizationRate  = dashboard.totalAssets ? Math.round((dashboard.assignedAssets  / dashboard.totalAssets) * 100) : 0;
   const availabilityRate = dashboard.totalAssets ? Math.round((dashboard.availableAssets / dashboard.totalAssets) * 100) : 0;
 
-  const V = (v) => loading ? "—" : (v ?? 0);
+  const V = (v) => loading ? null : (v ?? 0);
 
   return (
     <Layout title="Dashboard" subtitle="Live overview of your IT inventory">
@@ -328,6 +339,57 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {/* Recently Assigned Assets */}
+      <div className="card" style={{ marginBottom: 20 }}>
+        <div className="card-header">
+          <div>
+            <div className="card-title">Recently Assigned Assets</div>
+            <div className="card-subtitle">Latest assignments across the fleet</div>
+          </div>
+          <button className="btn btn-secondary btn-sm" onClick={() => navigate("/assets")}>View All</button>
+        </div>
+        <div className="card-body" style={{ padding: 0 }}>
+          {loading ? (
+            <div style={{ padding: 20, display: "flex", flexDirection: "column", gap: 8 }}>
+              {[0, 1, 2].map((i) => <div key={i} className="skeleton skeleton-row" />)}
+            </div>
+          ) : recentlyAssigned.length === 0 ? (
+            <div className="empty-state" style={{ padding: "28px 0" }}>
+              <div className="empty-icon">📋</div>
+              <div className="empty-title">No assignments yet</div>
+              <div className="empty-sub">Assigned assets will show up here once you assign them.</div>
+            </div>
+          ) : (
+            <div className="table-wrap">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Employee</th>
+                    <th>Asset</th>
+                    <th>Date</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {recentlyAssigned.map((a) => (
+                    <tr key={a.assetId}>
+                      <td>{a.employeeName || "—"}</td>
+                      <td>{a.laptopName || a.assetType || "—"}</td>
+                      <td className="muted">{a.assignedDate}</td>
+                      <td><StatusPill status={a.assetStatus} /></td>
+                      <td>
+                        <button className="btn btn-secondary btn-sm" onClick={() => navigate("/assets")}>View</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* Bottom row */}
       <div className="grid-2">
         {/* Activity */}
@@ -339,7 +401,7 @@ export default function Dashboard() {
             </div>
             <button className="btn btn-secondary btn-sm" onClick={() => navigate("/assets")}>View All</button>
           </div>
-          <div className="card-body" style={{ padding: "6px 20px" }}>
+          <div className="card-body activity-timeline" style={{ padding: "6px 20px" }}>
             {recentActivity.length === 0 ? (
               <div className="empty-state" style={{ padding: "28px 0" }}>
                 <div className="empty-title">No activity yet</div>

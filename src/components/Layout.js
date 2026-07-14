@@ -90,6 +90,19 @@ function EmployeeNotificationButton() {
   );
 }
 
+const MoonIcon = () => (
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+  </svg>
+);
+
+const SunIcon = () => (
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="4"/>
+    <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>
+  </svg>
+);
+
 /* ── Layout ───────────────────────────────────────────────────── */
 export default function Layout({ title, subtitle, children, actions }) {
   const { user } = useAuth();
@@ -99,8 +112,20 @@ export default function Layout({ title, subtitle, children, actions }) {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [searchText, setSearchText]       = useState("");
   const [helpOpen, setHelpOpen]           = useState(false);
+  const [collapsed, setCollapsed] = useState(() => {
+    try { return localStorage.getItem("sidebarCollapsed") === "1"; } catch { return false; }
+  });
+  const [darkMode, setDarkMode] = useState(false);
 
   useEffect(() => { setMobileNavOpen(false); }, [location.pathname]);
+
+  const toggleCollapsed = () => {
+    setCollapsed((v) => {
+      const next = !v;
+      try { localStorage.setItem("sidebarCollapsed", next ? "1" : "0"); } catch {}
+      return next;
+    });
+  };
 
   const now = new Date();
   const greeting =
@@ -115,9 +140,14 @@ export default function Layout({ title, subtitle, children, actions }) {
   };
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell ${collapsed ? "app-shell-collapsed" : ""}`}>
       <a href="#main-content" className="skip-link">Skip to main content</a>
-      <Sidebar open={mobileNavOpen} onClose={() => setMobileNavOpen(false)} />
+      <Sidebar
+        open={mobileNavOpen}
+        onClose={() => setMobileNavOpen(false)}
+        collapsed={collapsed}
+        onToggleCollapse={toggleCollapsed}
+      />
 
       <div className="app-main">
         <header className="topbar">
@@ -132,6 +162,11 @@ export default function Layout({ title, subtitle, children, actions }) {
           </button>
 
           <div className="topbar-title">
+            <div className="breadcrumb" aria-label="Breadcrumb">
+              <span className="breadcrumb-item">{isAdmin ? "Admin" : "My Workspace"}</span>
+              <span className="breadcrumb-sep">/</span>
+              <span className="breadcrumb-item breadcrumb-current">{title}</span>
+            </div>
             <div className="topbar-page">{title}</div>
             {subtitle && <div className="topbar-sub">{subtitle}</div>}
           </div>
@@ -183,13 +218,26 @@ export default function Layout({ title, subtitle, children, actions }) {
               {helpOpen && <HelpPopover onClose={() => setHelpOpen(false)} />}
             </div>
 
-            {/* Avatar */}
-            <div
-              className="topbar-avatar"
-              title={`${greeting}, ${user?.name}`}
-              style={{ background: avatarBg(user?.name) }}
+            {/* Dark mode toggle (UI only) */}
+            <button
+              className="topbar-btn"
+              title={darkMode ? "Switch to light mode" : "Switch to dark mode"}
+              aria-label="Toggle dark mode"
+              aria-pressed={darkMode}
+              onClick={() => setDarkMode((v) => !v)}
             >
-              {initials(user?.name)}
+              {darkMode ? <SunIcon /> : <MoonIcon />}
+            </button>
+
+            {/* Avatar + role */}
+            <div className="topbar-user" title={`${greeting}, ${user?.name}`}>
+              <div className="topbar-avatar" style={{ background: avatarBg(user?.name) }}>
+                {initials(user?.name)}
+              </div>
+              <div className="topbar-user-info">
+                <div className="topbar-user-name">{user?.name || "User"}</div>
+                <div className="topbar-user-role">{isAdmin ? "Administrator" : "Employee"}</div>
+              </div>
             </div>
           </div>
         </header>

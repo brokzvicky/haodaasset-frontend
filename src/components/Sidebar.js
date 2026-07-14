@@ -57,7 +57,7 @@ function initials(name) {
   return (name || "U").split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2);
 }
 
-export default function Sidebar({ open = false, onClose }) {
+export default function Sidebar({ open = false, onClose, collapsed = false, onToggleCollapse }) {
   const { user, logout } = useAuth();
   const location  = useLocation();
   const navigate  = useNavigate();
@@ -73,7 +73,7 @@ export default function Sidebar({ open = false, onClose }) {
 
   return (
     <>
-      <aside className={`sidebar ${open ? "sidebar-open" : ""}`} aria-label="Main navigation">
+      <aside className={`sidebar ${open ? "sidebar-open" : ""} ${collapsed ? "sidebar-collapsed" : ""}`} aria-label="Main navigation">
         <div className="sidebar-logo">
   <div
     className="sidebar-logo-icon"
@@ -94,16 +94,33 @@ export default function Sidebar({ open = false, onClose }) {
     />
   </div>
 
-  <div className="sidebar-logo-text">
-    <div className="sidebar-logo-name">Haoda Asset</div>
-    <div className="sidebar-logo-sub">IT Asset Management</div>
-  </div>
+  {!collapsed && (
+    <div className="sidebar-logo-text">
+      <div className="sidebar-logo-name">Haoda Asset</div>
+      <div className="sidebar-logo-sub">IT Asset Management</div>
+    </div>
+  )}
+
+  {onToggleCollapse && (
+    <button
+      type="button"
+      className="sidebar-collapse-btn"
+      onClick={onToggleCollapse}
+      title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+      aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+      aria-pressed={collapsed}
+    >
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ transform: collapsed ? "rotate(180deg)" : "none", transition: "transform 0.2s ease" }}>
+        <polyline points="15 18 9 12 15 6" />
+      </svg>
+    </button>
+  )}
 </div>
 
         <nav className="sidebar-nav">
           {sections.map((section) => (
             <React.Fragment key={section}>
-              <div className="sidebar-section-label">{section}</div>
+              {!collapsed && <div className="sidebar-section-label">{section}</div>}
               {nav.filter((n) => n.section === section).map((item) => {
                 const active =
                   location.pathname === item.to ||
@@ -116,15 +133,16 @@ export default function Sidebar({ open = false, onClose }) {
                     className={`sidebar-item ${active ? "active" : ""}`}
                     onClick={handleNavClick}
                     aria-current={active ? "page" : undefined}
+                    title={collapsed ? item.label : undefined}
                   >
                     <span className="sidebar-item-icon" aria-hidden="true">
                       {item.icon === "networkCredentials"
                         ? <ShieldCheck size={16} strokeWidth={1.9} />
                         : Ico[item.icon]}
                     </span>
-                    {item.label}
+                    {!collapsed && item.label}
                     {item.to === "/asset-requests" && unread > 0 && (
-                      <span className="sidebar-item-badge">{unread > 9 ? "9+" : unread}</span>
+                      <span className="sidebar-item-badge">{collapsed ? "" : (unread > 9 ? "9+" : unread)}</span>
                     )}
                   </Link>
                 );
@@ -134,17 +152,19 @@ export default function Sidebar({ open = false, onClose }) {
         </nav>
 
         <div className="sidebar-footer">
-          <div className="sidebar-user">
+          <div className="sidebar-user" title={collapsed ? (user?.name || "User") : undefined}>
             <div className="sidebar-avatar" style={{ background: avatarColor(user?.name) }}>
               {initials(user?.name)}
             </div>
-            <div className="sidebar-user-info">
-              <div className="sidebar-user-name">{user?.name || "User"}</div>
-              <div className="sidebar-user-role">{user?.role === "admin" ? "Administrator" : user?.id || "Employee"}</div>
-            </div>
+            {!collapsed && (
+              <div className="sidebar-user-info">
+                <div className="sidebar-user-name">{user?.name || "User"}</div>
+                <div className="sidebar-user-role">{user?.role === "admin" ? "Administrator" : user?.id || "Employee"}</div>
+              </div>
+            )}
           </div>
-          <button className="sidebar-logout" onClick={handleLogout}>
-            <span aria-hidden="true">{Ico.logout}</span> Sign Out
+          <button className="sidebar-logout" onClick={handleLogout} title={collapsed ? "Sign Out" : undefined}>
+            <span aria-hidden="true">{Ico.logout}</span> {!collapsed && "Sign Out"}
           </button>
         </div>
       </aside>
