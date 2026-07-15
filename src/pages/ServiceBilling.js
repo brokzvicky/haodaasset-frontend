@@ -241,7 +241,6 @@ export default function ServiceBilling() {
         const extracted = r.data || {};
         setForm((f) => {
           const next = { ...f };
-          let filledAny = false;
           for (const [sourceKey, targetKey] of Object.entries(AUTOFILL_TARGET_FIELDS)) {
             const value = extracted[sourceKey];
             const hasValue = value !== null && value !== undefined && String(value).trim() !== "";
@@ -249,7 +248,6 @@ export default function ServiceBilling() {
             // Never overwrite a value the admin already entered manually.
             if (hasValue && fieldIsEmpty) {
               next[targetKey] = String(value);
-              filledAny = true;
             }
           }
           return next;
