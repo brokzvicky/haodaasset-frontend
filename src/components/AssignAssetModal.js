@@ -16,12 +16,23 @@ export default function AssignAssetModal({
   const [assigning, setAssigning] = useState(false);
   const [error, setError] = useState("");
 
+  const [assignmentType, setAssignmentType] = useState("Permanent");
+  const [temporaryReason, setTemporaryReason] = useState("");
+  const [temporaryDurationDays, setTemporaryDurationDays] = useState("2");
+  const [customDurationDays, setCustomDurationDays] = useState("");
+  const [oldAssetIssues, setOldAssetIssues] = useState("");
+
   useEffect(() => {
     if (!open) return;
 
     setLoading(true);
     setError("");
     setSelectedAsset("");
+    setAssignmentType("Permanent");
+    setTemporaryReason("");
+    setTemporaryDurationDays("2");
+    setCustomDurationDays("");
+    setOldAssetIssues("");
 
     axios
       .get(`${API}/assets/available`)
@@ -37,10 +48,23 @@ export default function AssignAssetModal({
 
   if (!open || !request) return null;
 
+  const effectiveDurationDays =
+    temporaryDurationDays === "custom" ? Number(customDurationDays) : Number(temporaryDurationDays);
+
   const assignAsset = async () => {
     if (!selectedAsset) {
       setError("Please select an asset.");
       return;
+    }
+    if (assignmentType === "Temporary") {
+      if (!temporaryReason.trim()) {
+        setError("Please provide a reason for the temporary assignment.");
+        return;
+      }
+      if (!effectiveDurationDays || effectiveDurationDays <= 0) {
+        setError("Please select a valid duration for the temporary assignment.");
+        return;
+      }
     }
 
     setAssigning(true);
@@ -53,6 +77,10 @@ export default function AssignAssetModal({
         employeeRole: request.employeeRole,
         location: request.location,
         remarks: request.reason,
+        assignmentType,
+        temporaryReason: assignmentType === "Temporary" ? temporaryReason.trim() : undefined,
+        temporaryDurationDays: assignmentType === "Temporary" ? effectiveDurationDays : undefined,
+        oldAssetIssues: oldAssetIssues.trim() || undefined,
       });
 
       onAssigned(selectedAsset);
@@ -122,12 +150,105 @@ export default function AssignAssetModal({
               </select>
             )}
 
-            {error && (
-              <div style={{ fontSize: 12.5, color: "var(--danger)", marginTop: 4 }}>
-                ⚠ {error}
+          </div>
+
+          <div className="form-group" style={{ marginTop: 18 }}>
+            <span className="modal-label">Assignment Type</span>
+            <div style={{ display: "flex", gap: 10 }}>
+              {["Permanent", "Temporary"].map((type) => (
+                <label
+                  key={type}
+                  style={{
+                    flex: 1,
+                    display: "flex", alignItems: "center", gap: 8,
+                    border: assignmentType === type ? "2px solid #1a56db" : "1.5px solid var(--gray-200)",
+                    borderRadius: 10, padding: "10px 14px",
+                    cursor: "pointer",
+                    background: assignmentType === type ? "#eff6ff" : "#fff",
+                    fontSize: 13, fontWeight: 700,
+                    color: assignmentType === type ? "#1a56db" : "var(--gray-700)",
+                  }}
+                >
+                  <input
+                    type="radio"
+                    name="assignmentTypeShared"
+                    value={type}
+                    checked={assignmentType === type}
+                    onChange={() => setAssignmentType(type)}
+                    style={{ accentColor: "#1a56db" }}
+                  />
+                  {type === "Permanent" ? "🔒 Permanent" : "⏳ Temporary"}
+                </label>
+              ))}
+            </div>
+
+            {assignmentType === "Temporary" && (
+              <div style={{
+                marginTop: 12, padding: "14px 16px",
+                background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 10,
+                display: "flex", flexDirection: "column", gap: 12,
+              }}>
+                <div className="form-group">
+                  <span className="modal-label">Reason for Temporary Assignment</span>
+                  <input
+                    className="input"
+                    placeholder="e.g. Employee's laptop is under repair"
+                    value={temporaryReason}
+                    onChange={(e) => setTemporaryReason(e.target.value)}
+                  />
+                </div>
+                <div className="form-group">
+                  <span className="modal-label">How long will the laptop be assigned?</span>
+                  <select
+                    className="form-select"
+                    value={temporaryDurationDays}
+                    onChange={(e) => setTemporaryDurationDays(e.target.value)}
+                  >
+                    <option value="1">1 day</option>
+                    <option value="2">2 days</option>
+                    <option value="3">3 days</option>
+                    <option value="7">7 days</option>
+                    <option value="14">14 days</option>
+                    <option value="30">30 days</option>
+                    <option value="custom">Custom…</option>
+                  </select>
+                  {temporaryDurationDays === "custom" && (
+                    <input
+                      className="input"
+                      type="number"
+                      min="1"
+                      style={{ marginTop: 8 }}
+                      placeholder="Number of days"
+                      value={customDurationDays}
+                      onChange={(e) => setCustomDurationDays(e.target.value)}
+                    />
+                  )}
+                  <div style={{ fontSize: 11.5, color: "var(--gray-500)", marginTop: 6 }}>
+                    An email reminder will automatically be sent once this period expires, asking for
+                    the laptop to be collected back.
+                  </div>
+                </div>
               </div>
             )}
           </div>
+
+          <div className="form-group" style={{ marginTop: 14 }}>
+            <span className="modal-label">Any issues with the old asset? (optional)</span>
+            <textarea
+              className="input"
+              rows={2}
+              style={{ resize: "vertical", width: "100%", boxSizing: "border-box", fontFamily: "inherit" }}
+              placeholder="e.g. Cracked screen, battery not holding charge, missing charger…"
+              value={oldAssetIssues}
+              onChange={(e) => setOldAssetIssues(e.target.value)}
+            />
+          </div>
+
+          {error && (
+            <div style={{ fontSize: 12.5, color: "var(--danger)", marginTop: 10 }}>
+              ⚠ {error}
+            </div>
+          )}
         </div>
 
         <div className="modal-footer">

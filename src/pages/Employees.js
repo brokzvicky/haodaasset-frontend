@@ -34,6 +34,15 @@ function AssignAssetModal({ employee, onClose, onSuccess }) {
   const [remarks, setRemarks] = useState("");
   const [assigning, setAssigning] = useState(false);
 
+  // Permanent vs Temporary assignment
+  const [assignmentType, setAssignmentType] = useState("Permanent");
+  const [temporaryReason, setTemporaryReason] = useState("");
+  const [temporaryDurationDays, setTemporaryDurationDays] = useState("2");
+  const [customDurationDays, setCustomDurationDays] = useState("");
+
+  // Old asset condition
+  const [oldAssetIssues, setOldAssetIssues] = useState("");
+
   useEffect(() => {
     setLoadingAssets(true);
     axios.get(`${API}/assets/available`)
@@ -54,6 +63,9 @@ function AssignAssetModal({ employee, onClose, onSuccess }) {
     );
   }, [availableAssets, assetSearch]);
   
+  const effectiveDurationDays =
+    temporaryDurationDays === "custom" ? Number(customDurationDays) : Number(temporaryDurationDays);
+
   const handleAssign = () => {
     if (!selectedAssetId) {
       toast("Please select an asset to assign.", "error");
@@ -63,6 +75,16 @@ function AssignAssetModal({ employee, onClose, onSuccess }) {
       toast("Assigned date is required.", "error");
       return;
     }
+    if (assignmentType === "Temporary") {
+      if (!temporaryReason.trim()) {
+        toast("Please provide a reason for the temporary assignment.", "error");
+        return;
+      }
+      if (!effectiveDurationDays || effectiveDurationDays <= 0) {
+        toast("Please select a valid duration for the temporary assignment.", "error");
+        return;
+      }
+    }
     setAssigning(true);
     axios.put(`${API}/assets/assign/${selectedAssetId}`, {
       employeeId: employee.employeeId,
@@ -71,6 +93,10 @@ function AssignAssetModal({ employee, onClose, onSuccess }) {
       location: employee.location || "",
       assignedDate,
       remarks,
+      assignmentType,
+      temporaryReason: assignmentType === "Temporary" ? temporaryReason.trim() : undefined,
+      temporaryDurationDays: assignmentType === "Temporary" ? effectiveDurationDays : undefined,
+      oldAssetIssues: oldAssetIssues.trim() || undefined,
     })
       .then(() => {
         toast("Asset assigned successfully.", "success");
@@ -259,6 +285,104 @@ function AssignAssetModal({ employee, onClose, onSuccess }) {
                 onChange={(e) => setRemarks(e.target.value)}
               />
             </div>
+          </div>
+
+          {/* Assignment Type: Permanent vs Temporary */}
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "var(--gray-700)", marginBottom: 10 }}>
+              Assignment Type *
+            </div>
+            <div style={{ display: "flex", gap: 10 }}>
+              {["Permanent", "Temporary"].map((type) => (
+                <label
+                  key={type}
+                  style={{
+                    flex: 1,
+                    display: "flex", alignItems: "center", gap: 8,
+                    border: assignmentType === type ? "2px solid #1a56db" : "1.5px solid var(--gray-200)",
+                    borderRadius: 10, padding: "10px 14px",
+                    cursor: "pointer",
+                    background: assignmentType === type ? "#eff6ff" : "#fff",
+                    fontSize: 13, fontWeight: 700,
+                    color: assignmentType === type ? "#1a56db" : "var(--gray-700)",
+                  }}
+                >
+                  <input
+                    type="radio"
+                    name="assignmentType"
+                    value={type}
+                    checked={assignmentType === type}
+                    onChange={() => setAssignmentType(type)}
+                    style={{ accentColor: "#1a56db" }}
+                  />
+                  {type === "Permanent" ? "🔒 Permanent" : "⏳ Temporary"}
+                </label>
+              ))}
+            </div>
+
+            {assignmentType === "Temporary" && (
+              <div style={{
+                marginTop: 12, padding: "14px 16px",
+                background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 10,
+                display: "flex", flexDirection: "column", gap: 12,
+              }}>
+                <div className="field" style={{ margin: 0 }}>
+                  <label className="field-label">Reason for Temporary Assignment *</label>
+                  <input
+                    className="input"
+                    placeholder="e.g. Employee's laptop is under repair"
+                    value={temporaryReason}
+                    onChange={(e) => setTemporaryReason(e.target.value)}
+                  />
+                </div>
+                <div className="field" style={{ margin: 0 }}>
+                  <label className="field-label">How long will the laptop be assigned? *</label>
+                  <select
+                    className="form-select"
+                    value={temporaryDurationDays}
+                    onChange={(e) => setTemporaryDurationDays(e.target.value)}
+                  >
+                    <option value="1">1 day</option>
+                    <option value="2">2 days</option>
+                    <option value="3">3 days</option>
+                    <option value="7">7 days</option>
+                    <option value="14">14 days</option>
+                    <option value="30">30 days</option>
+                    <option value="custom">Custom…</option>
+                  </select>
+                  {temporaryDurationDays === "custom" && (
+                    <input
+                      className="input"
+                      type="number"
+                      min="1"
+                      style={{ marginTop: 8 }}
+                      placeholder="Number of days"
+                      value={customDurationDays}
+                      onChange={(e) => setCustomDurationDays(e.target.value)}
+                    />
+                  )}
+                  <div style={{ fontSize: 11.5, color: "var(--gray-500)", marginTop: 6 }}>
+                    An email reminder will automatically be sent once this period expires, asking for
+                    the laptop to be collected back.
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Old Asset Condition */}
+          <div className="field" style={{ margin: 0 }}>
+            <label className="field-label">
+              Any issues with the old asset? <span style={{ fontWeight: 400, color: "var(--gray-400)" }}>(optional)</span>
+            </label>
+            <textarea
+              className="input"
+              rows={2}
+              style={{ resize: "vertical", width: "100%", boxSizing: "border-box", fontFamily: "inherit" }}
+              placeholder="e.g. Cracked screen, battery not holding charge, missing charger…"
+              value={oldAssetIssues}
+              onChange={(e) => setOldAssetIssues(e.target.value)}
+            />
           </div>
         </div>
 

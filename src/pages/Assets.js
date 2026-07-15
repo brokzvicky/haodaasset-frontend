@@ -261,15 +261,49 @@ const AssetDetailDrawer = ({ asset, onClose, onEdit }) => {
           <div className="asset-drawer-section">
             <div className="asset-drawer-section-title">Assignment</div>
             {asset.employeeName ? (
-              <div className="asset-drawer-assignee">
-                <div className="asset-drawer-avatar">{getInitials(asset.employeeName)}</div>
-                <div>
-                  <div className="asset-drawer-assignee-name">{asset.employeeName}</div>
-                  <div className="asset-drawer-assignee-meta">
-                    {asset.employeeRole || "Employee"}{asset.employeeId ? ` · ${asset.employeeId}` : ""}
+              <>
+                <div className="asset-drawer-assignee">
+                  <div className="asset-drawer-avatar">{getInitials(asset.employeeName)}</div>
+                  <div>
+                    <div className="asset-drawer-assignee-name">{asset.employeeName}</div>
+                    <div className="asset-drawer-assignee-meta">
+                      {asset.employeeRole || "Employee"}{asset.employeeId ? ` · ${asset.employeeId}` : ""}
+                    </div>
                   </div>
                 </div>
-              </div>
+                <div className="asset-drawer-stat" style={{ marginTop: 12 }}>
+                  <div className="asset-drawer-stat-label">Assignment Type</div>
+                  <div className="asset-drawer-stat-value">
+                    {asset.assignmentType === "Temporary" ? "⏳ Temporary" : "🔒 Permanent"}
+                  </div>
+                </div>
+                {asset.assignmentType === "Temporary" && (
+                  <>
+                    <div className="asset-drawer-stat" style={{ marginTop: 8 }}>
+                      <div className="asset-drawer-stat-label">Reason</div>
+                      <div className="asset-drawer-stat-value">{asset.temporaryReason || "—"}</div>
+                    </div>
+                    <div className="asset-drawer-stat" style={{ marginTop: 8 }}>
+                      <div className="asset-drawer-stat-label">Duration / Return By</div>
+                      <div className="asset-drawer-stat-value">
+                        {asset.temporaryDurationDays ? `${asset.temporaryDurationDays} day(s)` : "—"}
+                        {asset.temporaryExpiryDate ? ` · due ${formatDate(asset.temporaryExpiryDate)}` : ""}
+                        {asset.temporaryReturnReminderSent === "Yes" && (
+                          <span className="asset-drawer-tl-badge" style={{ marginLeft: 8, background: "#fee2e2", color: "#b91c1c" }}>
+                            Expired — reminder sent
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </>
+                )}
+                {asset.oldAssetIssues && (
+                  <div className="asset-drawer-stat" style={{ marginTop: 8 }}>
+                    <div className="asset-drawer-stat-label">Issues Noted with Old Asset</div>
+                    <div className="asset-drawer-stat-value">{asset.oldAssetIssues}</div>
+                  </div>
+                )}
+              </>
             ) : (
               <div className="asset-drawer-empty">Not currently assigned to anyone.</div>
             )}
