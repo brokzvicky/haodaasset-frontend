@@ -18,6 +18,29 @@ const EMPTY_FORM = {
   billingFromDate: "", billingToDate: "",
   amount: "", paymentDate: "", dueDate: "",
   status: "Pending", remarks: "",
+  // Invoice PDF Auto-Fill fields — populated from an uploaded invoice when
+  // confidently detected, otherwise left blank for manual entry.
+  invoiceNumber: "", invoiceDate: "", gstAmount: "", totalAmount: "",
+  currency: "", invoiceReference: "", serviceDetails: "",
+};
+
+// Fields that Invoice PDF Auto-Fill is allowed to populate. Any field not
+// already filled in by the admin gets overwritten with the extracted value;
+// anything the admin already typed is always left alone (Requirement 5).
+const AUTOFILL_TARGET_FIELDS = {
+  vendorName: "vendor",
+  serviceProvider: "service",
+  invoiceNumber: "invoiceNumber",
+  invoiceDate: "invoiceDate",
+  billingFromDate: "billingFromDate",
+  billingToDate: "billingToDate",
+  amount: "amount",
+  gstAmount: "gstAmount",
+  totalAmount: "totalAmount",
+  currency: "currency",
+  dueDate: "dueDate",
+  invoiceReference: "invoiceReference",
+  description: "serviceDetails",
 };
 
 const EMPTY_FILTERS = {
@@ -94,6 +117,7 @@ export default function ServiceBilling() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [invoiceFile, setInvoiceFile] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [extractingInvoice, setExtractingInvoice] = useState(false);
 
   const [searchText, setSearchText] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
@@ -166,6 +190,13 @@ export default function ServiceBilling() {
       dueDate: payment.dueDate || "",
       status: payment.status || "Pending",
       remarks: payment.remarks || "",
+      invoiceNumber: payment.invoiceNumber || "",
+      invoiceDate: payment.invoiceDate || "",
+      gstAmount: payment.gstAmount != null ? String(payment.gstAmount) : "",
+      totalAmount: payment.totalAmount != null ? String(payment.totalAmount) : "",
+      currency: payment.currency || "",
+      invoiceReference: payment.invoiceReference || "",
+      serviceDetails: payment.serviceDetails || "",
     });
     setInvoiceFile(null);
     setShowForm(true);
@@ -187,6 +218,59 @@ export default function ServiceBilling() {
   };
 
   const cancelForm = () => { setShowForm(false); resetForm(); };
+
+  // ── Invoice PDF Auto-Fill ────────────────────────────────────────
+  // Reads the uploaded invoice via the backend and fills in only the
+  // fields it could confidently identify — fields it can't read stay
+  // blank for manual entry, and anything the admin already typed is
+  // never touched. Also attaches the file as this record's invoice.
+  const handleInvoiceUpload = (file) => {
+    if (!file) return;
+    if (file.type !== "application/pdf") {
+      toast("Only PDF files are allowed for the invoice.", "error");
+      return;
+    }
+    setInvoiceFile(file);
+
+    const data = new FormData();
+    data.append("invoiceFile", file);
+    setExtractingInvoice(true);
+    axios
+      .post(`${API}/api/admin/service-billing/extract-invoice`, data, { headers: authHeader() })
+      .then((r) => {
+        const extracted = r.data || {};
+        setForm((f) => {
+          const next = { ...f };
+          let filledAny = false;
+          for (const [sourceKey, targetKey] of Object.entries(AUTOFILL_TARGET_FIELDS)) {
+            const value = extracted[sourceKey];
+            const hasValue = value !== null && value !== undefined && String(value).trim() !== "";
+            const fieldIsEmpty = !String(next[targetKey] ?? "").trim();
+            // Never overwrite a value the admin already entered manually.
+            if (hasValue && fieldIsEmpty) {
+              next[targetKey] = String(value);
+              filledAny = true;
+            }
+          }
+          return next;
+        });
+        if (extracted.ocrUsed) {
+          toast("Scanned invoice detected — read using OCR. Please double-check the auto-filled values.", "info");
+        } else {
+          toast("Invoice details auto-filled where available. Please review before saving.", "success");
+        }
+      })
+      .catch((err) => {
+        // Extraction failing should never break the form — the admin can
+        // just fill everything in manually, and the file stays attached.
+        toast(
+          err.response?.data?.message ||
+            "Couldn't auto-read this invoice. You can still fill in the details manually.",
+          "error"
+        );
+      })
+      .finally(() => setExtractingInvoice(false));
+  };
 
   // ── Save (create or update) ─────────────────────────────────────
   const savePayment = () => {
@@ -243,6 +327,14 @@ export default function ServiceBilling() {
     data.append("status", form.status);
     data.append("remarks", form.remarks || "");
     if (invoiceFile) data.append("invoiceFile", invoiceFile);
+    // Invoice PDF Auto-Fill fields — all optional, only sent when present.
+    if (form.invoiceNumber) data.append("invoiceNumber", form.invoiceNumber.trim());
+    if (form.invoiceDate) data.append("invoiceDate", form.invoiceDate);
+    if (form.gstAmount !== "") data.append("gstAmount", form.gstAmount);
+    if (form.totalAmount !== "") data.append("totalAmount", form.totalAmount);
+    if (form.currency) data.append("currency", form.currency.trim());
+    if (form.invoiceReference) data.append("invoiceReference", form.invoiceReference.trim());
+    if (form.serviceDetails) data.append("serviceDetails", form.serviceDetails.trim());
 
     setSaving(true);
     const req = editingId
@@ -467,10 +559,48 @@ export default function ServiceBilling() {
             </div>
           </div>
           <div className="card-body">
+            <div className="form-section-label">Invoice Upload (Auto-Fill)</div>
+            <div
+              className="field"
+              style={{
+                marginBottom: 18, padding: "14px 16px", borderRadius: 10,
+                border: "1px dashed var(--gray-200)", background: "var(--gray-50, #fafafa)",
+              }}
+            >
+              <label className="field-label">Upload Invoice PDF</label>
+              <input
+                className="input"
+                type="file"
+                accept="application/pdf"
+                disabled={extractingInvoice}
+                onChange={(e) => handleInvoiceUpload(e.target.files?.[0] || null)}
+              />
+              {extractingInvoice && (
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 12, color: "var(--gray-500)", marginTop: 6 }}>
+                  <span style={{
+                    width: 13, height: 13, borderRadius: "50%",
+                    border: "2px solid var(--gray-200)", borderTopColor: "var(--primary, #2563eb)",
+                    animation: "spin 0.8s linear infinite", display: "inline-block",
+                  }} />
+                  Reading invoice and auto-filling fields…
+                </span>
+              )}
+              {!extractingInvoice && invoiceFile && (
+                <span style={{ fontSize: 11.5, color: "var(--gray-400)", display: "block", marginTop: 6 }}>
+                  {invoiceFile.name} — fields below were auto-filled where possible. Please review everything before saving.
+                </span>
+              )}
+              {!extractingInvoice && !invoiceFile && editingId && (
+                <span style={{ fontSize: 11.5, color: "var(--gray-400)", display: "block", marginTop: 6 }}>
+                  Leave empty to keep the existing invoice. Supports text-based and scanned (OCR) PDFs.
+                </span>
+              )}
+            </div>
+
             <div className="form-section-label">Service Details</div>
             <div className="form-grid">
               <div className="field">
-                <label className="field-label">Service *</label>
+                <label className="field-label">Service / Service Provider *</label>
                 <input
                   className="input" list="service-billing-services" {...field("service")}
                   placeholder="e.g. Internet / ISP" disabled={reAddMode}
@@ -480,7 +610,7 @@ export default function ServiceBilling() {
                 </datalist>
               </div>
               <div className="field">
-                <label className="field-label">Vendor *</label>
+                <label className="field-label">Vendor Name *</label>
                 <input className="input" {...field("vendor")} placeholder="e.g. Airtel Business" disabled={reAddMode} />
               </div>
             </div>
@@ -497,7 +627,40 @@ export default function ServiceBilling() {
               </div>
             </div>
 
+            <div className="form-section-label" style={{ marginTop: 18 }}>Invoice Details (optional — auto-filled where possible)</div>
+            <div className="form-grid">
+              <div className="field">
+                <label className="field-label">Invoice Number</label>
+                <input className="input" {...field("invoiceNumber")} placeholder="e.g. INV-2026-0451" />
+              </div>
+              <div className="field">
+                <label className="field-label">Invoice Date</label>
+                <input className="input" type="date" {...field("invoiceDate")} />
+              </div>
+              <div className="field">
+                <label className="field-label">Invoice Reference</label>
+                <input className="input" {...field("invoiceReference")} placeholder="e.g. PO-2026-118" />
+              </div>
+              <div className="field">
+                <label className="field-label">Currency</label>
+                <input className="input" {...field("currency")} placeholder="e.g. INR" />
+              </div>
+              <div className="field">
+                <label className="field-label">GST Amount</label>
+                <input className="input" type="number" min="0" step="0.01" {...field("gstAmount")} placeholder="0.00" />
+              </div>
+              <div className="field">
+                <label className="field-label">Total Amount (incl. GST)</label>
+                <input className="input" type="number" min="0" step="0.01" {...field("totalAmount")} placeholder="0.00" />
+              </div>
+              <div className="field" style={{ gridColumn: "span 3" }}>
+                <label className="field-label">Description / Service Details</label>
+                <input className="input" {...field("serviceDetails")} placeholder="What this invoice covers" />
+              </div>
+            </div>
+
             <div className="form-section-label" style={{ marginTop: 18 }}>Payment Details</div>
+
             <div className="form-grid">
               <div className="field">
                 <label className="field-label">Amount (₹) *</label>
@@ -517,21 +680,7 @@ export default function ServiceBilling() {
                   {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
                 </select>
               </div>
-              <div className="field">
-                <label className="field-label">Upload Invoice (PDF only)</label>
-                <input
-                  className="input"
-                  type="file"
-                  accept="application/pdf"
-                  onChange={(e) => setInvoiceFile(e.target.files?.[0] || null)}
-                />
-                {editingId && !invoiceFile && (
-                  <span style={{ fontSize: 11.5, color: "var(--gray-400)" }}>
-                    Leave empty to keep the existing invoice.
-                  </span>
-                )}
-              </div>
-              <div className="field" style={{ gridColumn: "span 3" }}>
+              <div className="field" style={{ gridColumn: "span 2" }}>
                 <label className="field-label">Remarks (optional)</label>
                 <input className="input" {...field("remarks")} placeholder="Any additional notes" />
               </div>
@@ -777,7 +926,49 @@ export default function ServiceBilling() {
                     {viewingPayment.invoicePath ? "Uploaded" : "Not uploaded"}
                   </div>
                 </div>
+                {viewingPayment.invoiceNumber && (
+                  <div>
+                    <div className="field-label">Invoice Number</div>
+                    <div style={{ fontWeight: 600, color: "var(--gray-900)" }}>{viewingPayment.invoiceNumber}</div>
+                  </div>
+                )}
+                {viewingPayment.invoiceDate && (
+                  <div>
+                    <div className="field-label">Invoice Date</div>
+                    <div style={{ fontWeight: 600, color: "var(--gray-900)" }}>{formatDate(viewingPayment.invoiceDate)}</div>
+                  </div>
+                )}
+                {viewingPayment.invoiceReference && (
+                  <div>
+                    <div className="field-label">Invoice Reference</div>
+                    <div style={{ fontWeight: 600, color: "var(--gray-900)" }}>{viewingPayment.invoiceReference}</div>
+                  </div>
+                )}
+                {viewingPayment.gstAmount != null && (
+                  <div>
+                    <div className="field-label">GST Amount</div>
+                    <div style={{ fontWeight: 600, color: "var(--gray-900)" }}>{formatCurrency(viewingPayment.gstAmount)}</div>
+                  </div>
+                )}
+                {viewingPayment.totalAmount != null && (
+                  <div>
+                    <div className="field-label">Total Amount</div>
+                    <div style={{ fontWeight: 700, color: "var(--gray-900)" }}>{formatCurrency(viewingPayment.totalAmount)}</div>
+                  </div>
+                )}
+                {viewingPayment.currency && (
+                  <div>
+                    <div className="field-label">Currency</div>
+                    <div style={{ fontWeight: 600, color: "var(--gray-900)" }}>{viewingPayment.currency}</div>
+                  </div>
+                )}
               </div>
+              {viewingPayment.serviceDetails && (
+                <div>
+                  <div className="field-label">Description / Service Details</div>
+                  <div style={{ color: "var(--gray-700)", marginTop: 4 }}>{viewingPayment.serviceDetails}</div>
+                </div>
+              )}
               {viewingPayment.remarks && (
                 <div>
                   <div className="field-label">Remarks</div>
