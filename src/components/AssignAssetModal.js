@@ -16,11 +16,19 @@ export default function AssignAssetModal({
   const [assigning, setAssigning] = useState(false);
   const [error, setError] = useState("");
 
-  const [assignmentType, setAssignmentType] = useState("Permanent");
+  // Starts unset — the admin must explicitly choose Permanent or Temporary,
+  // it's never silently defaulted.
+  const [assignmentType, setAssignmentType] = useState("");
   const [temporaryReason, setTemporaryReason] = useState("");
   const [temporaryDurationDays, setTemporaryDurationDays] = useState("2");
   const [customDurationDays, setCustomDurationDays] = useState("");
   const [oldAssetIssues, setOldAssetIssues] = useState("");
+
+  // "form" while filling in details, "emailChoice" once assigned, asking
+  // whether to send the notification email now or later.
+  const [stage, setStage] = useState("form");
+  const [assignedAssetName, setAssignedAssetName] = useState("");
+  const [sendingEmail, setSendingEmail] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -28,11 +36,13 @@ export default function AssignAssetModal({
     setLoading(true);
     setError("");
     setSelectedAsset("");
-    setAssignmentType("Permanent");
+    setAssignmentType("");
     setTemporaryReason("");
     setTemporaryDurationDays("2");
     setCustomDurationDays("");
     setOldAssetIssues("");
+    setStage("form");
+    setAssignedAssetName("");
 
     axios
       .get(`${API}/assets/available`)
@@ -56,6 +66,10 @@ export default function AssignAssetModal({
       setError("Please select an asset.");
       return;
     }
+    if (!assignmentType) {
+      setError("Please choose whether this is a Permanent or Temporary assignment.");
+      return;
+    }
     if (assignmentType === "Temporary") {
       if (!temporaryReason.trim()) {
         setError("Please provide a reason for the temporary assignment.");
@@ -71,6 +85,7 @@ export default function AssignAssetModal({
     setError("");
 
     try {
+      const asset = assets.find((a) => String(a.assetId) === String(selectedAsset));
       await axios.put(`${API}/assets/assign/${selectedAsset}`, {
         employeeId: request.employeeId,
         employeeName: request.employeeName,
@@ -83,13 +98,32 @@ export default function AssignAssetModal({
         oldAssetIssues: oldAssetIssues.trim() || undefined,
       });
 
-      onAssigned(selectedAsset);
+      setAssignedAssetName(asset?.laptopName || "The asset");
+      setStage("emailChoice"); // ask "send the assignment email now, or later?"
     } catch (err) {
       console.error(err);
       setError(err.response?.data?.message || "Unable to assign asset.");
     } finally {
       setAssigning(false);
     }
+  };
+
+  const handleSendEmailNow = async () => {
+    setSendingEmail(true);
+    try {
+      await axios.post(`${API}/assets/send-email/${selectedAsset}`);
+    } catch (err) {
+      console.error(err);
+      // Non-fatal: the assignment itself already succeeded; the email can be
+      // resent later from the Assets page if this fails.
+    } finally {
+      setSendingEmail(false);
+      onAssigned(selectedAsset);
+    }
+  };
+
+  const handleSendEmailLater = () => {
+    onAssigned(selectedAsset);
   };
 
   return (
@@ -100,6 +134,8 @@ export default function AssignAssetModal({
         </div>
 
         <div className="modal-body">
+        {stage === "form" ? (
+          <>
           <div className="modal-grid">
             <div className="modal-info-group">
               <span className="modal-label">Employee</span>
@@ -249,20 +285,44 @@ export default function AssignAssetModal({
               ⚠ {error}
             </div>
           )}
+          </>
+        ) : (
+          /* Email choice — shown right after a successful assignment */
+          <div style={{ textAlign: "center", padding: "24px 8px" }}>
+            <div style={{ fontSize: 40, marginBottom: 12 }}>✅</div>
+            <div style={{ fontSize: 16, fontWeight: 800, color: "var(--gray-900)", marginBottom: 6 }}>
+              {assignedAssetName} assigned to {request.employeeName}
+            </div>
+            <div style={{ fontSize: 13.5, color: "var(--gray-600)", marginBottom: 24, maxWidth: 420, marginLeft: "auto", marginRight: "auto" }}>
+              Do you want to send the assignment notification email to the employee now, or send it later
+              from the asset's row?
+            </div>
+            <div style={{ display: "flex", gap: 12, justifyContent: "center" }}>
+              <button className="btn btn-secondary" onClick={handleSendEmailLater} disabled={sendingEmail}>
+                Send Later
+              </button>
+              <button className="btn btn-primary" onClick={handleSendEmailNow} disabled={sendingEmail} style={{ minWidth: 150 }}>
+                {sendingEmail ? "Sending…" : "📧 Send Now"}
+              </button>
+            </div>
+          </div>
+        )}
         </div>
 
-        <div className="modal-footer">
-          <button className="btn btn-secondary" onClick={onClose} disabled={assigning}>
-            Cancel
-          </button>
-          <button
-            className="btn btn-primary"
-            onClick={assignAsset}
-            disabled={assigning || loading || assets.length === 0}
-          >
-            {assigning ? "Assigning…" : "Assign Asset"}
-          </button>
-        </div>
+        {stage === "form" && (
+          <div className="modal-footer">
+            <button className="btn btn-secondary" onClick={onClose} disabled={assigning}>
+              Cancel
+            </button>
+            <button
+              className="btn btn-primary"
+              onClick={assignAsset}
+              disabled={assigning || loading || assets.length === 0 || !selectedAsset || !assignmentType}
+            >
+              {assigning ? "Assigning…" : "Assign Asset"}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

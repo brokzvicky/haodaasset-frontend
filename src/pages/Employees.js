@@ -34,14 +34,21 @@ function AssignAssetModal({ employee, onClose, onSuccess }) {
   const [remarks, setRemarks] = useState("");
   const [assigning, setAssigning] = useState(false);
 
-  // Permanent vs Temporary assignment
-  const [assignmentType, setAssignmentType] = useState("Permanent");
+  // Permanent vs Temporary assignment — starts unset so the admin must
+  // consciously choose one; it can't be skipped by leaving a default in place.
+  const [assignmentType, setAssignmentType] = useState("");
   const [temporaryReason, setTemporaryReason] = useState("");
   const [temporaryDurationDays, setTemporaryDurationDays] = useState("2");
   const [customDurationDays, setCustomDurationDays] = useState("");
 
   // Old asset condition
   const [oldAssetIssues, setOldAssetIssues] = useState("");
+
+  // Post-assignment: "form" while filling in details, "emailChoice" once the
+  // asset has been assigned and we're asking whether to email the employee now.
+  const [stage, setStage] = useState("form");
+  const [assignedAsset, setAssignedAsset] = useState(null); // { assetId, laptopName }
+  const [sendingEmail, setSendingEmail] = useState(false);
 
   useEffect(() => {
     setLoadingAssets(true);
@@ -62,7 +69,7 @@ function AssignAssetModal({ employee, onClose, onSuccess }) {
       (a.location || "").toLowerCase().includes(q)
     );
   }, [availableAssets, assetSearch]);
-  
+
   const effectiveDurationDays =
     temporaryDurationDays === "custom" ? Number(customDurationDays) : Number(temporaryDurationDays);
 
@@ -75,6 +82,10 @@ function AssignAssetModal({ employee, onClose, onSuccess }) {
       toast("Assigned date is required.", "error");
       return;
     }
+    if (!assignmentType) {
+      toast("Please choose whether this is a Permanent or Temporary assignment.", "error");
+      return;
+    }
     if (assignmentType === "Temporary") {
       if (!temporaryReason.trim()) {
         toast("Please provide a reason for the temporary assignment.", "error");
@@ -85,6 +96,7 @@ function AssignAssetModal({ employee, onClose, onSuccess }) {
         return;
       }
     }
+    const asset = availableAssets.find((a) => a.assetId === selectedAssetId);
     setAssigning(true);
     axios.put(`${API}/assets/assign/${selectedAssetId}`, {
       employeeId: employee.employeeId,
@@ -100,12 +112,34 @@ function AssignAssetModal({ employee, onClose, onSuccess }) {
     })
       .then(() => {
         toast("Asset assigned successfully.", "success");
-        onSuccess();
+        setAssignedAsset({ assetId: selectedAssetId, laptopName: asset?.laptopName || "the asset" });
+        setStage("emailChoice"); // ask "send the assignment email now, or later?"
+        setAssigning(false);
       })
       .catch((err) => {
         toast(err.response?.data?.message || "Failed to assign asset.", "error");
         setAssigning(false);
       });
+  };
+
+  const handleSendEmailNow = () => {
+    if (!assignedAsset) return;
+    setSendingEmail(true);
+    axios.post(`${API}/assets/send-email/${assignedAsset.assetId}`)
+      .then(() => {
+        toast("Assignment email sent.", "success");
+        onSuccess();
+      })
+      .catch((err) => {
+        toast(err.response?.data?.message || "Couldn't send the email — you can retry it later from the asset row.", "error");
+        onSuccess();
+      })
+      .finally(() => setSendingEmail(false));
+  };
+
+  const handleSendEmailLater = () => {
+    toast("You can send the assignment email anytime from the asset's row.", "info");
+    onSuccess();
   };
 
   return (
@@ -130,6 +164,8 @@ function AssignAssetModal({ employee, onClose, onSuccess }) {
 
         {/* Scrollable body */}
         <div style={{ flex: 1, overflowY: "auto", padding: "22px 26px", display: "flex", flexDirection: "column", gap: 20 }}>
+        {stage === "form" ? (
+          <>
 
           {/* Employee Info */}
           <div style={{
@@ -384,28 +420,52 @@ function AssignAssetModal({ employee, onClose, onSuccess }) {
               onChange={(e) => setOldAssetIssues(e.target.value)}
             />
           </div>
+          </>
+        ) : (
+          /* Email choice — shown right after a successful assignment */
+          <div style={{ textAlign: "center", padding: "24px 8px" }}>
+            <div style={{ fontSize: 40, marginBottom: 12 }}>✅</div>
+            <div style={{ fontSize: 16, fontWeight: 800, color: "var(--gray-900)", marginBottom: 6 }}>
+              {assignedAsset?.laptopName} assigned to {employee.employeeName}
+            </div>
+            <div style={{ fontSize: 13.5, color: "var(--gray-600)", marginBottom: 24, maxWidth: 420, marginLeft: "auto", marginRight: "auto" }}>
+              Do you want to send the assignment notification email to the employee now, or send it later
+              from the asset's row?
+            </div>
+            <div style={{ display: "flex", gap: 12, justifyContent: "center" }}>
+              <button className="btn btn-secondary" onClick={handleSendEmailLater} disabled={sendingEmail}>
+                Send Later
+              </button>
+              <button className="btn btn-primary" onClick={handleSendEmailNow} disabled={sendingEmail} style={{ minWidth: 150 }}>
+                {sendingEmail ? "Sending…" : "📧 Send Now"}
+              </button>
+            </div>
+          </div>
+        )}
         </div>
 
         {/* Footer */}
-        <div style={{
-          display: "flex", gap: 10, justifyContent: "flex-end",
-          padding: "16px 26px",
-          borderTop: "1px solid var(--gray-100)",
-          flexShrink: 0,
-          background: "#fafafa",
-        }}>
-          <button className="btn btn-secondary" onClick={onClose} disabled={assigning}>
-            Cancel
-          </button>
-          <button
-            className="btn btn-primary"
-            onClick={handleAssign}
-            disabled={assigning || !selectedAssetId}
-            style={{ minWidth: 140 }}
-          >
-            {assigning ? "Assigning…" : "✓ Assign Asset"}
-          </button>
-        </div>
+        {stage === "form" && (
+          <div style={{
+            display: "flex", gap: 10, justifyContent: "flex-end",
+            padding: "16px 26px",
+            borderTop: "1px solid var(--gray-100)",
+            flexShrink: 0,
+            background: "#fafafa",
+          }}>
+            <button className="btn btn-secondary" onClick={onClose} disabled={assigning}>
+              Cancel
+            </button>
+            <button
+              className="btn btn-primary"
+              onClick={handleAssign}
+              disabled={assigning || !selectedAssetId || !assignmentType}
+              style={{ minWidth: 140 }}
+            >
+              {assigning ? "Assigning…" : "✓ Assign Asset"}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
