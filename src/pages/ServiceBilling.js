@@ -14,8 +14,15 @@ const SERVICE_OPTIONS = [
 ];
 
 const EMPTY_FORM = {
-  service: "", vendor: "", amount: "", paymentDate: "",
+  service: "", vendor: "",
+  billingFromDate: "", billingToDate: "",
+  amount: "", paymentDate: "", dueDate: "",
   status: "Pending", remarks: "",
+};
+
+const EMPTY_FILTERS = {
+  service: "All", vendor: "All",
+  periodFrom: "", periodTo: "", paymentDate: "",
 };
 
 function authHeader() {
@@ -34,6 +41,11 @@ function formatDate(value) {
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return value;
   return d.toLocaleDateString(undefined, { day: "2-digit", month: "short", year: "numeric" });
+}
+
+function formatPeriod(from, to) {
+  if (!from && !to) return "—";
+  return `${formatDate(from)} - ${formatDate(to)}`;
 }
 
 // ── Status badge ─────────────────────────────────────────────────
@@ -62,7 +74,7 @@ const SkeletonRow = () => {
   const cell = (w = 80) => (
     <td><div className="skeleton skeleton-text" style={{ width: w, margin: 0 }} /></td>
   );
-  return <tr>{cell(140)}{cell(120)}{cell(90)}{cell(100)}{cell(80)}{cell(120)}{cell(100)}{cell(140)}</tr>;
+  return <tr>{cell(140)}{cell(120)}{cell(150)}{cell(90)}{cell(100)}{cell(80)}{cell(120)}{cell(160)}</tr>;
 };
 
 export default function ServiceBilling() {
@@ -77,7 +89,8 @@ export default function ServiceBilling() {
   });
 
   const [showForm, setShowForm] = useState(false);
-  const [editingId, setEditingId] = useState(null); // null = add mode
+  const [editingId, setEditingId] = useState(null); // null = add/re-add mode
+  const [reAddMode, setReAddMode] = useState(false); // true = service/vendor locked, new billing record
   const [form, setForm] = useState(EMPTY_FORM);
   const [invoiceFile, setInvoiceFile] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -85,16 +98,25 @@ export default function ServiceBilling() {
   const [searchText, setSearchText] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
   const [sortDir, setSortDir] = useState("desc"); // sort by payment date
+  const [filters, setFilters] = useState(EMPTY_FILTERS);
+  const [showFilters, setShowFilters] = useState(false);
 
   const [viewingPayment, setViewingPayment] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
+
+  // Billing History modal
+  const [historyTarget, setHistoryTarget] = useState(null); // { service, vendor }
+  const [historyRecords, setHistoryRecords] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+
+  const [exporting, setExporting] = useState(null); // "pdf" | "excel" | null
 
   // ── Data loading ──────────────────────────────────────────────
   const loadData = useCallback(() => {
     setLoading(true);
     axios.get(`${API}/api/admin/service-billing`)
       .then((r) => { setPayments(r.data); setError(""); })
-      .catch(() => { setPayments([]); setError("Couldn't load service payments. Is the API running?"); })
+      .catch(() => { setPayments([]); setError("Couldn't load billing records. Is the API running?"); })
       .finally(() => setLoading(false));
   }, []);
 
@@ -106,6 +128,16 @@ export default function ServiceBilling() {
 
   useEffect(() => { loadData(); loadDashboard(); }, [loadData, loadDashboard]);
 
+  // Distinct services/vendors already on file, for the filter dropdowns.
+  const serviceOptionsInData = useMemo(
+    () => Array.from(new Set(payments.map((p) => p.service).filter(Boolean))).sort(),
+    [payments]
+  );
+  const vendorOptionsInData = useMemo(
+    () => Array.from(new Set(payments.map((p) => p.vendor).filter(Boolean))).sort(),
+    [payments]
+  );
+
   // ── Form helpers ──────────────────────────────────────────────
   const field = (key) => ({
     value: form[key],
@@ -116,19 +148,39 @@ export default function ServiceBilling() {
     setForm(EMPTY_FORM);
     setInvoiceFile(null);
     setEditingId(null);
+    setReAddMode(false);
   };
 
   const openAddForm = () => { resetForm(); setShowForm(true); };
 
   const openEditForm = (payment) => {
     setEditingId(payment.id);
+    setReAddMode(false);
     setForm({
       service: payment.service || "",
       vendor: payment.vendor || "",
+      billingFromDate: payment.billingFromDate || "",
+      billingToDate: payment.billingToDate || "",
       amount: payment.amount != null ? String(payment.amount) : "",
       paymentDate: payment.paymentDate || "",
+      dueDate: payment.dueDate || "",
       status: payment.status || "Pending",
       remarks: payment.remarks || "",
+    });
+    setInvoiceFile(null);
+    setShowForm(true);
+  };
+
+  // "Re-Add Billing" — auto-fills Service + Vendor (locked) for a fresh
+  // billing period; everything else starts blank so the admin only enters
+  // this month's details, and Save always creates a brand-new record.
+  const openReAddForm = (payment) => {
+    setEditingId(null);
+    setReAddMode(true);
+    setForm({
+      ...EMPTY_FORM,
+      service: payment.service || "",
+      vendor: payment.vendor || "",
     });
     setInvoiceFile(null);
     setShowForm(true);
@@ -141,6 +193,8 @@ export default function ServiceBilling() {
     const required = [
       ["service", "Service"],
       ["vendor", "Vendor"],
+      ["billingFromDate", "Billing From Date"],
+      ["billingToDate", "Billing To Date"],
       ["amount", "Amount"],
       ["paymentDate", "Payment Date"],
       ["status", "Status"],
@@ -151,6 +205,10 @@ export default function ServiceBilling() {
         return;
       }
     }
+    if (new Date(form.billingToDate) < new Date(form.billingFromDate)) {
+      toast("Billing To Date cannot be before Billing From Date.", "error");
+      return;
+    }
     if (Number(form.amount) < 0 || Number.isNaN(Number(form.amount))) {
       toast("Amount must be a valid positive number.", "error");
       return;
@@ -160,11 +218,28 @@ export default function ServiceBilling() {
       return;
     }
 
+    // Instant client-side duplicate check (Requirement 7) — the server
+    // enforces this too, but catching it here avoids a round trip.
+    const clash = payments.some((p) =>
+      (editingId ? p.id !== editingId : true) &&
+      (p.service || "").toLowerCase() === form.service.trim().toLowerCase() &&
+      (p.vendor || "").toLowerCase() === form.vendor.trim().toLowerCase() &&
+      p.billingFromDate === form.billingFromDate &&
+      p.billingToDate === form.billingToDate
+    );
+    if (clash) {
+      toast("Billing for this period already exists.", "error");
+      return;
+    }
+
     const data = new FormData();
     data.append("service", form.service.trim());
     data.append("vendor", form.vendor.trim());
+    data.append("billingFromDate", form.billingFromDate);
+    data.append("billingToDate", form.billingToDate);
     data.append("amount", form.amount);
     data.append("paymentDate", form.paymentDate);
+    if (form.dueDate) data.append("dueDate", form.dueDate);
     data.append("status", form.status);
     data.append("remarks", form.remarks || "");
     if (invoiceFile) data.append("invoiceFile", invoiceFile);
@@ -176,31 +251,31 @@ export default function ServiceBilling() {
 
     req
       .then(() => {
-        toast(editingId ? "Service payment updated." : "Service payment added.", "success");
+        toast(editingId ? "Billing record updated." : "Billing record saved.", "success");
         setShowForm(false);
         resetForm();
         loadData();
         loadDashboard();
       })
       .catch((err) => {
-        toast(err.response?.data?.message || "Failed to save the service payment.", "error");
+        toast(err.response?.data?.message || "Failed to save the billing record.", "error");
       })
       .finally(() => setSaving(false));
   };
 
   // ── Delete ────────────────────────────────────────────────────
   const deletePayment = (payment) => {
-    if (!window.confirm(`Permanently delete the payment record for "${payment.service}" (${payment.vendor})? This cannot be undone.`)) {
+    if (!window.confirm(`Permanently delete this billing record for "${payment.service}" (${payment.vendor}), period ${formatPeriod(payment.billingFromDate, payment.billingToDate)}? This cannot be undone.`)) {
       return;
     }
     setDeletingId(payment.id);
     axios.delete(`${API}/api/admin/service-billing/${payment.id}`, { headers: authHeader() })
       .then(() => {
-        toast("Service payment deleted.", "success");
+        toast("Billing record deleted.", "success");
         loadData();
         loadDashboard();
       })
-      .catch((err) => toast(err.response?.data?.message || "Failed to delete the service payment.", "error"))
+      .catch((err) => toast(err.response?.data?.message || "Failed to delete the billing record.", "error"))
       .finally(() => setDeletingId(null));
   };
 
@@ -218,12 +293,61 @@ export default function ServiceBilling() {
       } else {
         const a = document.createElement("a");
         a.href = url;
-        a.download = `${payment.service || "invoice"}-${payment.vendor || ""}.pdf`.replace(/\s+/g, "_");
+        a.download = `${payment.service || "invoice"}-${payment.vendor || ""}-${payment.billingFromDate || ""}.pdf`.replace(/\s+/g, "_");
         a.click();
       }
       setTimeout(() => URL.revokeObjectURL(url), 30000);
     } catch (err) {
       toast(err.response?.data?.message || "Couldn't open the invoice.", "error");
+    }
+  };
+
+  // ── Billing History (Requirement 6) ─────────────────────────────
+  const openHistory = (payment) => {
+    setHistoryTarget({ service: payment.service, vendor: payment.vendor });
+    setHistoryLoading(true);
+    setHistoryRecords([]);
+    axios.get(`${API}/api/admin/service-billing/history`, {
+      params: { service: payment.service, vendor: payment.vendor },
+    })
+      .then((r) => setHistoryRecords(r.data))
+      .catch(() => toast("Couldn't load billing history.", "error"))
+      .finally(() => setHistoryLoading(false));
+  };
+  const closeHistory = () => { setHistoryTarget(null); setHistoryRecords([]); };
+
+  // ── Export (Requirement 10) ─────────────────────────────────────
+  const buildExportParams = () => {
+    const params = {};
+    if (statusFilter !== "All") params.status = statusFilter;
+    if (filters.service !== "All") params.service = filters.service;
+    if (filters.vendor !== "All") params.vendor = filters.vendor;
+    if (filters.periodFrom) params.periodFrom = filters.periodFrom;
+    if (filters.periodTo) params.periodTo = filters.periodTo;
+    if (filters.paymentDate) params.paymentDate = filters.paymentDate;
+    return params;
+  };
+
+  const exportReport = async (kind) => {
+    setExporting(kind);
+    try {
+      const response = await axios.get(`${API}/api/admin/service-billing/export/${kind}`, {
+        params: buildExportParams(),
+        responseType: "blob",
+        headers: authHeader(),
+      });
+      const mime = kind === "pdf" ? "application/pdf" : "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+      const blob = new Blob([response.data], { type: mime });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `service-billing-report.${kind === "pdf" ? "pdf" : "xlsx"}`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 30000);
+    } catch (err) {
+      toast(err.response?.data?.message || `Failed to export ${kind.toUpperCase()} report.`, "error");
+    } finally {
+      setExporting(null);
     }
   };
 
@@ -236,30 +360,48 @@ export default function ServiceBilling() {
         (p.vendor || "").toLowerCase().includes(q)
       )
       .filter((p) => statusFilter === "All" || p.status === statusFilter)
+      .filter((p) => filters.service === "All" || p.service === filters.service)
+      .filter((p) => filters.vendor === "All" || p.vendor === filters.vendor)
+      .filter((p) => !filters.periodFrom || (p.billingToDate && p.billingToDate >= filters.periodFrom))
+      .filter((p) => !filters.periodTo || (p.billingFromDate && p.billingFromDate <= filters.periodTo))
+      .filter((p) => !filters.paymentDate || p.paymentDate === filters.paymentDate)
       .slice()
       .sort((a, b) => {
         const da = new Date(a.paymentDate).getTime() || 0;
         const db = new Date(b.paymentDate).getTime() || 0;
         return sortDir === "asc" ? da - db : db - da;
       });
-  }, [payments, searchText, statusFilter, sortDir]);
+  }, [payments, searchText, statusFilter, filters, sortDir]);
+
+  const activeFilterCount = [
+    filters.service !== "All", filters.vendor !== "All",
+    !!filters.periodFrom, !!filters.periodTo, !!filters.paymentDate,
+  ].filter(Boolean).length;
 
   const kpis = [
-    { label: "Total Payments",   value: dashboard.totalPayments,        icon: "🧾", color: "var(--primary)", filterStatus: "All" },
-    { label: "Paid",             value: dashboard.paidServices,         icon: "✅", color: "var(--success)", filterStatus: "Paid" },
-    { label: "Pending",          value: dashboard.pendingServices,      icon: "⏳", color: "var(--warning)", filterStatus: "Pending" },
-    { label: "Overdue",          value: dashboard.overdueServices,      icon: "⚠️", color: "var(--danger)",  filterStatus: "Overdue" },
-    { label: "Invoices Uploaded",value: dashboard.totalInvoicesUploaded,icon: "📎", color: "#7c3aed",        filterStatus: null },
+    { label: "Total Billing Records", value: dashboard.totalPayments,        icon: "🧾", color: "var(--primary)", filterStatus: "All" },
+    { label: "Paid",                  value: dashboard.paidServices,         icon: "✅", color: "var(--success)", filterStatus: "Paid" },
+    { label: "Pending",               value: dashboard.pendingServices,      icon: "⏳", color: "var(--warning)", filterStatus: "Pending" },
+    { label: "Overdue",               value: dashboard.overdueServices,      icon: "⚠️", color: "var(--danger)",  filterStatus: "Overdue" },
+    { label: "Invoices Uploaded",     value: dashboard.totalInvoicesUploaded,icon: "📎", color: "#7c3aed",        filterStatus: null },
   ];
 
   return (
     <Layout
       title="Service Billing"
-      subtitle="Track vendor service payments and invoices"
+      subtitle="Recurring vendor billing, invoices, and payment history"
       actions={
-        <button className="btn btn-primary" onClick={() => (showForm ? cancelForm() : openAddForm())} style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          {showForm ? "✕ Cancel" : "+ Add Service Payment"}
-        </button>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button className="btn btn-secondary" disabled={exporting === "pdf"} onClick={() => exportReport("pdf")}>
+            {exporting === "pdf" ? "Exporting…" : "⬇ PDF"}
+          </button>
+          <button className="btn btn-secondary" disabled={exporting === "excel"} onClick={() => exportReport("excel")}>
+            {exporting === "excel" ? "Exporting…" : "⬇ Excel"}
+          </button>
+          <button className="btn btn-primary" onClick={() => (showForm ? cancelForm() : openAddForm())} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            {showForm ? "✕ Cancel" : "+ Add Service Payment"}
+          </button>
+        </div>
       }
     >
       {/* Error banner */}
@@ -307,31 +449,56 @@ export default function ServiceBilling() {
         })}
       </div>
 
-      {/* ── Add / Edit Service Payment Form ── */}
+      {/* ── Add / Edit / Re-Add Billing Form ── */}
       {showForm && (
         <div className="card" style={{ marginBottom: 28, animation: "fadeIn 0.2s ease" }}>
           <div className="card-header">
             <div>
-              <div className="card-title">{editingId ? "Edit Service Payment" : "Add Service Payment"}</div>
+              <div className="card-title">
+                {reAddMode ? "Re-Add Billing" : editingId ? "Edit Billing Record" : "Add Service Payment"}
+              </div>
               <div className="card-subtitle">
-                {editingId ? "Update the payment details below" : "Fill in the details below to record a service payment"}
+                {reAddMode
+                  ? `New billing period for ${form.service} · ${form.vendor} — this creates a new record, existing history is kept`
+                  : editingId
+                    ? "Update the billing record details below"
+                    : "Fill in the details below to record a service payment"}
               </div>
             </div>
           </div>
           <div className="card-body">
-            <div className="form-section-label">Payment Details</div>
+            <div className="form-section-label">Service Details</div>
             <div className="form-grid">
               <div className="field">
                 <label className="field-label">Service *</label>
-                <input className="input" list="service-billing-services" {...field("service")} placeholder="e.g. Internet / ISP" />
+                <input
+                  className="input" list="service-billing-services" {...field("service")}
+                  placeholder="e.g. Internet / ISP" disabled={reAddMode}
+                />
                 <datalist id="service-billing-services">
                   {SERVICE_OPTIONS.map((s) => <option key={s} value={s} />)}
                 </datalist>
               </div>
               <div className="field">
                 <label className="field-label">Vendor *</label>
-                <input className="input" {...field("vendor")} placeholder="e.g. Airtel Business" />
+                <input className="input" {...field("vendor")} placeholder="e.g. Airtel Business" disabled={reAddMode} />
               </div>
+            </div>
+
+            <div className="form-section-label" style={{ marginTop: 18 }}>Billing Period</div>
+            <div className="form-grid">
+              <div className="field">
+                <label className="field-label">Billing From Date *</label>
+                <input className="input" type="date" {...field("billingFromDate")} />
+              </div>
+              <div className="field">
+                <label className="field-label">Billing To Date *</label>
+                <input className="input" type="date" {...field("billingToDate")} />
+              </div>
+            </div>
+
+            <div className="form-section-label" style={{ marginTop: 18 }}>Payment Details</div>
+            <div className="form-grid">
               <div className="field">
                 <label className="field-label">Amount (₹) *</label>
                 <input className="input" type="number" min="0" step="0.01" {...field("amount")} placeholder="15000" />
@@ -339,6 +506,10 @@ export default function ServiceBilling() {
               <div className="field">
                 <label className="field-label">Payment Date *</label>
                 <input className="input" type="date" {...field("paymentDate")} />
+              </div>
+              <div className="field">
+                <label className="field-label">Due Date (optional)</label>
+                <input className="input" type="date" {...field("dueDate")} />
               </div>
               <div className="field">
                 <label className="field-label">Status *</label>
@@ -368,7 +539,7 @@ export default function ServiceBilling() {
 
             <div style={{ display: "flex", gap: 12, marginTop: 24, paddingTop: 20, borderTop: "1px solid var(--gray-100)" }}>
               <button className="btn btn-primary" onClick={savePayment} disabled={saving}>
-                {saving ? "Saving…" : editingId ? "✓ Save Changes" : "✓ Save Payment"}
+                {saving ? "Saving…" : reAddMode ? "✓ Save New Billing" : editingId ? "✓ Save Changes" : "✓ Save Payment"}
               </button>
               <button className="btn btn-secondary" onClick={cancelForm}>Cancel</button>
             </div>
@@ -376,13 +547,13 @@ export default function ServiceBilling() {
         </div>
       )}
 
-      {/* ── Service Payments Table ── */}
+      {/* ── Billing Records Table ── */}
       <div className="card">
         <div className="card-header" style={{ flexWrap: "wrap", gap: 10 }}>
           <div>
-            <div className="card-title">Service Payments</div>
+            <div className="card-title">Billing Records</div>
             <div className="card-subtitle">
-              {loading ? "Loading…" : `${filtered.length} of ${payments.length} payments`}
+              {loading ? "Loading…" : `${filtered.length} of ${payments.length} records`}
             </div>
           </div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
@@ -394,6 +565,13 @@ export default function ServiceBilling() {
               <option value="desc">Payment Date: Newest First</option>
               <option value="asc">Payment Date: Oldest First</option>
             </select>
+            <button
+              className="btn btn-secondary"
+              onClick={() => setShowFilters((v) => !v)}
+              style={{ position: "relative" }}
+            >
+              ⚙ Filters {activeFilterCount > 0 && `(${activeFilterCount})`}
+            </button>
             <div style={{ position: "relative" }}>
               <svg style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "var(--gray-400)", pointerEvents: "none" }}
                 width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
@@ -419,13 +597,51 @@ export default function ServiceBilling() {
           </div>
         </div>
 
+        {/* ── Filters by Service / Vendor / Billing Period / Payment Date ── */}
+        {showFilters && (
+          <div style={{
+            display: "flex", flexWrap: "wrap", gap: 12, alignItems: "flex-end",
+            padding: "14px 24px", borderBottom: "1px solid var(--gray-100)", background: "var(--gray-50)",
+          }}>
+            <div className="field" style={{ margin: 0 }}>
+              <label className="field-label">Service</label>
+              <select className="input" style={{ width: 170 }} value={filters.service} onChange={(e) => setFilters((f) => ({ ...f, service: e.target.value }))}>
+                <option value="All">All services</option>
+                {serviceOptionsInData.map((s) => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </div>
+            <div className="field" style={{ margin: 0 }}>
+              <label className="field-label">Vendor</label>
+              <select className="input" style={{ width: 170 }} value={filters.vendor} onChange={(e) => setFilters((f) => ({ ...f, vendor: e.target.value }))}>
+                <option value="All">All vendors</option>
+                {vendorOptionsInData.map((v) => <option key={v} value={v}>{v}</option>)}
+              </select>
+            </div>
+            <div className="field" style={{ margin: 0 }}>
+              <label className="field-label">Billing Period From</label>
+              <input className="input" type="date" style={{ width: 160 }} value={filters.periodFrom} onChange={(e) => setFilters((f) => ({ ...f, periodFrom: e.target.value }))} />
+            </div>
+            <div className="field" style={{ margin: 0 }}>
+              <label className="field-label">Billing Period To</label>
+              <input className="input" type="date" style={{ width: 160 }} value={filters.periodTo} onChange={(e) => setFilters((f) => ({ ...f, periodTo: e.target.value }))} />
+            </div>
+            <div className="field" style={{ margin: 0 }}>
+              <label className="field-label">Payment Date</label>
+              <input className="input" type="date" style={{ width: 160 }} value={filters.paymentDate} onChange={(e) => setFilters((f) => ({ ...f, paymentDate: e.target.value }))} />
+            </div>
+            {activeFilterCount > 0 && (
+              <button className="btn btn-secondary" onClick={() => setFilters(EMPTY_FILTERS)}>Clear filters</button>
+            )}
+          </div>
+        )}
+
         {loading ? (
           <div className="table-wrap">
             <table className="data-table">
               <thead>
                 <tr>
-                  <th>Service</th><th>Vendor</th><th>Amount</th><th>Payment Date</th>
-                  <th>Status</th><th>Invoice</th><th>Remarks</th><th style={{ width: 150 }}>Actions</th>
+                  <th>Service</th><th>Vendor</th><th>Billing Period</th><th>Amount</th><th>Payment Date</th>
+                  <th>Status</th><th>Invoice</th><th style={{ width: 220 }}>Actions</th>
                 </tr>
               </thead>
               <tbody>{[1, 2, 3, 4].map((i) => <SkeletonRow key={i} />)}</tbody>
@@ -435,12 +651,12 @@ export default function ServiceBilling() {
           <div className="empty-state" style={{ padding: "48px 24px", textAlign: "center" }}>
             <div style={{ fontSize: 32, marginBottom: 8, opacity: 0.4 }}>🧾</div>
             <div className="empty-title">
-              {searchText || statusFilter !== "All" ? "No payments match your filters" : "No service payments recorded yet"}
+              {searchText || statusFilter !== "All" || activeFilterCount > 0 ? "No records match your filters" : "No billing records yet"}
             </div>
             <div className="empty-sub">
-              {searchText || statusFilter !== "All"
-                ? "Try adjusting your search or filter."
-                : "Click 'Add Service Payment' to record your first vendor payment."}
+              {searchText || statusFilter !== "All" || activeFilterCount > 0
+                ? "Try adjusting your search or filters."
+                : "Click 'Add Service Payment' to record your first vendor billing."}
             </div>
           </div>
         ) : (
@@ -448,8 +664,8 @@ export default function ServiceBilling() {
             <table className="data-table">
               <thead>
                 <tr>
-                  <th>Service</th><th>Vendor</th><th>Amount</th><th>Payment Date</th>
-                  <th>Status</th><th>Invoice</th><th>Remarks</th><th style={{ width: 150 }}>Actions</th>
+                  <th>Service</th><th>Vendor</th><th>Billing Period</th><th>Amount</th><th>Payment Date</th>
+                  <th>Status</th><th>Invoice</th><th style={{ width: 220 }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -457,6 +673,9 @@ export default function ServiceBilling() {
                   <tr key={p.id}>
                     <td style={{ fontWeight: 600, color: "var(--gray-900)" }}>{p.service}</td>
                     <td style={{ color: "var(--gray-700)" }}>{p.vendor}</td>
+                    <td style={{ color: "var(--gray-600)", whiteSpace: "nowrap", fontSize: 12.5 }}>
+                      {formatPeriod(p.billingFromDate, p.billingToDate)}
+                    </td>
                     <td className="mono" style={{ fontWeight: 700, color: "var(--gray-800)" }}>{formatCurrency(p.amount)}</td>
                     <td style={{ color: "var(--gray-600)", whiteSpace: "nowrap" }}>{formatDate(p.paymentDate)}</td>
                     <td><BillingStatusBadge status={p.status} /></td>
@@ -474,22 +693,25 @@ export default function ServiceBilling() {
                         <span style={{ color: "var(--gray-300)", fontSize: 12 }}>No invoice</span>
                       )}
                     </td>
-                    <td style={{ color: "var(--gray-500)", fontSize: 12.5, maxWidth: 180 }}>
-                      {p.remarks || "—"}
-                    </td>
                     <td>
-                      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                        <button className="action-view" onClick={() => setViewingPayment(p)} title="View payment details">
+                      <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                        <button className="action-view" onClick={() => setViewingPayment(p)} title="View billing details">
                           👁
                         </button>
-                        <button className="action-edit" onClick={() => openEditForm(p)} title="Edit payment">
+                        <button className="action-readd" onClick={() => openReAddForm(p)} title="Re-Add Billing (new billing period)">
+                          ＋ Re-Add
+                        </button>
+                        <button className="action-history" onClick={() => openHistory(p)} title="View Billing History">
+                          🕘 History
+                        </button>
+                        <button className="action-edit" onClick={() => openEditForm(p)} title="Edit this record">
                           ✏️
                         </button>
                         <button
                           className="action-delete"
                           onClick={() => deletePayment(p)}
                           disabled={deletingId === p.id}
-                          title="Delete payment"
+                          title="Delete record"
                         >
                           {deletingId === p.id ? "⏳" : "🗑"}
                         </button>
@@ -503,14 +725,17 @@ export default function ServiceBilling() {
         )}
       </div>
 
-      {/* ── View Payment Detail Modal ── */}
+      {/* ── View Billing Detail Modal ── */}
       {viewingPayment && (
         <div className="modal-overlay" onClick={() => setViewingPayment(null)}>
-          <div className="modal-content" style={{ maxWidth: 480 }} onClick={(e) => e.stopPropagation()}>
+          <div className="modal-content" style={{ maxWidth: 520 }} onClick={(e) => e.stopPropagation()}>
             <div className="modal-header" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <div>
-                <h3 className="modal-title">Service Payment Details</h3>
-                <div className="card-subtitle" style={{ marginTop: 4 }}>{viewingPayment.service} · {viewingPayment.vendor}</div>
+                <h3 className="modal-title">Billing Record Details</h3>
+                <div className="card-subtitle" style={{ marginTop: 4 }}>
+                  {viewingPayment.service} · {viewingPayment.vendor}
+                  {viewingPayment.billingId && <> · {viewingPayment.billingId}</>}
+                </div>
               </div>
               <button className="btn btn-secondary btn-icon" onClick={() => setViewingPayment(null)} aria-label="Close">✕</button>
             </div>
@@ -525,12 +750,22 @@ export default function ServiceBilling() {
                   <div style={{ fontWeight: 600, color: "var(--gray-900)" }}>{viewingPayment.vendor}</div>
                 </div>
                 <div>
+                  <div className="field-label">Billing Period</div>
+                  <div style={{ fontWeight: 600, color: "var(--gray-900)" }}>
+                    {formatPeriod(viewingPayment.billingFromDate, viewingPayment.billingToDate)}
+                  </div>
+                </div>
+                <div>
                   <div className="field-label">Amount</div>
                   <div style={{ fontWeight: 700, color: "var(--gray-900)" }}>{formatCurrency(viewingPayment.amount)}</div>
                 </div>
                 <div>
                   <div className="field-label">Payment Date</div>
                   <div style={{ fontWeight: 600, color: "var(--gray-900)" }}>{formatDate(viewingPayment.paymentDate)}</div>
+                </div>
+                <div>
+                  <div className="field-label">Due Date</div>
+                  <div style={{ fontWeight: 600, color: "var(--gray-900)" }}>{formatDate(viewingPayment.dueDate)}</div>
                 </div>
                 <div>
                   <div className="field-label">Status</div>
@@ -556,9 +791,69 @@ export default function ServiceBilling() {
                 </div>
               )}
               <div style={{ display: "flex", gap: 10 }}>
+                <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => { const p = viewingPayment; setViewingPayment(null); openHistory(p); }}>🕘 Billing History</button>
                 <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setViewingPayment(null)}>Close</button>
                 <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => { const p = viewingPayment; setViewingPayment(null); openEditForm(p); }}>✏️ Edit</button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Billing History Modal (Requirement 6) ── */}
+      {historyTarget && (
+        <div className="modal-overlay" onClick={closeHistory}>
+          <div className="modal-content" style={{ maxWidth: 720 }} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div>
+                <h3 className="modal-title">Billing History</h3>
+                <div className="card-subtitle" style={{ marginTop: 4 }}>
+                  {historyTarget.service} · {historyTarget.vendor} — latest billing period first
+                </div>
+              </div>
+              <button className="btn btn-secondary btn-icon" onClick={closeHistory} aria-label="Close">✕</button>
+            </div>
+            <div className="modal-body">
+              {historyLoading ? (
+                <div style={{ padding: "24px 0", textAlign: "center", color: "var(--gray-400)" }}>Loading history…</div>
+              ) : historyRecords.length === 0 ? (
+                <div style={{ padding: "24px 0", textAlign: "center", color: "var(--gray-400)" }}>No billing history found.</div>
+              ) : (
+                <div className="table-wrap">
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th>Billing Period</th><th>Amount</th><th>Payment Date</th>
+                        <th>Due Date</th><th>Status</th><th>Invoice</th><th>Remarks</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {historyRecords.map((r) => (
+                        <tr key={r.id}>
+                          <td style={{ whiteSpace: "nowrap", fontWeight: 600, color: "var(--gray-900)" }}>
+                            {formatPeriod(r.billingFromDate, r.billingToDate)}
+                          </td>
+                          <td className="mono" style={{ fontWeight: 700 }}>{formatCurrency(r.amount)}</td>
+                          <td style={{ whiteSpace: "nowrap" }}>{formatDate(r.paymentDate)}</td>
+                          <td style={{ whiteSpace: "nowrap" }}>{formatDate(r.dueDate)}</td>
+                          <td><BillingStatusBadge status={r.status} /></td>
+                          <td>
+                            {r.invoicePath ? (
+                              <div style={{ display: "flex", gap: 6 }}>
+                                <button className="action-view" onClick={() => openInvoice(r, "view")} title="View invoice">👁</button>
+                                <button className="action-view" onClick={() => openInvoice(r, "download")} title="Download invoice">⬇</button>
+                              </div>
+                            ) : (
+                              <span style={{ color: "var(--gray-300)", fontSize: 12 }}>—</span>
+                            )}
+                          </td>
+                          <td style={{ color: "var(--gray-500)", fontSize: 12.5, maxWidth: 160 }}>{r.remarks || "—"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -585,6 +880,18 @@ export default function ServiceBilling() {
           transition: all 0.15s ease; display: flex; align-items: center; gap: 4px;
         }
         .action-edit:hover { background: #dbeafe; border-color: #93c5fd; transform: translateY(-1px); }
+        .action-readd {
+          background: #ecfdf5; border: 1px solid #a7f3d0; color: #047857;
+          border-radius: 7px; padding: 5px 10px; font-size: 12px; font-weight: 600; cursor: pointer;
+          transition: all 0.15s ease; display: inline-flex; align-items: center; gap: 4px; white-space: nowrap;
+        }
+        .action-readd:hover { background: #d1fae5; border-color: #6ee7b7; transform: translateY(-1px); }
+        .action-history {
+          background: #fdf4ff; border: 1px solid #f0abfc; color: #a21caf;
+          border-radius: 7px; padding: 5px 10px; font-size: 12px; font-weight: 600; cursor: pointer;
+          transition: all 0.15s ease; display: inline-flex; align-items: center; gap: 4px; white-space: nowrap;
+        }
+        .action-history:hover { background: #fae8ff; border-color: #e879f9; transform: translateY(-1px); }
         .action-delete {
           background: transparent; border: none; color: var(--gray-400);
           cursor: pointer; font-size: 18px; padding: 4px 6px; border-radius: 6px; transition: 0.15s;
