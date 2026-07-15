@@ -114,6 +114,203 @@ const ReturnDialog = ({ asset, onClose, onConfirm, saving }) => {
   );
 };
 
+// ── Asset type → icon / gradient (drives the drawer hero) ──────────
+const ASSET_TYPE_VISUALS = {
+  "Laptop":        { icon: "💻", gradient: "linear-gradient(135deg,#2563eb,#7c3aed)" },
+  "Desktop":       { icon: "🖥️", gradient: "linear-gradient(135deg,#0891b2,#2563eb)" },
+  "Monitor":       { icon: "🖥️", gradient: "linear-gradient(135deg,#0891b2,#0e7490)" },
+  "Mobile":        { icon: "📱", gradient: "linear-gradient(135deg,#db2777,#7c3aed)" },
+  "Tablet":        { icon: "📱", gradient: "linear-gradient(135deg,#db2777,#c026d3)" },
+  "Printer":       { icon: "🖨️", gradient: "linear-gradient(135deg,#475569,#1e293b)" },
+  "Keyboard":      { icon: "⌨️", gradient: "linear-gradient(135deg,#64748b,#334155)" },
+  "Mouse":         { icon: "🖱️", gradient: "linear-gradient(135deg,#64748b,#334155)" },
+  "Headset":       { icon: "🎧", gradient: "linear-gradient(135deg,#7c3aed,#c026d3)" },
+  "Server":        { icon: "🗄️", gradient: "linear-gradient(135deg,#1e293b,#0f172a)" },
+};
+const DEFAULT_TYPE_VISUAL = { icon: "📦", gradient: "linear-gradient(135deg,#475569,#1e293b)" };
+
+const getInitials = (name) => {
+  if (!name) return "?";
+  const parts = name.trim().split(/\s+/);
+  return ((parts[0]?.[0] || "") + (parts[1]?.[0] || "")).toUpperCase() || "?";
+};
+
+const daysUntil = (dateStr) => {
+  if (!dateStr) return null;
+  const target = new Date(dateStr);
+  if (Number.isNaN(target.getTime())) return null;
+  return Math.ceil((target.setHours(0,0,0,0) - new Date().setHours(0,0,0,0)) / 86400000);
+};
+
+const formatDate = (dateStr) => {
+  if (!dateStr) return null;
+  const d = new Date(dateStr);
+  if (Number.isNaN(d.getTime())) return dateStr;
+  return d.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
+};
+
+// ── Asset Detail Drawer ─────────────────────────────────────────
+const AssetDetailDrawer = ({ asset, onClose, onEdit }) => {
+  const [copied, setCopied] = useState(false);
+  if (!asset) return null;
+
+  const visual = ASSET_TYPE_VISUALS[asset.assetType] || DEFAULT_TYPE_VISUAL;
+  const style = conditionStyles[asset.assetCondition] || conditionStyles["New"];
+  const specs = [asset.processor, asset.ram, asset.storage].filter(Boolean).join(" · ");
+
+  const copySerial = async () => {
+    if (!asset.serialNumber) return;
+    try {
+      await navigator.clipboard.writeText(asset.serialNumber);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1000);
+    } catch { /* clipboard permission denied — silently ignore */ }
+  };
+
+  const warrantyDays = daysUntil(asset.warrantyExpiry);
+
+  // Build the lifecycle timeline from whichever dates actually exist.
+  const timeline = [];
+  if (asset.purchaseDate) {
+    timeline.push({ label: "Purchased", date: formatDate(asset.purchaseDate), state: "done" });
+  }
+  if (asset.warrantyExpiry) {
+    const expired = warrantyDays !== null && warrantyDays < 0;
+    const soon = warrantyDays !== null && warrantyDays >= 0 && warrantyDays <= 60;
+    timeline.push({
+      label: "Warranty",
+      date: formatDate(asset.warrantyExpiry),
+      state: expired ? "danger" : soon ? "warn" : "done",
+      badge: expired ? "Expired" : soon ? `${warrantyDays}d left` : null,
+      badgeStyle: expired
+        ? { background: "var(--danger-bg)", color: "var(--danger)" }
+        : { background: "var(--warning-bg)", color: "var(--warning)" },
+    });
+  }
+  if (asset.assignedDate) {
+    timeline.push({ label: `Assigned${asset.employeeName ? ` to ${asset.employeeName}` : ""}`, date: formatDate(asset.assignedDate), state: "done" });
+  }
+  if (asset.returnedStatus === "Yes" && asset.returnDate) {
+    timeline.push({ label: "Returned", date: formatDate(asset.returnDate), state: "done" });
+  }
+  if (asset.relievedStatus === "Yes" && asset.relievedDate) {
+    timeline.push({ label: "Employee relieved", date: formatDate(asset.relievedDate), state: "warn" });
+  }
+
+  return (
+    <div className="asset-drawer-overlay" onClick={onClose}>
+      <div className="asset-drawer" onClick={(e) => e.stopPropagation()}>
+
+        {/* ── Hero ── */}
+        <div className="asset-drawer-hero" style={{ background: visual.gradient }}>
+          <button className="asset-drawer-close" onClick={onClose} aria-label="Close">✕</button>
+          <div className="asset-drawer-icon">{visual.icon}</div>
+          <h3 className="asset-drawer-name">{asset.laptopName}</h3>
+          <div className="asset-drawer-sub">{asset.assetType}{asset.brand ? ` · ${asset.brand}` : ""}{asset.model ? ` ${asset.model}` : ""}</div>
+          <div className="asset-drawer-pills">
+            <StatusPill status={asset.assetStatus} />
+            <span className="pill" style={{ background: style.bg, color: style.text, border: `1px solid ${style.border}` }}>
+              {asset.assetCondition}
+            </span>
+          </div>
+        </div>
+
+        {/* ── Body ── */}
+        <div className="asset-drawer-body">
+
+          <div className="asset-drawer-section">
+            <div className="asset-drawer-section-title">Serial Number</div>
+            <div className="asset-drawer-serial">
+              <span>{asset.serialNumber || "—"}</span>
+              {asset.serialNumber && (
+                <button className={`asset-drawer-copy-btn${copied ? " is-copied" : ""}`} onClick={copySerial}>
+                  {copied ? "✓ Copied" : "Copy"}
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div className="asset-drawer-section">
+            <div className="asset-drawer-section-title">Overview</div>
+            <div className="asset-drawer-grid">
+              <div className="asset-drawer-stat">
+                <div className="asset-drawer-stat-label">Location</div>
+                <div className="asset-drawer-stat-value">{asset.location || "—"}</div>
+              </div>
+              <div className="asset-drawer-stat">
+                <div className="asset-drawer-stat-label">Vendor</div>
+                <div className="asset-drawer-stat-value">{asset.vendor || "—"}</div>
+              </div>
+              <div className="asset-drawer-stat">
+                <div className="asset-drawer-stat-label">Cost</div>
+                <div className="asset-drawer-stat-value">{asset.assetCost ? `₹${asset.assetCost}` : "—"}</div>
+              </div>
+              <div className="asset-drawer-stat">
+                <div className="asset-drawer-stat-label">Email Status</div>
+                <div className="asset-drawer-stat-value"><EmailStatusPill status={asset.emailStatus} /></div>
+              </div>
+            </div>
+            {specs && (
+              <div className="asset-drawer-stat" style={{ marginTop: 12 }}>
+                <div className="asset-drawer-stat-label">Specifications</div>
+                <div className="asset-drawer-stat-value">{specs}</div>
+              </div>
+            )}
+          </div>
+
+          <div className="asset-drawer-section">
+            <div className="asset-drawer-section-title">Assignment</div>
+            {asset.employeeName ? (
+              <div className="asset-drawer-assignee">
+                <div className="asset-drawer-avatar">{getInitials(asset.employeeName)}</div>
+                <div>
+                  <div className="asset-drawer-assignee-name">{asset.employeeName}</div>
+                  <div className="asset-drawer-assignee-meta">
+                    {asset.employeeRole || "Employee"}{asset.employeeId ? ` · ${asset.employeeId}` : ""}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="asset-drawer-empty">Not currently assigned to anyone.</div>
+            )}
+          </div>
+
+          {timeline.length > 0 && (
+            <div className="asset-drawer-section">
+              <div className="asset-drawer-section-title">Lifecycle</div>
+              <div className="asset-drawer-timeline">
+                {timeline.map((t, i) => (
+                  <div key={i} className={`asset-drawer-tl-item is-${t.state}`}>
+                    <div className="asset-drawer-tl-dot" />
+                    <div className="asset-drawer-tl-label">
+                      {t.label}
+                      {t.badge && <span className="asset-drawer-tl-badge" style={t.badgeStyle}>{t.badge}</span>}
+                    </div>
+                    <div className="asset-drawer-tl-date">{t.date}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {asset.remarks && (
+            <div className="asset-drawer-section">
+              <div className="asset-drawer-section-title">Remarks</div>
+              <div className="asset-drawer-notes">{asset.remarks}</div>
+            </div>
+          )}
+        </div>
+
+        {/* ── Footer ── */}
+        <div className="asset-drawer-footer">
+          <button className="btn btn-secondary" style={{ flex: 1 }} onClick={onClose}>Close</button>
+          <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => onEdit(asset)}>✏️ Edit Asset</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // ── Main Component ──────────────────────────────────────────────
 export default function Assets() {
   const toast = useToast();
@@ -130,6 +327,7 @@ export default function Assets() {
   const [locationFilter, setLocationFilter] = useState("All");
   const [returnTarget, setReturnTarget] = useState(null);
   const [returning, setReturning] = useState(false);
+  const [viewingAsset, setViewingAsset] = useState(null); // asset currently shown in the detail drawer
   const [emailTarget, setEmailTarget] = useState(null); // asset currently in the Send Email modal
   const [updating, setUpdating] = useState(new Set());
   const [editingAsset, setEditingAsset] = useState(null); // null = add mode, asset obj = edit mode
@@ -787,6 +985,13 @@ export default function Assets() {
                         <div style={{ display:"flex", gap:8, alignItems:"center" }}>
                           <button
                             className="action-edit"
+                            onClick={() => setViewingAsset(asset)}
+                            title="View asset details"
+                          >
+                            👁
+                          </button>
+                          <button
+                            className="action-edit"
                             onClick={() => openEdit(asset)}
                             title="Edit asset"
                           >
@@ -832,6 +1037,12 @@ export default function Assets() {
         onClose={() => setReturnTarget(null)}
         onConfirm={handleReturn}
         saving={returning}
+      />
+
+      <AssetDetailDrawer
+        asset={viewingAsset}
+        onClose={() => setViewingAsset(null)}
+        onEdit={(asset) => { setViewingAsset(null); openEdit(asset); }}
       />
 
       <SendEmailModal
