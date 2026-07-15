@@ -39,7 +39,7 @@ const SkeletonRow = () => {
       <div className="skeleton skeleton-text" style={{ width: w, margin: 0 }} />
     </td>
   );
-  return <tr>{cell(30)}{cell(100)}{cell(70)}{cell(90)}{cell(80)}{cell(60)}{cell(70)}{cell(80)}{cell(90)}{cell(90)}</tr>;
+  return <tr>{cell(30)}{cell(160)}{cell(140)}{cell(110)}{cell(90)}{cell(150)}</tr>;
 };
 
 // ── Return Dialog (Modal) ────────────────────────────────────────
@@ -837,14 +837,11 @@ export default function Assets() {
               <thead>
                 <tr>
                   <th style={{ width:40, textAlign:"center" }}>#</th>
-                  <th>Asset Name</th>
-                  <th>Type</th>
-                  <th>Brand / Model</th>
-                  <th>Serial No.</th>
+                  <th>Asset</th>
                   <th>Location</th>
                   <th style={{ minWidth:120 }}>Condition</th>
                   <th>Status</th>
-                  <th style={{ width:140 }}>Actions</th>
+                  <th style={{ width:170 }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -883,14 +880,10 @@ export default function Assets() {
               <thead>
                 <tr>
                   <th style={{ width:40, textAlign:"center" }}>#</th>
-                  <th>Asset Name</th>
-                  <th>Type</th>
-                  <th>Brand / Model</th>
-                  <th>Serial No.</th>
+                  <th>Asset</th>
                   <th>Location</th>
                   <th style={{ minWidth:120 }}>Condition</th>
                   <th>Status</th>
-                  <th>Email Status</th>
                   <th style={{ width:170 }}>Actions</th>
                 </tr>
               </thead>
@@ -900,6 +893,7 @@ export default function Assets() {
                   const style = conditionStyles[asset.assetCondition] || conditionStyles["New"];
                   const employeeEmail = asset.employeeId ? employeeEmailById[asset.employeeId] : null;
                   const canSendEmail = asset.assetStatus === "Assigned" && !!asset.employeeId && !!employeeEmail;
+                  const visual = ASSET_TYPE_VISUALS[asset.assetType] || DEFAULT_TYPE_VISUAL;
 
                   return (
                     <tr key={asset.assetId} className="asset-row">
@@ -907,33 +901,30 @@ export default function Assets() {
                         {index + 1}
                       </td>
                       <td>
-                        <div style={{ fontWeight:600, color:"var(--gray-900)", fontSize:13.5 }}>
-                          {asset.laptopName}
-                        </div>
-                        {asset.employeeName && (
-                          <div style={{ fontSize:11.5, color:"var(--gray-500)", marginTop:1 }}>
-                            → {asset.employeeName}
+                        <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+                          <div style={{
+                            width:34, height:34, borderRadius:9, flexShrink:0,
+                            background: visual.gradient,
+                            display:"flex", alignItems:"center", justifyContent:"center",
+                            fontSize:16,
+                          }}>
+                            {visual.icon}
                           </div>
-                        )}
-                      </td>
-                      <td>
-                        <span className="tag tag-blue">{asset.assetType}</span>
-                      </td>
-                      <td>
-                        <span style={{ fontWeight:500, color:"var(--gray-800)" }}>{asset.brand}</span>
-                        {asset.model && <span style={{ color:"var(--gray-400)", marginLeft:4 }}>· {asset.model}</span>}
-                      </td>
-                      <td>
-                        <span style={{
-                          fontFamily:"'SF Mono','Fira Code',monospace",
-                          fontSize:11,
-                          background:"var(--gray-100)",
-                          padding:"2px 8px",
-                          borderRadius:4,
-                          color:"var(--gray-600)",
-                        }}>
-                          {asset.serialNumber}
-                        </span>
+                          <div style={{ minWidth:0 }}>
+                            <div
+                              style={{ fontWeight:600, color:"var(--gray-900)", fontSize:13.5, cursor:"pointer" }}
+                              onClick={() => setViewingAsset(asset)}
+                              title="Click to view full details"
+                            >
+                              {asset.laptopName}
+                            </div>
+                            <div style={{ fontSize:11.5, color:"var(--gray-500)", marginTop:1, display:"flex", alignItems:"center", gap:6, flexWrap:"wrap" }}>
+                              <span className="tag tag-blue" style={{ padding:"1px 7px", fontSize:10.5 }}>{asset.assetType}</span>
+                              {asset.brand && <span>{asset.brand}{asset.model ? ` · ${asset.model}` : ""}</span>}
+                              {asset.employeeName && <span>→ {asset.employeeName}</span>}
+                            </div>
+                          </div>
+                        </div>
                       </td>
                       <td style={{ color:"var(--gray-600)" }}>{asset.location || "—"}</td>
                       <td>
@@ -980,15 +971,14 @@ export default function Assets() {
                         </div>
                       </td>
                       <td><StatusPill status={asset.assetStatus} /></td>
-                      <td><EmailStatusPill status={asset.emailStatus} /></td>
                       <td>
                         <div style={{ display:"flex", gap:8, alignItems:"center" }}>
                           <button
-                            className="action-edit"
+                            className="action-view"
                             onClick={() => setViewingAsset(asset)}
                             title="View asset details"
                           >
-                            👁
+                            👁 View
                           </button>
                           <button
                             className="action-edit"
@@ -1125,6 +1115,24 @@ export default function Assets() {
           white-space: nowrap;
         }
         .action-send-email:hover {
+          background: var(--primary-100);
+          border-color: var(--primary-300, var(--primary-200));
+          transform: translateY(-1px);
+        }
+        .action-view {
+          background: var(--primary-50);
+          border: 1px solid var(--primary-200);
+          color: var(--primary-700);
+          border-radius: 7px;
+          padding: 5px 10px;
+          font-size: 12.5px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.15s ease;
+          display: flex; align-items: center; gap: 4px;
+          white-space: nowrap;
+        }
+        .action-view:hover {
           background: var(--primary-100);
           border-color: var(--primary-300, var(--primary-200));
           transform: translateY(-1px);

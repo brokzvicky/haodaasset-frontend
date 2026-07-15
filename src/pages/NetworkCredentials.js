@@ -4,7 +4,7 @@ import axios from "axios";
 import {
   Router, Network, Shield, Wifi, Server, HardDrive, Printer, Lock,
   Plus, X, Search, RefreshCw, Eye, EyeOff, Copy, Pencil, Trash2,
-  ChevronDown, ChevronUp, Check, AlertTriangle, KeyRound, MoreVertical,
+  ChevronDown, ChevronUp, Check, AlertTriangle, MoreVertical,
   SlidersHorizontal, ShieldCheck, Unlock, TimerReset,
 } from "lucide-react";
 import Layout from "../components/Layout";
@@ -12,6 +12,7 @@ import { useToast } from "../utils/Toast";
 import CredentialUnlockDialog from "../components/CredentialUnlockDialog";
 import CountUp from "../components/CountUp";
 import "./NetworkCredentials.css";
+import "../components/DetailDrawer.css";
 
 const API = "https://haodaasset-backend-1.onrender.com";
 
@@ -86,11 +87,171 @@ const SkeletonRow = () => {
   );
   return (
     <tr>
-      {cell(28)}{cell(120)}{cell(80)}{cell(90)}{cell(100)}
-      {cell(90)}{cell(80)}{cell(70)}{cell(90)}{cell(90)}{cell(90)}{cell(24)}
+      {cell(28)}{cell(160)}{cell(90)}{cell(110)}{cell(130)}{cell(90)}{cell(24)}
     </tr>
   );
 };
+
+// ── Device type → gradient (drives the drawer hero) ─────────────────
+const DEVICE_TYPE_GRADIENT = {
+  Router:        "linear-gradient(135deg,#2563eb,#1d4ed8)",
+  Switch:        "linear-gradient(135deg,#7c3aed,#5b21b6)",
+  Firewall:      "linear-gradient(135deg,#dc2626,#991b1b)",
+  "Access Point":"linear-gradient(135deg,#d97706,#b45309)",
+  Server:        "linear-gradient(135deg,#059669,#065f46)",
+  NAS:           "linear-gradient(135deg,#0891b2,#0e7490)",
+  Printer:       "linear-gradient(135deg,#475569,#1e293b)",
+  "VPN Gateway": "linear-gradient(135deg,#334155,#0f172a)",
+  Other:         "linear-gradient(135deg,#64748b,#334155)",
+};
+
+// ── Network Credential Detail Drawer ────────────────────────────────
+function NetworkDetailDrawer({
+  cred, onClose, onEdit, onDelete,
+  unlocked, revealed, revealingId, copiedKey,
+  onTogglePassword, onCopyUsername, onCopyPassword,
+}) {
+  if (!cred) return null;
+  const gradient = DEVICE_TYPE_GRADIENT[cred.deviceType] || DEVICE_TYPE_GRADIENT.Other;
+  const rev = revealed[cred.id];
+  const isRevealing = revealingId === cred.id;
+
+  return (
+    <div className="detail-drawer-overlay" onClick={onClose}>
+      <div className="detail-drawer" onClick={(e) => e.stopPropagation()}>
+
+        {/* Hero */}
+        <div className="detail-drawer-hero" style={{ background: gradient }}>
+          <button className="detail-drawer-close" onClick={onClose} aria-label="Close"><X size={15} /></button>
+          <div className="detail-drawer-icon"><DeviceTypeIcon type={cred.deviceType} size={24} /></div>
+          <h3 className="detail-drawer-name">{cred.deviceName}</h3>
+          <div className="detail-drawer-sub">
+            {cred.deviceType}{cred.brand ? ` · ${cred.brand}` : ""}{cred.model ? ` ${cred.model}` : ""}
+          </div>
+          <div className="detail-drawer-pills">
+            <DeviceStatusPill status={cred.deviceStatus} />
+          </div>
+        </div>
+
+        {/* Body */}
+        <div className="detail-drawer-body">
+
+          <div className="detail-drawer-section">
+            <div className="detail-drawer-section-title">Network</div>
+            <div className="detail-drawer-grid">
+              <div className="detail-drawer-stat">
+                <div className="detail-drawer-stat-label">IP Address</div>
+                <div className="detail-drawer-stat-value">{cred.ipAddress || "—"}</div>
+              </div>
+              <div className="detail-drawer-stat">
+                <div className="detail-drawer-stat-label">Hostname</div>
+                <div className="detail-drawer-stat-value">{cred.hostname || "—"}</div>
+              </div>
+              <div className="detail-drawer-stat">
+                <div className="detail-drawer-stat-label">VLAN</div>
+                <div className="detail-drawer-stat-value">{cred.vlan || "—"}</div>
+              </div>
+              <div className="detail-drawer-stat">
+                <div className="detail-drawer-stat-label">ISP</div>
+                <div className="detail-drawer-stat-value">{cred.isp || "—"}</div>
+              </div>
+              <div className="detail-drawer-stat">
+                <div className="detail-drawer-stat-label">Location</div>
+                <div className="detail-drawer-stat-value">{cred.location || "—"}</div>
+              </div>
+              <div className="detail-drawer-stat">
+                <div className="detail-drawer-stat-label">SSH / Web Port</div>
+                <div className="detail-drawer-stat-value">{cred.sshPort || "—"} / {cred.webPort || "—"}</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="detail-drawer-section">
+            <div className="detail-drawer-section-title"><Lock size={11} /> Access Credentials</div>
+
+            <div className="detail-drawer-secret">
+              <span className="detail-drawer-secret-label">Username</span>
+              <span className="detail-drawer-secret-value">
+                {unlocked ? cred.username : "••••••••"}
+              </span>
+              <div className="detail-drawer-secret-actions">
+                <button
+                  className={"detail-drawer-icon-btn" + (copiedKey === `user-${cred.id}` ? " is-copied" : "")}
+                  title="Copy username"
+                  onClick={() => onCopyUsername(cred)}
+                >
+                  {copiedKey === `user-${cred.id}` ? <Check size={12} /> : <Copy size={12} />}
+                </button>
+              </div>
+            </div>
+
+            <div className="detail-drawer-secret">
+              <span className="detail-drawer-secret-label">Password</span>
+              <span className="detail-drawer-secret-value">
+                {isRevealing ? "Decrypting…" : rev?.visible ? rev.password : "••••••••"}
+              </span>
+              <div className="detail-drawer-secret-actions">
+                <button
+                  className="detail-drawer-icon-btn"
+                  title={rev?.visible ? "Hide password" : "Show password"}
+                  onClick={() => onTogglePassword(cred)}
+                  disabled={isRevealing}
+                >
+                  {rev?.visible ? <EyeOff size={12} /> : <Eye size={12} />}
+                </button>
+                <button
+                  className={"detail-drawer-icon-btn" + (copiedKey === `pwd-${cred.id}` ? " is-copied" : "")}
+                  title="Copy password"
+                  onClick={() => onCopyPassword(cred)}
+                  disabled={isRevealing}
+                >
+                  {copiedKey === `pwd-${cred.id}` ? <Check size={12} /> : <Copy size={12} />}
+                </button>
+              </div>
+            </div>
+
+            {!unlocked && (
+              <div style={{ fontSize: 11.5, color: "var(--gray-400)", marginTop: 8, display: "flex", alignItems: "center", gap: 6 }}>
+                <Lock size={11} /> Verify identity to reveal or copy credentials
+              </div>
+            )}
+          </div>
+
+          {cred.notes && (
+            <div className="detail-drawer-section">
+              <div className="detail-drawer-section-title">Notes</div>
+              <div className="detail-drawer-notes">{cred.notes}</div>
+            </div>
+          )}
+
+          <div className="detail-drawer-section" style={{ marginBottom: 4 }}>
+            <div className="detail-drawer-section-title">Record History</div>
+            <div style={{ fontSize: 12, color: "var(--gray-500)", lineHeight: 1.7 }}>
+              Created {formatDateTime(cred.createdAt)}{cred.createdBy ? ` by ${cred.createdBy}` : ""}<br />
+              Last updated {formatDateTime(cred.updatedAt)}
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="detail-drawer-footer">
+          <button className="btn btn-secondary" style={{ flex: 1 }} onClick={onClose}>Close</button>
+          <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => onEdit(cred)}>
+            <Pencil size={13} style={{ marginRight: 6 }} /> Edit
+          </button>
+          <button
+            className="btn btn-secondary"
+            style={{ color: "var(--danger)", borderColor: "var(--danger-border)" }}
+            title="Delete credential"
+            onClick={() => onDelete(cred)}
+          >
+            <Trash2 size={14} />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // ── Form section divider ───────────────────────────────────────────
 function FormSection({ icon, label }) {
@@ -126,6 +287,7 @@ export default function NetworkCredentials() {
   const [revealed, setRevealed]         = useState({});
   const [revealingId, setRevealingId]   = useState(null);
   const [deletingId, setDeletingId]     = useState(null);
+  const [viewingCred, setViewingCred]   = useState(null);
   const [openMenuId, setOpenMenuId]     = useState(null);
   const [menuPos, setMenuPos]           = useState(null);
   const [copiedKey, setCopiedKey]       = useState(null);
@@ -733,9 +895,11 @@ export default function NetworkCredentials() {
               <thead>
                 <tr>
                   <th style={{ width: 36 }}>#</th>
-                  <th>Device Name</th><th>Type</th><th>Brand</th><th>Model</th>
-                  <th>IP Address</th><th>Hostname</th><th>Username</th>
-                  <th>Password</th><th>Location</th><th>Last Updated</th>
+                  <th>Device</th>
+                  <th>IP Address</th>
+                  <th>Location</th>
+                  <th>Last Updated</th>
+                  <th style={{ width: 90 }}>Actions</th>
                   <th style={{ width: 50 }}></th>
                 </tr>
               </thead>
@@ -767,23 +931,16 @@ export default function NetworkCredentials() {
               <thead>
                 <tr>
                   <th style={{ width: 36, textAlign: "center" }}>#</th>
-                  <th>Device Name</th>
-                  <th>Type</th>
-                  <th>Brand</th>
-                  <th>Model</th>
+                  <th>Device</th>
                   <th>IP Address</th>
-                  <th>Hostname</th>
-                  <th>Username</th>
-                  <th style={{ minWidth: 170 }}>Password</th>
                   <th>Location</th>
                   <th>Last Updated</th>
+                  <th style={{ width: 100 }}>Actions</th>
                   <th style={{ width: 50 }}></th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.map((cred, index) => {
-                  const rev        = revealed[cred.id];
-                  const isRevealing = revealingId === cred.id;
                   const isDeleting  = deletingId === cred.id;
                   return (
                     <tr
@@ -796,75 +953,36 @@ export default function NetworkCredentials() {
                         {index + 1}
                       </td>
 
-                      {/* Device name */}
+                      {/* Device */}
                       <td>
-                        <div className="netcred-device-name">{cred.deviceName}</div>
-                        <div className="netcred-device-sub">
-                          <DeviceStatusPill status={cred.deviceStatus} />
+                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                          <div style={{
+                            width: 34, height: 34, borderRadius: 9, flexShrink: 0,
+                            background: DEVICE_TYPE_GRADIENT[cred.deviceType] || DEVICE_TYPE_GRADIENT.Other,
+                            display: "flex", alignItems: "center", justifyContent: "center", color: "#fff",
+                          }}>
+                            <DeviceTypeIcon type={cred.deviceType} size={15} />
+                          </div>
+                          <div style={{ minWidth: 0 }}>
+                            <div
+                              className="netcred-device-name"
+                              style={{ cursor: "pointer" }}
+                              onClick={() => setViewingCred(cred)}
+                              title="Click to view full details"
+                            >
+                              {cred.deviceName}
+                            </div>
+                            <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginTop: 2 }}>
+                              <span className="netcred-type-tag">{cred.deviceType}</span>
+                              {cred.brand && <span style={{ fontSize: 11.5, color: "#64748b" }}>{cred.brand}{cred.model ? ` · ${cred.model}` : ""}</span>}
+                              <DeviceStatusPill status={cred.deviceStatus} />
+                            </div>
+                          </div>
                         </div>
                       </td>
-
-                      {/* Type */}
-                      <td>
-                        <span className="netcred-type-tag">
-                          <DeviceTypeIcon type={cred.deviceType} size={11} />
-                          {cred.deviceType}
-                        </span>
-                      </td>
-
-                      {/* Brand */}
-                      <td style={{ color: "#334155", fontWeight: 500 }}>{cred.brand || "—"}</td>
-
-                      {/* Model */}
-                      <td style={{ color: "#475569" }}>{cred.model || "—"}</td>
 
                       {/* IP */}
                       <td>{cred.ipAddress ? <span className="netcred-mono">{cred.ipAddress}</span> : <span style={{ color: "#cbd5e1" }}>—</span>}</td>
-
-                      {/* Hostname */}
-                      <td>{cred.hostname ? <span className="netcred-mono">{cred.hostname}</span> : <span style={{ color: "#cbd5e1" }}>—</span>}</td>
-
-                      {/* Username */}
-                      <td>
-                        <div className="netcred-secret">
-                          <span style={{ fontWeight: 600, fontSize: 12.5, color: unlocked ? "#1e293b" : "#94a3b8", letterSpacing: unlocked ? 0 : 1 }}>
-                            {unlocked ? cred.username : "••••••••"}
-                          </span>
-                          <button
-                            className={"icon-btn" + (copiedKey === `user-${cred.id}` ? " is-copied" : "")}
-                            title="Copy username"
-                            onClick={() => copyUsername(cred)}
-                          >
-                            {copiedKey === `user-${cred.id}` ? <Check size={11} /> : <Copy size={11} />}
-                          </button>
-                        </div>
-                      </td>
-
-                      {/* Password */}
-                      <td>
-                        <div className="netcred-secret">
-                          <Lock size={11} className="netcred-secret-lock" />
-                          <span className={`netcred-secret-value ${isRevealing ? "is-pending" : !rev?.visible ? "is-masked" : ""}`}>
-                            {isRevealing ? "Decrypting…" : rev?.visible ? rev.password : "••••••••"}
-                          </span>
-                          <button
-                            className="icon-btn"
-                            title={rev?.visible ? "Hide password" : "Show password"}
-                            onClick={() => togglePasswordVisible(cred)}
-                            disabled={isRevealing}
-                          >
-                            {rev?.visible ? <EyeOff size={11} /> : <Eye size={11} />}
-                          </button>
-                          <button
-                            className={"icon-btn" + (copiedKey === `pwd-${cred.id}` ? " is-copied" : "")}
-                            title="Copy password"
-                            onClick={() => copyPassword(cred)}
-                            disabled={isRevealing}
-                          >
-                            {copiedKey === `pwd-${cred.id}` ? <Check size={11} /> : <Copy size={11} />}
-                          </button>
-                        </div>
-                      </td>
 
                       {/* Location */}
                       <td style={{ color: "#475569", fontSize: 12.5 }}>{cred.location || "—"}</td>
@@ -875,6 +993,17 @@ export default function NetworkCredentials() {
                         style={{ fontSize: 12, color: "#94a3b8", whiteSpace: "nowrap" }}
                       >
                         {formatDate(cred.updatedAt)}
+                      </td>
+
+                      {/* View */}
+                      <td>
+                        <button
+                          className="netcred-view-btn"
+                          onClick={() => setViewingCred(cred)}
+                          title="View device details"
+                        >
+                          <Eye size={12} /> View
+                        </button>
                       </td>
 
                       {/* Actions */}
@@ -931,15 +1060,11 @@ export default function NetworkCredentials() {
                             }}
                             onClick={(e) => e.stopPropagation()}
                           >
+                            <button className="netcred-menu-item" onClick={() => { setViewingCred(cred); setOpenMenuId(null); setMenuPos(null); }}>
+                              <Eye size={13} /> View Details
+                            </button>
                             <button className="netcred-menu-item" onClick={() => { openEditForm(cred); setOpenMenuId(null); setMenuPos(null); }}>
                               <Pencil size={13} /> Edit
-                            </button>
-                            <button className="netcred-menu-item" onClick={() => { togglePasswordVisible(cred); setOpenMenuId(null); setMenuPos(null); }}>
-                              {rev?.visible ? <EyeOff size={13} /> : <Eye size={13} />}
-                              {rev?.visible ? "Hide Password" : "Show Password"}
-                            </button>
-                            <button className="netcred-menu-item" onClick={() => { copyPassword(cred); setOpenMenuId(null); setMenuPos(null); }}>
-                              <KeyRound size={13} /> Copy Password
                             </button>
                             <div className="netcred-menu-divider" />
                             <button className="netcred-menu-item danger" onClick={() => { deleteCredential(cred); setOpenMenuId(null); setMenuPos(null); }}>
@@ -963,6 +1088,20 @@ export default function NetworkCredentials() {
       {showUnlockDialog && (
         <CredentialUnlockDialog onUnlocked={handleUnlocked} onClose={closeUnlockDialog} />
       )}
+
+      <NetworkDetailDrawer
+        cred={viewingCred}
+        onClose={() => setViewingCred(null)}
+        onEdit={(cred) => { setViewingCred(null); openEditForm(cred); }}
+        onDelete={(cred) => { setViewingCred(null); deleteCredential(cred); }}
+        unlocked={unlocked}
+        revealed={revealed}
+        revealingId={revealingId}
+        copiedKey={copiedKey}
+        onTogglePassword={togglePasswordVisible}
+        onCopyUsername={copyUsername}
+        onCopyPassword={copyPassword}
+      />
     </>
   );
 }

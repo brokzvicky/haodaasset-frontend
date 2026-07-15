@@ -3,6 +3,7 @@ import axios from "axios";
 import Layout from "../components/Layout";
 import { useToast } from "../utils/Toast";
 import StatusPill from "../components/StatusPill";
+import "../components/DetailDrawer.css";
 
 const API = "https://haodaasset-backend-1.onrender.com";
 
@@ -286,6 +287,98 @@ function AssignAssetModal({ employee, onClose, onSuccess }) {
   );
 }
 
+// ─── Employee Detail Drawer ─────────────────────────────────────────────────
+function EmployeeDetailDrawer({ employee, assets, loadingAssets, onClose, onEdit, onDelete, onAssign }) {
+  if (!employee) return null;
+  return (
+    <div className="detail-drawer-overlay" onClick={onClose}>
+      <div className="detail-drawer" onClick={(e) => e.stopPropagation()}>
+
+        {/* Hero */}
+        <div className="detail-drawer-hero" style={{ background: `linear-gradient(135deg, ${avatarBg(employee.employeeName)}, #1e293b)` }}>
+          <button className="detail-drawer-close" onClick={onClose} aria-label="Close">✕</button>
+          <div className="detail-drawer-icon" style={{ fontSize: 20, fontWeight: 700 }}>
+            {initials(employee.employeeName)}
+          </div>
+          <h3 className="detail-drawer-name">{employee.employeeName}</h3>
+          <div className="detail-drawer-sub">
+            {employee.employeeId}{employee.designation ? ` · ${employee.designation}` : ""}{employee.department ? ` · ${employee.department}` : ""}
+          </div>
+          <div className="detail-drawer-pills">
+            {employee.mustChangePassword && <span className="pill" style={{ background: "rgba(255,255,255,0.18)", color: "#fff", border: "1px solid rgba(255,255,255,0.3)" }}>Default password</span>}
+          </div>
+        </div>
+
+        {/* Body */}
+        <div className="detail-drawer-body">
+          <div className="detail-drawer-section">
+            <div className="detail-drawer-section-title">Profile</div>
+            <div className="detail-drawer-grid">
+              <div className="detail-drawer-stat">
+                <div className="detail-drawer-stat-label">Email</div>
+                <div className="detail-drawer-stat-value">{employee.email || "—"}</div>
+              </div>
+              <div className="detail-drawer-stat">
+                <div className="detail-drawer-stat-label">Location</div>
+                <div className="detail-drawer-stat-value">{employee.location || "—"}</div>
+              </div>
+              <div className="detail-drawer-stat">
+                <div className="detail-drawer-stat-label">Department</div>
+                <div className="detail-drawer-stat-value">{employee.department || "—"}</div>
+              </div>
+              <div className="detail-drawer-stat">
+                <div className="detail-drawer-stat-label">Role</div>
+                <div className="detail-drawer-stat-value">{employee.role || "—"}</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="detail-drawer-section" style={{ marginBottom: 4 }}>
+            <div className="detail-drawer-section-title">
+              Assigned Assets {assets && assets.length > 0 && `(${assets.length})`}
+            </div>
+            {loadingAssets ? (
+              <div style={{ fontSize: 12.5, color: "var(--gray-400)" }}>Loading assets…</div>
+            ) : !assets || assets.length === 0 ? (
+              <div className="detail-drawer-empty">
+                Not currently assigned any assets.
+              </div>
+            ) : (
+              <table className="detail-drawer-mini-table">
+                <thead>
+                  <tr><th>Asset</th><th>Status</th></tr>
+                </thead>
+                <tbody>
+                  {assets.map((item) => (
+                    <tr key={item.assetId}>
+                      <td>
+                        <div style={{ fontWeight: 600, color: "var(--gray-900)" }}>{item.laptopName}</div>
+                        <div style={{ fontSize: 11, color: "var(--gray-400)", marginTop: 1 }}>
+                          {item.assetType}{item.brand ? ` · ${item.brand}` : ""}{item.model ? ` ${item.model}` : ""}
+                        </div>
+                      </td>
+                      <td><StatusPill status={item.assetStatus} /></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="detail-drawer-footer" style={{ flexWrap: "wrap" }}>
+          <button className="btn btn-primary" style={{ flex: "1 1 auto" }} onClick={() => onAssign(employee)}>
+            ➕ Assign Asset
+          </button>
+          <button className="btn btn-secondary" onClick={() => onEdit(employee)}>✏ Edit</button>
+          <button className="btn btn-danger" onClick={() => onDelete(employee)}>🗑 Delete</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main Employees Page ───────────────────────────────────────────────────────
 export default function Employees() {
   const toast = useToast();
@@ -294,7 +387,7 @@ export default function Employees() {
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [locationFilter, setLocationFilter] = useState("All");
-  const [expanded, setExpanded] = useState(null);
+  const [viewingEmployee, setViewingEmployee] = useState(null);
   const [expandedAssets, setExpandedAssets] = useState({});
   const [assetCounts, setAssetCounts] = useState({});
 
@@ -384,10 +477,9 @@ export default function Employees() {
       .catch(() => toast("Couldn't delete employee.", "error"));
   };
 
-  const toggleExpand = (emp) => {
+  const openProfile = (emp) => {
+    setViewingEmployee(emp);
     const key = emp.employeeId;
-    if (expanded === key) { setExpanded(null); return; }
-    setExpanded(key);
     if (!expandedAssets[key]) {
       axios.get(`${API}/api/admin/employees/${key}/assets`)
         .then((r) => setExpandedAssets((prev) => ({ ...prev, [key]: r.data })))
@@ -574,14 +666,14 @@ export default function Employees() {
                       display: "flex", alignItems: "center", justifyContent: "center",
                       fontSize: 16, fontWeight: 700, color: "#fff", cursor: "pointer",
                     }}
-                    onClick={() => toggleExpand(emp)}
+                    onClick={() => openProfile(emp)}
                   >
                     {initials(emp.employeeName)}
                   </div>
 
                   {/* Name & meta */}
-                  <div style={{ flex: 1, cursor: "pointer" }} onClick={() => toggleExpand(emp)}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <div style={{ flex: 1, cursor: "pointer", minWidth: 0 }} onClick={() => openProfile(emp)}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                       <span style={{ fontWeight: 700, fontSize: 15, color: "var(--gray-900)" }}>
                         {emp.employeeName}
                       </span>
@@ -595,22 +687,21 @@ export default function Employees() {
                           📦 {count} {count === 1 ? "asset" : "assets"}
                         </span>
                       )}
+                      {emp.mustChangePassword && <span className="tag tag-blue">Default password</span>}
                     </div>
                     <div style={{ fontSize: 12.5, color: "var(--gray-500)", marginTop: 2 }}>
                       {emp.employeeId} · {emp.designation || "—"} · {emp.department || "—"}
                     </div>
                   </div>
 
-                  {emp.mustChangePassword && <span className="tag tag-blue">Default password</span>}
-
                   {/* Action buttons */}
                   <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                     <button
                       className="btn btn-secondary btn-sm"
-                      onClick={() => toggleExpand(emp)}
-                      title="View assigned assets"
+                      onClick={() => openProfile(emp)}
+                      title="View full profile and assigned assets"
                     >
-                      📦 View Assets
+                      👁 View
                     </button>
                     <button
                       className="btn btn-primary btn-sm"
@@ -619,78 +710,8 @@ export default function Employees() {
                     >
                       ➕ Assign Asset
                     </button>
-                    <button className="btn btn-secondary btn-sm" onClick={() => startEdit(emp)}>
-                      ✏ Edit
-                    </button>
-                    <button className="btn btn-danger btn-sm" onClick={() => deleteEmployee(emp)}>
-                      🗑 Delete
-                    </button>
-                    <span
-                      style={{ color: "var(--gray-400)", fontSize: 13, cursor: "pointer", padding: "0 2px" }}
-                      onClick={() => toggleExpand(emp)}
-                    >
-                      {expanded === emp.employeeId ? "▲" : "▼"}
-                    </span>
                   </div>
                 </div>
-
-                {/* Expanded asset panel */}
-                {expanded === emp.employeeId && (
-                  <div style={{ borderTop: "1px solid var(--gray-100)", padding: "14px 22px 18px" }}>
-                    <div className="grid-3" style={{ gap: 12, marginBottom: 14 }}>
-                      <div>
-                        <div style={{ fontSize: 11, fontWeight: 700, color: "var(--gray-400)", textTransform: "uppercase" }}>Email</div>
-                        <div style={{ fontSize: 13.5, fontWeight: 600 }}>{emp.email || "—"}</div>
-                      </div>
-                      <div>
-                        <div style={{ fontSize: 11, fontWeight: 700, color: "var(--gray-400)", textTransform: "uppercase" }}>Location</div>
-                        <div style={{ fontSize: 13.5, fontWeight: 600 }}>{emp.location || "—"}</div>
-                      </div>
-                      <div>
-                        <div style={{ fontSize: 11, fontWeight: 700, color: "var(--gray-400)", textTransform: "uppercase" }}>Role</div>
-                        <div style={{ fontSize: 13.5, fontWeight: 600 }}>{emp.role}</div>
-                      </div>
-                    </div>
-
-                    <div className="card-subtitle" style={{ marginBottom: 8 }}>Assigned Assets</div>
-                    {!expandedAssets[emp.employeeId] ? (
-                      <div style={{ fontSize: 12.5, color: "var(--gray-400)" }}>Loading assets…</div>
-                    ) : expandedAssets[emp.employeeId].length === 0 ? (
-                      <div style={{ fontSize: 12.5, color: "var(--gray-400)" }}>
-                        No assets currently assigned.{" "}
-                        <span
-                          style={{ color: "#1a56db", cursor: "pointer", fontWeight: 600 }}
-                          onClick={() => setAssignTarget(emp)}
-                        >
-                          Assign one now →
-                        </span>
-                      </div>
-                    ) : (
-                      <table className="data-table">
-                        <thead>
-                          <tr><th>Type</th><th>Asset</th><th>Brand</th><th>Model</th><th>Serial No.</th><th>Assigned Date</th><th>Status</th></tr>
-                        </thead>
-                        <tbody>
-                          {expandedAssets[emp.employeeId].map((item) => (
-                            <tr key={item.assetId}>
-                              <td><span className="tag tag-blue">{item.assetType}</span></td>
-                              <td style={{ fontWeight: 500 }}>{item.laptopName}</td>
-                              <td>{item.brand}</td>
-                              <td style={{ color: "var(--gray-500)", fontSize: 13 }}>{item.model || "—"}</td>
-                              <td>
-                                <span style={{ fontFamily: "'SF Mono','Fira Code',monospace", fontSize: 11, background: "var(--gray-100)", padding: "2px 6px", borderRadius: 4, color: "var(--gray-600)" }}>
-                                  {item.serialNumber}
-                                </span>
-                              </td>
-                              <td style={{ fontSize: 13, color: "var(--gray-500)" }}>{item.assignedDate || "—"}</td>
-                              <td><StatusPill status={item.assetStatus} /></td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    )}
-                  </div>
-                )}
               </div>
             );
           })}
@@ -705,6 +726,16 @@ export default function Employees() {
           onSuccess={handleAssignSuccess}
         />
       )}
+
+      <EmployeeDetailDrawer
+        employee={viewingEmployee}
+        assets={viewingEmployee ? expandedAssets[viewingEmployee.employeeId] : null}
+        loadingAssets={viewingEmployee ? !expandedAssets[viewingEmployee.employeeId] : false}
+        onClose={() => setViewingEmployee(null)}
+        onEdit={(emp) => { setViewingEmployee(null); startEdit(emp); }}
+        onDelete={(emp) => { setViewingEmployee(null); deleteEmployee(emp); }}
+        onAssign={(emp) => { setViewingEmployee(null); setAssignTarget(emp); }}
+      />
     </Layout>
   );
 }
