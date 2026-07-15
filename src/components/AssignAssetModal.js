@@ -188,6 +188,7 @@ export default function AssignAssetModal({
 
           </div>
 
+          {selectedAsset && (
           <div className="form-group" style={{ marginTop: 18 }}>
             <span className="modal-label">Assignment Type</span>
             <div style={{ display: "flex", gap: 10 }}>
@@ -267,6 +268,7 @@ export default function AssignAssetModal({
               </div>
             )}
           </div>
+          )}
 
           <div className="form-group" style={{ marginTop: 14 }}>
             <span className="modal-label">Any issues with the old asset? (optional)</span>

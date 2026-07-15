@@ -323,7 +323,8 @@ function AssignAssetModal({ employee, onClose, onSuccess }) {
             </div>
           </div>
 
-          {/* Assignment Type: Permanent vs Temporary */}
+          {/* Assignment Type: Permanent vs Temporary — only shown once an asset is selected */}
+          {selectedAssetId && (
           <div>
             <div style={{ fontSize: 13, fontWeight: 700, color: "var(--gray-700)", marginBottom: 10 }}>
               Assignment Type *
@@ -405,6 +406,7 @@ function AssignAssetModal({ employee, onClose, onSuccess }) {
               </div>
             )}
           </div>
+          )}
 
           {/* Old Asset Condition */}
           <div className="field" style={{ margin: 0 }}>
