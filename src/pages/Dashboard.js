@@ -110,6 +110,10 @@ export default function Dashboard() {
   const [assets, setAssets]             = useState([]);
   const [loading, setLoading]           = useState(true);
   const [error, setError]               = useState("");
+  const [billing, setBilling] = useState({
+    totalPayments: null, paidServices: null, pendingServices: null,
+    overdueServices: null, totalInvoicesUploaded: null,
+  });
 
   const now      = new Date();
   const greeting = now.getHours() < 12 ? "Good morning" : now.getHours() < 17 ? "Good afternoon" : "Good evening";
@@ -129,6 +133,12 @@ export default function Dashboard() {
     })
     .catch(() => setError("Couldn't reach the API. Is the Spring Boot server running?"))
     .finally(() => setLoading(false));
+
+    // Service Billing KPIs load independently — a failure here shouldn't
+    // block the rest of the dashboard from rendering.
+    axios.get(`${API}/api/admin/service-billing/dashboard`)
+      .then((r) => setBilling(r.data))
+      .catch(() => { /* card simply shows placeholders if this fails */ });
   }, []);
 
   const derivedCounts = useMemo(() => ({
@@ -315,6 +325,30 @@ export default function Dashboard() {
               </div>
             </div>
           ))}
+        </div>
+      </div>
+
+      {/* Service Billing Overview */}
+      <div style={{ marginBottom: 20 }}>
+        <div style={{ marginBottom: 12, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ fontSize: 15, fontWeight: 700, color: "var(--gray-800)" }}>Service Billing</span>
+            <span style={{ fontSize: 12, color: "var(--gray-400)", background: "var(--gray-100)", padding: "2px 10px", borderRadius: 999, fontWeight: 600 }}>
+              Vendor payments &amp; invoices
+            </span>
+          </div>
+          <Link to="/service-billing" style={{ fontSize: 12.5, fontWeight: 700, color: "var(--primary)", textDecoration: "none" }}>
+            View all →
+          </Link>
+        </div>
+        <div className="kpi-row billing-kpi-row stagger-in">
+          <KpiCard label="Total Payments"        value={billing.totalPayments === null ? null : (billing.totalPayments ?? 0)}         gradient="linear-gradient(135deg,#93c5fd,#2563eb)" glow="#2563eb40" icon={<IconDoc />} />
+          <KpiCard label="Paid Services"          value={billing.paidServices === null ? null : (billing.paidServices ?? 0)}           gradient="linear-gradient(135deg,#34d399,#059669)" glow="#10b98140" icon={<IconCheck />} />
+          <KpiCard label="Pending Services"       value={billing.pendingServices === null ? null : (billing.pendingServices ?? 0)}     gradient="linear-gradient(135deg,#fbbf24,#d97706)" glow="#d9770640" icon={<IconArchive />} />
+          <KpiCard label="Overdue Services"       value={billing.overdueServices === null ? null : (billing.overdueServices ?? 0)}     gradient="linear-gradient(135deg,#f87171,#dc2626)" glow="#dc262640" icon={<IconAlert />}
+            badge={billing.overdueServices > 0 ? "Action needed" : undefined}
+            onClick={() => navigate("/service-billing")} />
+          <KpiCard label="Invoices Uploaded"      value={billing.totalInvoicesUploaded === null ? null : (billing.totalInvoicesUploaded ?? 0)} gradient="linear-gradient(135deg,#a78bfa,#7c3aed)" glow="#7c3aed40" icon={<IconArchive />} />
         </div>
       </div>
 

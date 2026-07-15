@@ -11,6 +11,7 @@ import Assets from "./pages/Assets";
 import Employees from "./pages/Employees";
 import AdminAssetRequests from "./pages/AdminAssetRequests";
 import NetworkCredentials from "./pages/NetworkCredentials";
+import ServiceBilling from "./pages/ServiceBilling";
 import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
 import EmailLogs from "./pages/EmailLogs";
@@ -36,6 +37,7 @@ function App() {
               <Route path="/employees"     element={<AdminRoute><Employees /></AdminRoute>} />
               <Route path="/asset-requests" element={<AdminRoute><AdminAssetRequests /></AdminRoute>} />
               <Route path="/network-credentials" element={<AdminRoute><NetworkCredentials /></AdminRoute>} />
+              <Route path="/service-billing" element={<AdminRoute><ServiceBilling /></AdminRoute>} />
               <Route path="/reports"       element={<AdminRoute><Reports /></AdminRoute>} />
               <Route path="/settings"      element={<AdminRoute><Settings /></AdminRoute>} />
               <Route path="/activity-log"  element={<AdminRoute><ActivityLog /></AdminRoute>} />
