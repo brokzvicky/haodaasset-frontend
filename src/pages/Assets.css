@@ -3,15 +3,95 @@
    gradient KPI row, global search, filter chips, bulk toolbar, row
    checkboxes, the row action menu, and the Asset Detail Drawer. */
 
-/* ── KPI grid ─────────────────────────────────────────────────────── */
+/* ── KPI strip ────────────────────────────────────────────────────────
+   Deliberately compact & low-key: these are summary widgets that support
+   the Asset Inventory table below, not the hero of the page. Single-row,
+   dense, quiet surfaces with a small colored icon chip for scannability. */
 .asset-kpi-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 14px;
-  margin-bottom: 28px;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 18px;
 }
-@media (max-width: 1100px) { .asset-kpi-grid { grid-template-columns: repeat(2, 1fr); } }
-@media (max-width: 560px)  { .asset-kpi-grid { grid-template-columns: 1fr; } }
+@media (max-width: 1400px) { .asset-kpi-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (max-width: 860px)  { .asset-kpi-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 640px)  { .asset-kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 400px)  { .asset-kpi-grid { grid-template-columns: 1fr; } }
+
+.kpi-compact {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  padding: 9px 10px;
+  background: #fff;
+  border: 1px solid var(--gray-200);
+  border-radius: 9px;
+  transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+}
+.kpi-compact.clickable { cursor: pointer; }
+.kpi-compact.clickable:hover {
+  border-color: var(--gray-300);
+  background: var(--gray-50);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
+}
+.kpi-compact.clickable:active { transform: translateY(0); }
+.kpi-compact.is-active {
+  border-color: var(--primary-200, #bfdbfe);
+  background: var(--primary-50, #eff6ff);
+}
+
+.kpi-compact-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  flex-shrink: 0;
+}
+.kpi-compact-icon svg { width: 14px; height: 14px; }
+
+.kpi-compact-body { min-width: 0; flex: 1; line-height: 1.15; }
+.kpi-compact-value {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--gray-900);
+  font-variant-numeric: tabular-nums;
+}
+.kpi-compact-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--gray-500);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.kpi-compact-value-skeleton {
+  width: 30px;
+  height: 14px;
+  border-radius: 4px;
+  background: linear-gradient(90deg, var(--gray-200) 25%, var(--gray-100) 50%, var(--gray-200) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite;
+}
+.kpi-compact-active-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--primary);
+  flex-shrink: 0;
+  align-self: flex-start;
+  margin-top: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .kpi-compact { transition: none; }
+  .kpi-compact.clickable:hover { transform: none; }
+}
 
 /* ── Toolbar wrapper (title row + search + chips + bulk bar) ────────── */
 .asset-toolbar { display: flex; flex-direction: column; gap: 14px; padding: 18px 20px 4px; }

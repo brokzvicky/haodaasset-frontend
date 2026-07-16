@@ -55,22 +55,24 @@ const IconTrash   = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="
 const IconDownload= () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>;
 const IconHistory = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 5v4h4"/><polyline points="12 8 12 12 15 14"/></svg>;
 
-// ── Premium gradient KPI card (mirrors the Dashboard's vivid cards) ──
-const KpiCard = ({ icon, label, value, sub, gradient, glow, onClick, active }) => (
+// ── Compact summary widget (supports the table; doesn't compete with it) ──
+// Small colored icon chip + tight value/label pair. No full-bleed gradient,
+// no oversized shadow — these are secondary at-a-glance metrics, and the
+// Asset Inventory table below remains the visual focus of the page.
+const KpiCard = ({ icon, label, value, sub, gradient, onClick, active }) => (
   <div
-    className={`kpi-card-vivid ${onClick ? "clickable" : ""} ${active ? "is-active" : ""}`}
+    className={`kpi-compact ${onClick ? "clickable" : ""} ${active ? "is-active" : ""}`}
     onClick={onClick}
-    style={{ background: gradient, boxShadow: `0 8px 24px ${glow}` }}
+    title={sub ? `${label} · ${sub}` : label}
   >
-    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-      <div className="kpi-vivid-icon">{icon}</div>
-      {active && <span className="kpi-vivid-active-badge">Filtered</span>}
+    <div className="kpi-compact-icon" style={{ background: gradient }}>{icon}</div>
+    <div className="kpi-compact-body">
+      {value === null || value === undefined
+        ? <div className="kpi-compact-value-skeleton" />
+        : <div className="kpi-compact-value"><CountUp value={value} /></div>}
+      <div className="kpi-compact-label">{label}</div>
     </div>
-    {value === null || value === undefined
-      ? <div className="kpi-vivid-value-skeleton" />
-      : <div className="kpi-vivid-value"><CountUp value={value} /></div>}
-    <div className="kpi-vivid-label">{label}</div>
-    {sub && <div style={{ fontSize: 11, color: "rgba(255,255,255,0.75)", marginTop: 4 }}>{sub}</div>}
+    {active && <span className="kpi-compact-active-dot" aria-label="Filter active" />}
   </div>
 );
 
