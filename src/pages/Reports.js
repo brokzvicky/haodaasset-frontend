@@ -13,12 +13,17 @@ export default function Reports() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [pdfDownloading, setPdfDownloading] = useState(false);
+  const [analytics, setAnalytics] = useState(null);
 
   useEffect(() => {
     axios.get(`${API}/assets`)
       .then((r) => { setAssets(r.data); setError(""); })
       .catch(() => { setAssets([]); setError("Couldn't load report data. Is the API running?"); })
       .finally(() => setLoading(false));
+
+    axios.get(`${API}/api/admin/reports/analytics`)
+      .then((r) => setAnalytics(r.data))
+      .catch(() => { /* Analytics section simply stays hidden if this fails */ });
   }, []);
 
   const totalAssets    = assets.length;
@@ -175,6 +180,63 @@ export default function Reports() {
           </div>
         </div>
       </div>
+
+      {/* Advanced Analytics */}
+      {analytics && (
+        <div className="grid-2" style={{ marginBottom: 20 }}>
+          <div className="card">
+            <div className="card-header">
+              <div className="card-title">Warranty Watchlist</div>
+              <div className="card-subtitle">Expiring in the next 30 days · {analytics.warrantyExpired || 0} already expired</div>
+            </div>
+            <div className="card-body" style={{ padding: 0 }}>
+              {(analytics.warrantyExpiringSoon || []).length === 0 ? (
+                <div className="empty-state" style={{ padding: "24px 0" }}>
+                  <div className="empty-title">All clear</div>
+                  <div className="empty-sub">No warranties expiring in the next 30 days.</div>
+                </div>
+              ) : (
+                <table className="data-table">
+                  <thead><tr><th>Asset</th><th>Serial</th><th>Expires</th><th>Days Left</th></tr></thead>
+                  <tbody>
+                    {analytics.warrantyExpiringSoon.map((w) => (
+                      <tr key={w.assetId}>
+                        <td style={{ fontWeight: 600 }}>{w.laptopName}</td>
+                        <td>{w.serialNumber}</td>
+                        <td>{w.warrantyExpiry}</td>
+                        <td><span style={{ color: w.daysLeft <= 7 ? "#dc2626" : "#d97706", fontWeight: 700 }}>{w.daysLeft}d</span></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+
+          <div className="card">
+            <div className="card-header">
+              <div className="card-title">Fleet Age Distribution</div>
+              <div className="card-subtitle">Total asset value: ₹{Math.round(analytics.totalAssetValue || 0).toLocaleString()}</div>
+            </div>
+            <div className="card-body">
+              {Object.entries(analytics.byAgeBracket || {}).map(([bracket, count]) => (
+                <div key={bracket} style={{ marginBottom: 10 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                    <span style={{ fontSize: 12.5, fontWeight: 600, color: "var(--gray-600)" }}>{bracket}</span>
+                    <span style={{ fontSize: 12.5, fontWeight: 700 }}>{count}</span>
+                  </div>
+                  <div style={{ height: 6, background: "var(--gray-100)", borderRadius: 10 }}>
+                    <div style={{
+                      height: "100%", borderRadius: 10, background: "#7c3aed",
+                      width: `${totalAssets ? Math.round((count / totalAssets) * 100) : 0}%`,
+                    }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Export */}
       <div className="card">

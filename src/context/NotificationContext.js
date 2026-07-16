@@ -29,6 +29,8 @@ export function NotificationProvider({ children }) {
 
   const [notifications, setNotifications] = useState([]); // all requests as notifications
   const [unread, setUnread]               = useState(0);
+  const [systemNotifications, setSystemNotifications] = useState([]); // warranty/maintenance alerts
+  const [systemUnread, setSystemUnread]   = useState(0);
   const [open, setOpen]                   = useState(false);
   const seenRef                           = useRef(loadSeen());
   const timerRef                          = useRef(null);
@@ -61,13 +63,44 @@ export function NotificationProvider({ children }) {
     }
   }, [isAdmin, buildNotifications]);
 
+  // System notifications: warranty expiring, maintenance due, etc. — generated
+  // server-side (NotificationGeneratorService) and already carry their own
+  // persisted read/unread state, so no localStorage bookkeeping needed here.
+  const fetchSystemNotifications = useCallback(async () => {
+    if (!isAdmin) return;
+    try {
+      const { data } = await axios.get(`${API}/api/admin/notifications`);
+      setSystemNotifications(data);
+      setSystemUnread(data.filter((n) => !n.read).length);
+    } catch {
+      // silent — the bell simply shows only asset-request notifications if this fails
+    }
+  }, [isAdmin]);
+
+  const markSystemRead = useCallback(async (id) => {
+    try {
+      await axios.put(`${API}/api/admin/notifications/${id}/read`);
+      setSystemNotifications((ns) => ns.map((n) => (n.id === id ? { ...n, read: true } : n)));
+      setSystemUnread((u) => Math.max(0, u - 1));
+    } catch { /* ignore */ }
+  }, []);
+
+  const markAllSystemRead = useCallback(async () => {
+    try {
+      await axios.put(`${API}/api/admin/notifications/mark-all-read`);
+      setSystemNotifications((ns) => ns.map((n) => ({ ...n, read: true })));
+      setSystemUnread(0);
+    } catch { /* ignore */ }
+  }, []);
+
   // Start polling when admin is logged in
   useEffect(() => {
-    if (!isAdmin) { setNotifications([]); setUnread(0); return; }
+    if (!isAdmin) { setNotifications([]); setUnread(0); setSystemNotifications([]); setSystemUnread(0); return; }
     fetchRequests();
-    timerRef.current = setInterval(fetchRequests, POLL_MS);
+    fetchSystemNotifications();
+    timerRef.current = setInterval(() => { fetchRequests(); fetchSystemNotifications(); }, POLL_MS);
     return () => clearInterval(timerRef.current);
-  }, [isAdmin, fetchRequests]);
+  }, [isAdmin, fetchRequests, fetchSystemNotifications]);
 
   // Open / close the dropdown; mark all as read on open
   const toggleOpen = useCallback(() => {
@@ -88,7 +121,11 @@ export function NotificationProvider({ children }) {
   const refresh = useCallback(() => fetchRequests(), [fetchRequests]);
 
   return (
-    <NotificationContext.Provider value={{ notifications, unread, open, toggleOpen, close, refresh }}>
+    <NotificationContext.Provider value={{
+      notifications, unread, open, toggleOpen, close, refresh,
+      systemNotifications, systemUnread, markSystemRead, markAllSystemRead,
+      totalUnread: unread + systemUnread,
+    }}>
       {children}
     </NotificationContext.Provider>
   );

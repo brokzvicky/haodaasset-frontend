@@ -47,6 +47,12 @@ function KpiCard({ icon, label, value, sub, gradient, glow, onClick, badge }) {
 }
 
 /* ── Progress Bar ──────────────────────────────────────────────── */
+function pct(count, stats) {
+  if (!stats) return 0;
+  const total = (stats.scheduled || 0) + (stats.inProgress || 0) + (stats.completed || 0) + (stats.cancelled || 0);
+  if (!total) return 0;
+  return Math.round(((count || 0) / total) * 100);
+}
 function ProgressBar({ label, value, color }) {
   return (
     <div>
@@ -114,6 +120,7 @@ export default function Dashboard() {
     totalPayments: null, paidServices: null, pendingServices: null,
     overdueServices: null, totalInvoicesUploaded: null,
   });
+  const [analytics, setAnalytics] = useState(null);
 
   const now      = new Date();
   const greeting = now.getHours() < 12 ? "Good morning" : now.getHours() < 17 ? "Good afternoon" : "Good evening";
@@ -139,6 +146,11 @@ export default function Dashboard() {
     axios.get(`${API}/api/admin/service-billing/dashboard`)
       .then((r) => setBilling(r.data))
       .catch(() => { /* card simply shows placeholders if this fails */ });
+
+    // Warranty & Maintenance widgets — a failure here shouldn't block the rest of the dashboard.
+    axios.get(`${API}/api/admin/reports/analytics`)
+      .then((r) => setAnalytics(r.data))
+      .catch(() => { /* widgets simply stay hidden if this fails */ });
   }, []);
 
   const derivedCounts = useMemo(() => ({
@@ -351,6 +363,56 @@ export default function Dashboard() {
           <KpiCard label="Invoices Uploaded"      value={billing.totalInvoicesUploaded === null ? null : (billing.totalInvoicesUploaded ?? 0)} gradient="linear-gradient(135deg,#a78bfa,#7c3aed)" glow="#7c3aed40" icon={<IconArchive />} />
         </div>
       </div>
+
+      {/* Warranty & Maintenance Alerts */}
+      {analytics && (
+        <div className="grid-2-1" style={{ marginBottom: 20 }}>
+          <div className="card">
+            <div className="card-header">
+              <div>
+                <div className="card-title">Warranty Watchlist</div>
+                <div className="card-subtitle">Expiring within 30 days</div>
+              </div>
+              <Link to="/reports" style={{ fontSize: 12.5, fontWeight: 700, color: "var(--primary)", textDecoration: "none" }}>View report →</Link>
+            </div>
+            <div className="card-body">
+              {(analytics.warrantyExpiringSoon || []).length === 0 ? (
+                <div style={{ fontSize: 13, color: "var(--gray-400)", padding: "8px 0" }}>No warranties expiring soon. 🎉</div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {analytics.warrantyExpiringSoon.slice(0, 5).map((w) => (
+                    <div key={w.assetId} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 10px", background: "var(--gray-50)", borderRadius: 8 }}>
+                      <div>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: "var(--gray-800)" }}>{w.laptopName}</div>
+                        <div style={{ fontSize: 11, color: "var(--gray-400)" }}>{w.serialNumber}</div>
+                      </div>
+                      <span style={{
+                        fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 999,
+                        background: w.daysLeft <= 7 ? "var(--danger-bg)" : "var(--warning-bg)",
+                        color: w.daysLeft <= 7 ? "var(--danger)" : "var(--warning)",
+                      }}>{w.daysLeft}d left</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="card">
+            <div className="card-header">
+              <div>
+                <div className="card-title">Maintenance Status</div>
+                <div className="card-subtitle">Across all open work</div>
+              </div>
+              <Link to="/maintenance" style={{ fontSize: 12.5, fontWeight: 700, color: "var(--primary)", textDecoration: "none" }}>Manage →</Link>
+            </div>
+            <div className="card-body" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              <ProgressBar label="Scheduled"   value={pct(analytics.maintenanceStats?.scheduled, analytics.maintenanceStats)} color="#d97706" />
+              <ProgressBar label="In Progress" value={pct(analytics.maintenanceStats?.inProgress, analytics.maintenanceStats)} color="#2563eb" />
+              <ProgressBar label="Completed"   value={pct(analytics.maintenanceStats?.completed, analytics.maintenanceStats)} color="#059669" />
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Charts */}
       <div className="grid-2-1" style={{ marginBottom: 20 }}>

@@ -20,6 +20,7 @@ import SendAssetEmail from "./pages/SendAssetEmail";
 import AssetEmailLogs from "./pages/AssetEmailLogs";
 import EmployeeDashboard from "./pages/EmployeeDashboard";
 import { EmployeeAssets, EmployeeProfile, EmployeeRequest, EmployeePassword } from "./pages/EmployeePages";
+import Maintenance from "./pages/Maintenance";
 
 function App() {
   return (
@@ -38,6 +39,7 @@ function App() {
               <Route path="/asset-requests" element={<AdminRoute><AdminAssetRequests /></AdminRoute>} />
               <Route path="/network-credentials" element={<AdminRoute><NetworkCredentials /></AdminRoute>} />
               <Route path="/service-billing" element={<AdminRoute><ServiceBilling /></AdminRoute>} />
+              <Route path="/maintenance"    element={<AdminRoute><Maintenance /></AdminRoute>} />
               <Route path="/reports"       element={<AdminRoute><Reports /></AdminRoute>} />
               <Route path="/settings"      element={<AdminRoute><Settings /></AdminRoute>} />
               <Route path="/activity-log"  element={<AdminRoute><ActivityLog /></AdminRoute>} />

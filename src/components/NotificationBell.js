@@ -62,8 +62,42 @@ function NotifItem({ n, onClick }) {
   );
 }
 
+const AlertSvg = () => (
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+  </svg>
+);
+
+const SEVERITY_COLOR = { critical: "#dc2626", warning: "#d97706", info: "#2563eb" };
+const SEVERITY_BG    = { critical: "#fef2f2", warning: "#fffbeb", info: "#eff6ff" };
+
+function SystemNotifItem({ n, onClick }) {
+  const color = SEVERITY_COLOR[n.severity] || "#2563eb";
+  const bg    = SEVERITY_BG[n.severity]    || "#eff6ff";
+
+  return (
+    <div className={`notif-item ${!n.read ? "unread" : ""}`} onClick={onClick}>
+      {!n.read && <div className="notif-indicator" />}
+      <div className="notif-icon" style={{ background: bg, border: `1px solid ${color}22` }}>
+        <AlertSvg />
+      </div>
+      <div className="notif-content">
+        <div className="notif-content-header">
+          <span className="notif-item-title">{n.title}</span>
+          {!n.read && <span className="notif-dot" />}
+        </div>
+        <div className="notif-desc">{n.message}</div>
+        <div className="notif-time">{timeAgo(n.createdAt)}</div>
+      </div>
+    </div>
+  );
+}
+
 export default function NotificationBell() {
-  const { notifications, unread, open, toggleOpen, close } = useNotifications();
+  const {
+    notifications, unread, open, toggleOpen, close,
+    systemNotifications = [], systemUnread = 0, markSystemRead,
+  } = useNotifications();
   const navigate = useNavigate();
   const ref = useRef(null);
 
@@ -93,8 +127,8 @@ export default function NotificationBell() {
         aria-haspopup="true"
       >
         <BellSvg />
-        {unread > 0 && (
-          <span className="notif-badge-icon">{unread > 9 ? "9+" : unread}</span>
+        {(unread + systemUnread) > 0 && (
+          <span className="notif-badge-icon">{(unread + systemUnread) > 9 ? "9+" : (unread + systemUnread)}</span>
         )}
       </button>
 
@@ -104,26 +138,32 @@ export default function NotificationBell() {
             <div>
               <div className="notif-title">
                 Notifications
-                {unread > 0 && <span className="notif-count-badge">{unread} new</span>}
+                {(unread + systemUnread) > 0 && <span className="notif-count-badge">{unread + systemUnread} new</span>}
               </div>
               <div className="notif-subtitle">
                 {notifications.length} pending request{notifications.length !== 1 ? "s" : ""}
+                {systemNotifications.length > 0 && ` · ${systemNotifications.length} system alert${systemNotifications.length !== 1 ? "s" : ""}`}
               </div>
             </div>
             <button onClick={goToRequests} className="notif-view-all">View all →</button>
           </div>
 
           <div className="notif-list">
-            {notifications.length === 0 ? (
+            {notifications.length === 0 && systemNotifications.length === 0 ? (
               <div className="notif-empty">
                 <div style={{ fontSize: 30, marginBottom: 10 }}>🎉</div>
                 <div style={{ fontSize: 13.5, fontWeight: 600, color: "var(--gray-700)", marginBottom: 4 }}>All caught up!</div>
-                <div style={{ fontSize: 12.5 }}>No pending requests to review.</div>
+                <div style={{ fontSize: 12.5 }}>No pending requests or alerts.</div>
               </div>
             ) : (
-              notifications.map((n) => (
-                <NotifItem key={n.id} n={n} onClick={goToRequests} />
-              ))
+              <>
+                {systemNotifications.slice(0, 10).map((n) => (
+                  <SystemNotifItem key={`sys-${n.id}`} n={n} onClick={() => markSystemRead?.(n.id)} />
+                ))}
+                {notifications.map((n) => (
+                  <NotifItem key={n.id} n={n} onClick={goToRequests} />
+                ))}
+              </>
             )}
           </div>
 

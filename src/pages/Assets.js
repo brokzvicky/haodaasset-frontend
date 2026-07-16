@@ -6,6 +6,7 @@ import Layout from "../components/Layout";
 import StatusPill, { ConditionPill } from "../components/StatusPill";
 import EmailStatusPill from "../components/EmailStatusPill";
 import SendEmailModal from "../components/SendEmailModal";
+import AssetExtras from "../components/AssetExtras";
 import CountUp from "../components/CountUp";
 import { useToast } from "../utils/Toast";
 import "./Assets.css";
@@ -456,6 +457,11 @@ const AssetDetailDrawer = ({ asset, onClose, onEdit }) => {
               <div className="asset-drawer-notes">{asset.remarks}</div>
             </div>
           )}
+
+          <div className="asset-drawer-section">
+            <div className="asset-drawer-section-title">More</div>
+            <AssetExtras asset={asset} apiBase={API} />
+          </div>
         </div>
 
         {/* ── Footer ── */}
@@ -507,6 +513,17 @@ export default function Assets() {
   }, []);
 
   useEffect(() => { loadData(); }, [loadData]);
+
+  // Deep-link support: scanning an asset's QR code opens ?assetId=<id>,
+  // so once assets are loaded, pop that asset straight into the drawer.
+  useEffect(() => {
+    const qId = searchParams.get("assetId");
+    if (qId && assets.length > 0) {
+      const match = assets.find((a) => String(a.assetId) === String(qId));
+      if (match) setViewingAsset(match);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [assets]);
 
   // Employee emails, used to gate/populate the "Send Email" action
   useEffect(() => {
@@ -989,6 +1006,21 @@ export default function Assets() {
           {selectedIds.size > 0 && (
             <div className="bulk-bar">
               <span className="bulk-bar-count">{selectedIds.size} selected</span>
+              <select
+                className="btn btn-sm btn-secondary"
+                defaultValue=""
+                onChange={(e) => {
+                  const status = e.target.value;
+                  if (!status) return;
+                  axios.put(`${API}/assets/bulk-update`, { assetIds: [...selectedIds], assetStatus: status })
+                    .then(() => { toast(`Updated status for ${selectedIds.size} asset(s).`, "success"); setSelectedIds(new Set()); loadData(); })
+                    .catch(() => toast("Bulk status update failed.", "error"));
+                  e.target.value = "";
+                }}
+              >
+                <option value="">Set status…</option>
+                {ASSET_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+              </select>
               <button
                 className="btn btn-sm btn-secondary"
                 onClick={() => {
