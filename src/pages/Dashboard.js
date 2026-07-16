@@ -29,7 +29,7 @@ function KpiCard({ icon, label, value, sub, gradient, glow, onClick, badge }) {
     <div
       className={`kpi-card-vivid ${onClick ? "clickable" : ""}`}
       onClick={onClick}
-      style={{ background: gradient, boxShadow: `0 8px 24px ${glow}` }}
+      style={{ background: gradient, boxShadow: `0 3px 10px ${glow}` }}
     >
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
         <div className="kpi-vivid-icon">{icon}</div>
@@ -79,7 +79,7 @@ function QuickAction({ label, icon, color, bg, link }) {
       to={link}
       style={{
         display: "flex", flexDirection: "column", alignItems: "center",
-        gap: 8, padding: "16px 10px", borderRadius: 10,
+        gap: 6, padding: "12px 8px", borderRadius: 10,
         background: bg, border: `1.5px solid ${color}18`,
         cursor: "pointer", textDecoration: "none",
         transition: "all 0.15s",
@@ -230,7 +230,7 @@ export default function Dashboard() {
       )}
 
       {/* Welcome */}
-      <div className="welcome-banner" style={{ marginBottom: 20 }}>
+      <div className="welcome-banner" style={{ marginBottom: 16 }}>
         <div className="welcome-banner-text">
           <div className="welcome-banner-greeting">{greeting},</div>
           <div className="welcome-banner-title">{user?.name || "Administrator"} 👋</div>
@@ -255,7 +255,7 @@ export default function Dashboard() {
       </div>
 
       {/* 2-KPI Row */}
-      <div className="kpi-row kpi-row-2 stagger-in" style={{ marginBottom: 20 }}>
+      <div className="kpi-row kpi-row-2 stagger-in" style={{ marginBottom: 16 }}>
         <KpiCard icon={<IconUsers />} label="Total Employees"  value={V(dashboard.totalEmployees)} sub="Active directory"        gradient="linear-gradient(135deg,#a78bfa,#7c3aed)" glow="#7c3aed40" />
         <KpiCard icon={<IconDoc />}   label="Pending Requests" value={V(pendingRequests)}          sub="Awaiting your review"    gradient="linear-gradient(135deg,#f87171,#dc2626)" glow="#dc262640"
           badge={pendingRequests > 0 ? "Action needed" : undefined}
@@ -263,7 +263,7 @@ export default function Dashboard() {
       </div>
 
       {/* Branch Overview */}
-      <div style={{ marginBottom: 20 }}>
+      <div style={{ marginBottom: 16 }}>
         <div style={{ marginBottom: 12, display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ fontSize: 15, fontWeight: 700, color: "var(--gray-800)" }}>Branch Overview</span>
           <span style={{ fontSize: 12, color: "var(--gray-400)", background: "var(--gray-100)", padding: "2px 10px", borderRadius: 999, fontWeight: 600 }}>
@@ -274,17 +274,17 @@ export default function Dashboard() {
           {branchStats.map(b => (
             <div key={b.key} style={{
               background: "#fff",
-              border: `1.5px solid ${b.color}22`,
-              borderRadius: 16,
-              padding: "20px 22px",
-              boxShadow: `0 4px 20px ${b.glow}10`,
+              border: `1px solid ${b.color}20`,
+              borderRadius: 14,
+              padding: "16px 18px",
+              boxShadow: "var(--shadow-card)",
               transition: "box-shadow 0.2s",
             }}>
               {/* Header */}
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                   <div style={{
-                    width: 38, height: 38, borderRadius: 10,
+                    width: 34, height: 34, borderRadius: 9,
                     background: `linear-gradient(135deg, ${b.color}22, ${b.color}44)`,
                     display: "flex", alignItems: "center", justifyContent: "center",
                     fontSize: 18,
@@ -341,7 +341,7 @@ export default function Dashboard() {
       </div>
 
       {/* Service Billing Overview */}
-      <div style={{ marginBottom: 20 }}>
+      <div style={{ marginBottom: 16 }}>
         <div style={{ marginBottom: 12, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <span style={{ fontSize: 15, fontWeight: 700, color: "var(--gray-800)" }}>Service Billing</span>
@@ -366,7 +366,7 @@ export default function Dashboard() {
 
       {/* Warranty & Maintenance Alerts */}
       {analytics && (
-        <div className="grid-2-1" style={{ marginBottom: 20 }}>
+        <div className="grid-2-1" style={{ marginBottom: 16 }}>
           <div className="card">
             <div className="card-header">
               <div>
@@ -415,7 +415,7 @@ export default function Dashboard() {
       )}
 
       {/* Charts */}
-      <div className="grid-2-1" style={{ marginBottom: 20 }}>
+      <div className="grid-2-1" style={{ marginBottom: 16 }}>
         <div className="card">
           <div className="card-header">
             <div>
@@ -437,7 +437,7 @@ export default function Dashboard() {
       </div>
 
       {/* Recently Assigned Assets */}
-      <div className="card" style={{ marginBottom: 20 }}>
+      <div className="card" style={{ marginBottom: 16 }}>
         <div className="card-header">
           <div>
             <div className="card-title">Recently Assigned Assets</div>
