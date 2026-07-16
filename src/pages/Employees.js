@@ -3,7 +3,9 @@ import axios from "axios";
 import Layout from "../components/Layout";
 import { useToast } from "../utils/Toast";
 import StatusPill from "../components/StatusPill";
+import ActionMenu from "../components/ActionMenu";
 import "../components/DetailDrawer.css";
+import "./Employees.css";
 
 const API = "https://haodaasset-backend-1.onrender.com";
 
@@ -22,6 +24,38 @@ function avatarBg(name) {
 function initials(name) {
   return (name || "?").split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2);
 }
+
+// ── Premium two-tone gradient avatar (card-only; drawer keeps its
+// original solid avatarBg so nothing else visually shifts) ──────────
+const AVATAR_GRADIENTS = [
+  "linear-gradient(135deg,#2563eb,#1e3a8a)",
+  "linear-gradient(135deg,#059669,#065f46)",
+  "linear-gradient(135deg,#7c3aed,#4c1d95)",
+  "linear-gradient(135deg,#d97706,#92400e)",
+  "linear-gradient(135deg,#db2777,#831843)",
+  "linear-gradient(135deg,#0284c7,#0c4a6e)",
+  "linear-gradient(135deg,#4f46e5,#312e81)",
+  "linear-gradient(135deg,#0d9488,#134e4a)",
+];
+function avatarGradient(name) {
+  return AVATAR_GRADIENTS[(name || "A").charCodeAt(0) % AVATAR_GRADIENTS.length];
+}
+
+// ── Compact icon set for the redesigned employee card ────────────────
+const IconSearch  = () => <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>;
+const IconX        = ({ size = 12 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>;
+const IconPlus     = () => <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>;
+const IconMail     = () => <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 6-10 7L2 6"/></svg>;
+const IconBuilding = () => <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="2" width="16" height="20" rx="1"/><path d="M9 22v-4h6v4M9 6h.01M15 6h.01M9 10h.01M15 10h.01M9 14h.01M15 14h.01"/></svg>;
+const IconBriefcase= () => <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>;
+const IconPin      = () => <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/></svg>;
+const IconBox      = () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>;
+const IconClock    = () => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>;
+const IconEye      = () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>;
+const IconUserPlus = () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="17" y1="11" x2="23" y2="11"/></svg>;
+const IconEdit     = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4z"/></svg>;
+const IconTrash    = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>;
+const IconUsers    = () => <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>;
 
 // ─── Assign Asset Modal ────────────────────────────────────────────────────────
 function AssignAssetModal({ employee, onClose, onSuccess }) {
@@ -576,6 +610,10 @@ export default function Employees() {
   const [viewingEmployee, setViewingEmployee] = useState(null);
   const [expandedAssets, setExpandedAssets] = useState({});
   const [assetCounts, setAssetCounts] = useState({});
+  // Most recent asset-assignment per employee, derived from the same
+  // per-employee assets fetch used for assetCounts below — no extra
+  // API calls. Used to render a genuine "Last Activity" signal.
+  const [lastActivityById, setLastActivityById] = useState({});
 
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -585,6 +623,15 @@ export default function Employees() {
   // Assign Asset modal state
   const [assignTarget, setAssignTarget] = useState(null);
 
+  // ── Filters (all client-side, presentational only) ─────────────────
+  const [departmentFilter, setDepartmentFilter] = useState("All");
+  const [designationFilter, setDesignationFilter] = useState("All");
+  const [roleFilter, setRoleFilter] = useState("All");
+  const [passwordStatusFilter, setPasswordStatusFilter] = useState("All");
+  const [assetFilter, setAssetFilter] = useState("All");
+  // Row-level "⋮" menu — only one open at a time
+  const [openMenuId, setOpenMenuId] = useState(null);
+
   const loadEmployees = useCallback(() => {
     setLoading(true);
     axios.get(`${API}/api/admin/employees`)
@@ -592,17 +639,27 @@ export default function Employees() {
         const emps = r.data;
         setEmployees(emps);
         setError("");
-        // Load asset counts for all employees
+        // Load asset counts (+ last-activity) for all employees
         Promise.all(
           emps.map((emp) =>
             axios.get(`${API}/api/admin/employees/${emp.employeeId}/assets`)
-              .then((res) => ({ id: emp.employeeId, count: res.data.length }))
-              .catch(() => ({ id: emp.employeeId, count: 0 }))
+              .then((res) => ({ id: emp.employeeId, assets: res.data || [] }))
+              .catch(() => ({ id: emp.employeeId, assets: [] }))
           )
         ).then((results) => {
           const counts = {};
-          results.forEach(({ id, count }) => { counts[id] = count; });
+          const lastActivity = {};
+          results.forEach(({ id, assets }) => {
+            counts[id] = assets.length;
+            const latest = assets.reduce((acc, a) => {
+              if (!a.assignedDate) return acc;
+              if (!acc || a.assignedDate > acc.assignedDate) return a;
+              return acc;
+            }, null);
+            if (latest) lastActivity[id] = { laptopName: latest.laptopName, assignedDate: latest.assignedDate };
+          });
           setAssetCounts(counts);
+          setLastActivityById(lastActivity);
         });
       })
       .catch(() => { setEmployees([]); setError("Couldn't load the employee directory. Is the API running?"); })
@@ -686,14 +743,70 @@ export default function Employees() {
     return ["All", ...combined];
   }, [employees]);
 
+  const uniqueDepartments = useMemo(() => {
+    const fromData = employees.map((e) => e.department).filter(Boolean);
+    return ["All", ...Array.from(new Set(fromData)).sort()];
+  }, [employees]);
+
+  const uniqueDesignations = useMemo(() => {
+    const fromData = employees.map((e) => e.designation).filter(Boolean);
+    return ["All", ...Array.from(new Set(fromData)).sort()];
+  }, [employees]);
+
+  const uniqueRoles = useMemo(() => {
+    const fromData = employees.map((e) => e.role || "EMPLOYEE").filter(Boolean);
+    return ["All", ...Array.from(new Set(fromData)).sort()];
+  }, [employees]);
+
   const directory = useMemo(
-    () => employees.filter((e) =>
-      ((e.employeeName || "").toLowerCase().includes(search.toLowerCase()) ||
-        (e.employeeId || "").toLowerCase().includes(search.toLowerCase()) ||
-        (e.department || "").toLowerCase().includes(search.toLowerCase())) &&
-      (locationFilter === "All" || e.location === locationFilter)
-    ),
-    [employees, search, locationFilter]
+    () => employees.filter((e) => {
+      const q = search.toLowerCase();
+      const matchesSearch =
+        (e.employeeName || "").toLowerCase().includes(q) ||
+        (e.employeeId || "").toLowerCase().includes(q) ||
+        (e.department || "").toLowerCase().includes(q) ||
+        (e.designation || "").toLowerCase().includes(q) ||
+        (e.email || "").toLowerCase().includes(q);
+      const matchesLocation = locationFilter === "All" || e.location === locationFilter;
+      const matchesDept = departmentFilter === "All" || e.department === departmentFilter;
+      const matchesDesignation = designationFilter === "All" || e.designation === designationFilter;
+      const matchesRole = roleFilter === "All" || (e.role || "EMPLOYEE") === roleFilter;
+      const matchesPasswordStatus =
+        passwordStatusFilter === "All" ||
+        (passwordStatusFilter === "Default" ? e.mustChangePassword : !e.mustChangePassword);
+      const count = assetCounts[e.employeeId] || 0;
+      const matchesAssetFilter =
+        assetFilter === "All" || (assetFilter === "Assigned" ? count > 0 : count === 0);
+      return matchesSearch && matchesLocation && matchesDept && matchesDesignation &&
+        matchesRole && matchesPasswordStatus && matchesAssetFilter;
+    }),
+    [employees, search, locationFilter, departmentFilter, designationFilter, roleFilter, passwordStatusFilter, assetFilter, assetCounts]
+  );
+
+  const activeFilterChips = useMemo(() => {
+    const chips = [];
+    if (locationFilter !== "All") chips.push({ key: "location", label: `Location: ${locationFilter}`, clear: () => setLocationFilter("All") });
+    if (departmentFilter !== "All") chips.push({ key: "department", label: `Dept: ${departmentFilter}`, clear: () => setDepartmentFilter("All") });
+    if (designationFilter !== "All") chips.push({ key: "designation", label: `Title: ${designationFilter}`, clear: () => setDesignationFilter("All") });
+    if (roleFilter !== "All") chips.push({ key: "role", label: `Role: ${roleFilter === "ADMIN" ? "Admin" : "Employee"}`, clear: () => setRoleFilter("All") });
+    if (passwordStatusFilter !== "All") chips.push({ key: "pwd", label: `Password: ${passwordStatusFilter === "Default" ? "Default" : "Changed"}`, clear: () => setPasswordStatusFilter("All") });
+    if (assetFilter !== "All") chips.push({ key: "asset", label: `Assets: ${assetFilter}`, clear: () => setAssetFilter("All") });
+    return chips;
+  }, [locationFilter, departmentFilter, designationFilter, roleFilter, passwordStatusFilter, assetFilter]);
+
+  const resetAllFilters = () => {
+    setLocationFilter("All"); setDepartmentFilter("All"); setDesignationFilter("All");
+    setRoleFilter("All"); setPasswordStatusFilter("All"); setAssetFilter("All"); setSearch("");
+  };
+
+  // ── Summary stats for the toolbar ───────────────────────────────────
+  const defaultPasswordCount = useMemo(
+    () => employees.filter((e) => e.mustChangePassword).length,
+    [employees]
+  );
+  const assignedCount = useMemo(
+    () => employees.filter((e) => (assetCounts[e.employeeId] || 0) > 0).length,
+    [employees, assetCounts]
   );
 
   return (
@@ -701,208 +814,366 @@ export default function Employees() {
       title="Employees"
       subtitle="Manage your organization's employee directory"
       actions={
-        <button className="btn btn-primary" onClick={showForm ? () => setShowForm(false) : startCreate}>
-          {showForm ? "✕ Cancel" : "➕ Add Employee"}
+        <button
+          className={`btn btn-primary emp-add-btn${showForm ? " is-cancel btn-secondary" : ""}`}
+          onClick={showForm ? () => setShowForm(false) : startCreate}
+        >
+          <span className="emp-add-icon">{showForm ? <IconX size={13} /> : <IconPlus />}</span>
+          {showForm ? "Cancel" : "Add Employee"}
         </button>
       }
     >
-      {error && (
-        <div className="card" style={{ marginBottom: 20, borderColor: "#fecaca", background: "#fef2f2", padding: "12px 18px", fontSize: 13, color: "#991b1b" }}>
-          ⚠️ {error}
-        </div>
-      )}
-
-      {/* Add / Edit Form */}
-      {showForm && (
-        <div className="card fade-in" style={{ marginBottom: 20 }}>
-          <div className="card-header">
-            <div>
-              <div className="card-title">{editingId ? "Edit Employee" : "Add New Employee"}</div>
-              <div className="card-subtitle">
-                {editingId
-                  ? "Update this employee's profile details"
-                  : "New employees get the default password Haoda@321 and must change it on first login"}
-              </div>
-            </div>
+      <div className="emp-page">
+        {error && (
+          <div className="card" style={{ borderColor: "#fecaca", background: "#fef2f2", padding: "12px 18px", fontSize: 13, color: "#991b1b" }}>
+            ⚠️ {error}
           </div>
-          <div className="card-body">
-            <div className="form-grid">
-              <div className="field">
-                <label className="field-label">Employee ID *</label>
-                <input className="input" {...field("employeeId")} placeholder="e.g. EMP006" />
-              </div>
-              <div className="field">
-                <label className="field-label">Full Name *</label>
-                <input className="input" {...field("employeeName")} placeholder="Jane Doe" />
-              </div>
-              <div className="field">
-                <label className="field-label">Email</label>
-                <input className="input" type="email" {...field("email")} placeholder="jane.doe@company.com" />
-              </div>
-              <div className="field">
-                <label className="field-label">Department</label>
-                <input className="input" {...field("department")} placeholder="Engineering" />
-              </div>
-              <div className="field">
-                <label className="field-label">Designation</label>
-                <input className="input" {...field("designation")} placeholder="Software Engineer" />
-              </div>
-              <div className="field">
-                <label className="field-label">Location</label>
-                <select className="input" {...field("location")}>
-                  <option value="">Select branch…</option>
-                  {LOCATIONS.map(l => <option key={l} value={l}>{l}</option>)}
-                </select>
-              </div>
-            </div>
-            <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
-              <button className="btn btn-primary" onClick={saveEmployee} disabled={saving}>
-                {saving ? "Saving…" : editingId ? "✓ Save Changes" : "✓ Create Employee"}
-              </button>
-              <button className="btn btn-secondary" onClick={() => { setShowForm(false); setForm(EMPTY_FORM); setEditingId(null); }}>
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+        )}
 
-      {/* Search bar */}
-      <div style={{ display: "flex", gap: 12, marginBottom: 20, alignItems: "center", flexWrap: "wrap" }}>
-        <div style={{ flex: 1, minWidth: 160 }}>
-          <div style={{ fontSize: 13, fontWeight: 600, color: "var(--gray-500)" }}>
-            {directory.length} of {employees.length} employees
-            {locationFilter !== "All" && (
-              <span style={{ marginLeft: 8, color: "var(--primary)" }}>
-                · filtered by <strong>{locationFilter}</strong>
-                <button
-                  onClick={() => setLocationFilter("All")}
-                  style={{
-                    background: "none", border: "none", cursor: "pointer",
-                    color: "var(--primary)", fontWeight: 700, marginLeft: 6, fontSize: 13,
-                  }}
-                  title="Clear location filter"
-                >
-                  ✕
+        {/* Add / Edit Form */}
+        {showForm && (
+          <div className="card fade-in">
+            <div className="card-header">
+              <div>
+                <div className="card-title">{editingId ? "Edit Employee" : "Add New Employee"}</div>
+                <div className="card-subtitle">
+                  {editingId
+                    ? "Update this employee's profile details"
+                    : "New employees get the default password Haoda@321 and must change it on first login"}
+                </div>
+              </div>
+            </div>
+            <div className="card-body">
+              <div className="form-grid">
+                <div className="field">
+                  <label className="field-label">Employee ID *</label>
+                  <input className="input" {...field("employeeId")} placeholder="e.g. EMP006" />
+                </div>
+                <div className="field">
+                  <label className="field-label">Full Name *</label>
+                  <input className="input" {...field("employeeName")} placeholder="Jane Doe" />
+                </div>
+                <div className="field">
+                  <label className="field-label">Email</label>
+                  <input className="input" type="email" {...field("email")} placeholder="jane.doe@company.com" />
+                </div>
+                <div className="field">
+                  <label className="field-label">Department</label>
+                  <input className="input" {...field("department")} placeholder="Engineering" />
+                </div>
+                <div className="field">
+                  <label className="field-label">Designation</label>
+                  <input className="input" {...field("designation")} placeholder="Software Engineer" />
+                </div>
+                <div className="field">
+                  <label className="field-label">Location</label>
+                  <select className="input" {...field("location")}>
+                    <option value="">Select branch…</option>
+                    {LOCATIONS.map(l => <option key={l} value={l}>{l}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
+                <button className="btn btn-primary" onClick={saveEmployee} disabled={saving}>
+                  {saving ? "Saving…" : editingId ? "✓ Save Changes" : "✓ Create Employee"}
                 </button>
+                <button className="btn btn-secondary" onClick={() => { setShowForm(false); setForm(EMPTY_FORM); setEditingId(null); }}>
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── Toolbar: stats + search + filters ─────────────────────── */}
+        <div className="emp-toolbar">
+          <div className="emp-toolbar-top">
+            <div className="emp-stats">
+              <span className="emp-stats-count">{directory.length}</span>
+              <span className="emp-stats-label">
+                {directory.length === employees.length ? "employees" : `of ${employees.length} employees`}
               </span>
+              {(assignedCount > 0 || defaultPasswordCount > 0) && (
+                <>
+                  <span className="emp-stats-sep">•</span>
+                  <span className="emp-stats-breakdown">
+                    <span className="emp-stats-chip">
+                      <span className="emp-stats-dot" style={{ background: "var(--badge-success-fg)" }} />
+                      {assignedCount} with assets
+                    </span>
+                    {defaultPasswordCount > 0 && (
+                      <span className="emp-stats-chip">
+                        <span className="emp-stats-dot" style={{ background: "var(--badge-warning-fg)" }} />
+                        {defaultPasswordCount} default password
+                      </span>
+                    )}
+                  </span>
+                </>
+              )}
+            </div>
+
+            <div className="emp-search-wrap">
+              <span className="emp-search-icon"><IconSearch /></span>
+              <input
+                className="emp-search-input"
+                placeholder="Search name, ID, dept, title, email…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                aria-label="Search employees"
+              />
+              {search && (
+                <button className="emp-search-clear" onClick={() => setSearch("")} aria-label="Clear search" title="Clear search">
+                  <IconX size={12} />
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div className="emp-filters-row">
+            <div className="emp-filter-select-wrap">
+              <select
+                className={`emp-filter-select${locationFilter !== "All" ? " is-active" : ""}`}
+                value={locationFilter}
+                onChange={(e) => setLocationFilter(e.target.value)}
+                aria-label="Filter by location"
+              >
+                {uniqueLocations.map((loc) => (
+                  <option key={loc} value={loc}>{loc === "All" ? "All locations" : loc}</option>
+                ))}
+              </select>
+            </div>
+            <div className="emp-filter-select-wrap">
+              <select
+                className={`emp-filter-select${departmentFilter !== "All" ? " is-active" : ""}`}
+                value={departmentFilter}
+                onChange={(e) => setDepartmentFilter(e.target.value)}
+                aria-label="Filter by department"
+              >
+                {uniqueDepartments.map((d) => (
+                  <option key={d} value={d}>{d === "All" ? "All departments" : d}</option>
+                ))}
+              </select>
+            </div>
+            <div className="emp-filter-select-wrap">
+              <select
+                className={`emp-filter-select${designationFilter !== "All" ? " is-active" : ""}`}
+                value={designationFilter}
+                onChange={(e) => setDesignationFilter(e.target.value)}
+                aria-label="Filter by designation"
+              >
+                {uniqueDesignations.map((d) => (
+                  <option key={d} value={d}>{d === "All" ? "All designations" : d}</option>
+                ))}
+              </select>
+            </div>
+            <div className="emp-filter-select-wrap">
+              <select
+                className={`emp-filter-select${roleFilter !== "All" ? " is-active" : ""}`}
+                value={roleFilter}
+                onChange={(e) => setRoleFilter(e.target.value)}
+                aria-label="Filter by role"
+              >
+                {uniqueRoles.map((r) => (
+                  <option key={r} value={r}>{r === "All" ? "All roles" : r === "ADMIN" ? "Admin" : "Employee"}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="emp-filters-divider" />
+
+            <div className="emp-filter-select-wrap">
+              <select
+                className={`emp-filter-select${passwordStatusFilter !== "All" ? " is-active" : ""}`}
+                value={passwordStatusFilter}
+                onChange={(e) => setPasswordStatusFilter(e.target.value)}
+                aria-label="Filter by password status"
+              >
+                <option value="All">Any password status</option>
+                <option value="Default">Default password</option>
+                <option value="Changed">Password changed</option>
+              </select>
+            </div>
+            <div className="emp-filter-select-wrap">
+              <select
+                className={`emp-filter-select${assetFilter !== "All" ? " is-active" : ""}`}
+                value={assetFilter}
+                onChange={(e) => setAssetFilter(e.target.value)}
+                aria-label="Filter by asset assignment"
+              >
+                <option value="All">Any asset status</option>
+                <option value="Assigned">Has assets</option>
+                <option value="Unassigned">No assets</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Active filter chips */}
+          {activeFilterChips.length > 0 && (
+            <div className="emp-active-filters">
+              {activeFilterChips.map((chip) => (
+                <span key={chip.key} className="emp-chip">
+                  {chip.label}
+                  <button className="emp-chip-remove" onClick={chip.clear} aria-label={`Remove filter: ${chip.label}`}>
+                    <IconX size={10} />
+                  </button>
+                </span>
+              ))}
+              <button className="emp-clear-all-btn" onClick={resetAllFilters}>Clear all</button>
+            </div>
+          )}
+        </div>
+
+        {/* ── Employee Cards ───────────────────────────────────────── */}
+        {loading ? (
+          <div className="emp-grid">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <div key={i} className="emp-skel-card">
+                <div className="emp-skel-top">
+                  <div className="skeleton emp-skel-avatar" />
+                  <div className="emp-skel-lines">
+                    <div className="skeleton skeleton-text short" />
+                    <div className="skeleton skeleton-text medium" style={{ height: 9 }} />
+                  </div>
+                </div>
+                <div className="emp-skel-grid">
+                  {[1, 2, 3, 4].map((j) => <div key={j} className="skeleton skeleton-text" style={{ height: 22 }} />)}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : directory.length === 0 ? (
+          <div className="emp-empty-state">
+            <div className="emp-empty-illustration" style={{ color: "var(--gray-300)" }}><IconUsers /></div>
+            <div className="emp-empty-title">No employees found</div>
+            <div className="emp-empty-sub">
+              {search || activeFilterChips.length > 0
+                ? "Try adjusting your search or clearing a filter to see more results."
+                : "Add your first employee to start building your directory."}
+            </div>
+            {search || activeFilterChips.length > 0 ? (
+              <button className="btn btn-secondary emp-empty-cta" onClick={resetAllFilters}>Clear search & filters</button>
+            ) : (
+              <button className="btn btn-primary emp-empty-cta" onClick={startCreate}>
+                <IconPlus /> Add Employee
+              </button>
             )}
           </div>
-        </div>
-        <select
-          className="input"
-          style={{ width: 200 }}
-          value={locationFilter}
-          onChange={(e) => setLocationFilter(e.target.value)}
-        >
-          {uniqueLocations.map((loc) => (
-            <option key={loc} value={loc}>{loc === "All" ? "All locations" : loc}</option>
-          ))}
-        </select>
-        <div style={{ position: "relative" }}>
-          <span style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "var(--gray-400)" }}>🔍</span>
-          <input
-            className="input"
-            style={{ width: 240, paddingLeft: 32 }}
-            placeholder="Search employee, ID, dept…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
-      </div>
+        ) : (
+          <div className="emp-grid">
+            {directory.map((emp) => {
+              const count = assetCounts[emp.employeeId] || 0;
+              const isAdminRole = (emp.role || "EMPLOYEE") === "ADMIN";
+              const activity = lastActivityById[emp.employeeId];
+              const menuOpen = openMenuId === emp.employeeId;
 
-      {/* Employee Cards */}
-      {loading ? (
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          {[1,2,3,4].map((i) => (
-            <div key={i} className="card">
-              <div style={{ display: "flex", alignItems: "center", gap: 16, padding: "18px 22px" }}>
-                <div className="skeleton skeleton-circle" style={{ width: 44, height: 44, borderRadius: 12 }} />
-                <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 8 }}>
-                  <div className="skeleton skeleton-text short" />
-                  <div className="skeleton skeleton-text medium" style={{ height: 9 }} />
-                </div>
-                <div className="skeleton" style={{ width: 60, height: 24, borderRadius: 8 }} />
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : directory.length === 0 ? (
-        <div className="empty-state">
-          <div className="empty-icon">👥</div>
-          <div className="empty-title">No employees found</div>
-          <div className="empty-sub">
-            {search || locationFilter !== "All"
-              ? "Try clearing the search or location filter."
-              : "Add your first employee to get started."}
-          </div>
-        </div>
-      ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          {directory.map((emp) => {
-            const count = assetCounts[emp.employeeId];
-            return (
-              <div key={emp.employeeId} className="card">
-                <div style={{ display: "flex", alignItems: "center", gap: 16, padding: "18px 22px" }}>
-                  {/* Avatar */}
-                  <div
-                    style={{
-                      width: 44, height: 44, borderRadius: 12, flexShrink: 0,
-                      background: avatarBg(emp.employeeName),
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                      fontSize: 16, fontWeight: 700, color: "#fff", cursor: "pointer",
-                    }}
-                    onClick={() => openProfile(emp)}
-                  >
-                    {initials(emp.employeeName)}
+              const menuItems = [
+                { label: "Edit Employee", icon: <IconEdit />, onClick: () => startEdit(emp) },
+                { divider: true },
+                { label: "Delete Employee", icon: <IconTrash />, danger: true, onClick: () => deleteEmployee(emp) },
+              ];
+
+              return (
+                <div key={emp.employeeId} className="employee-card">
+                  <div className="employee-card-top">
+                    <div
+                      className="emp-avatar"
+                      style={{ background: avatarGradient(emp.employeeName) }}
+                      onClick={() => openProfile(emp)}
+                      role="button"
+                      tabIndex={0}
+                      aria-label={`View ${emp.employeeName}'s profile`}
+                      onKeyDown={(e) => { if (e.key === "Enter") openProfile(emp); }}
+                    >
+                      {initials(emp.employeeName)}
+                    </div>
+
+                    <div className="employee-card-heading" onClick={() => openProfile(emp)}>
+                      <div className="emp-name-row">
+                        <span className="emp-name" title={emp.employeeName}>{emp.employeeName}</span>
+                      </div>
+                      <div className="emp-id-line">
+                        <span className="emp-id-code">{emp.employeeId}</span>
+                        {emp.designation && <span>· {emp.designation}</span>}
+                      </div>
+                    </div>
+
+                    <span className={`emp-role-badge ${isAdminRole ? "is-admin" : "is-employee"}`}>
+                      {isAdminRole ? "Admin" : "Employee"}
+                    </span>
+
+                    <ActionMenu
+                      items={menuItems}
+                      open={menuOpen}
+                      onToggle={() => setOpenMenuId(menuOpen ? null : emp.employeeId)}
+                      onClose={() => setOpenMenuId(null)}
+                      ariaLabel={`More actions for ${emp.employeeName}`}
+                    />
                   </div>
 
-                  {/* Name & meta */}
-                  <div style={{ flex: 1, cursor: "pointer", minWidth: 0 }} onClick={() => openProfile(emp)}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                      <span style={{ fontWeight: 700, fontSize: 15, color: "var(--gray-900)" }}>
-                        {emp.employeeName}
-                      </span>
-                      {count > 0 && (
-                        <span style={{
-                          display: "inline-flex", alignItems: "center", gap: 4,
-                          padding: "2px 8px", borderRadius: 999,
-                          background: "#dbeafe", color: "#1d4ed8",
-                          fontSize: 11, fontWeight: 700,
-                        }}>
-                          📦 {count} {count === 1 ? "asset" : "assets"}
-                        </span>
-                      )}
-                      {emp.mustChangePassword && <span className="tag tag-blue">Default password</span>}
+                  <div className="emp-meta-grid">
+                    <div className="emp-meta-item">
+                      <div className="emp-meta-label"><IconBuilding />Department</div>
+                      <div className={`emp-meta-value${!emp.department ? " is-muted" : ""}`}>{emp.department || "—"}</div>
                     </div>
-                    <div style={{ fontSize: 12.5, color: "var(--gray-500)", marginTop: 2 }}>
-                      {emp.employeeId} · {emp.designation || "—"} · {emp.department || "—"}
+                    <div className="emp-meta-item">
+                      <div className="emp-meta-label"><IconPin />Location</div>
+                      <div className={`emp-meta-value${!emp.location ? " is-muted" : ""}`}>{emp.location || "—"}</div>
+                    </div>
+                    <div className="emp-meta-item span-2">
+                      <div className="emp-meta-label"><IconMail />Email</div>
+                      <div className={`emp-meta-value${!emp.email ? " is-muted" : ""}`} title={emp.email || ""}>{emp.email || "—"}</div>
+                    </div>
+                    <div className="emp-meta-item">
+                      <div className="emp-meta-label"><IconBriefcase />Designation</div>
+                      <div className={`emp-meta-value${!emp.designation ? " is-muted" : ""}`}>{emp.designation || "—"}</div>
+                    </div>
+                    <div className="emp-meta-item">
+                      <div className="emp-meta-label"><IconBox />Assets</div>
+                      <div className="emp-asset-count-value">
+                        <span className="count-num">{count}</span> {count === 1 ? "asset" : "assets"}
+                      </div>
                     </div>
                   </div>
 
-                  {/* Action buttons */}
-                  <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                  <div className="emp-status-row">
+                    <span className="emp-status-pill is-active">
+                      <span className="emp-status-dot" />Active
+                    </span>
+                    <span className={`emp-status-pill ${emp.mustChangePassword ? "is-warning" : "is-active"}`}>
+                      <span className="emp-status-dot" />
+                      {emp.mustChangePassword ? "Default Password" : "Password Changed"}
+                    </span>
+                  </div>
+
+                  <div className="emp-last-activity">
+                    <IconClock />
+                    {activity
+                      ? <span>Last assigned <strong style={{ color: "var(--gray-600)" }}>{activity.laptopName}</strong> on {activity.assignedDate}</span>
+                      : <span>No recent asset activity</span>}
+                  </div>
+
+                  <div className="employee-card-actions">
                     <button
-                      className="btn btn-secondary btn-sm"
+                      className="emp-btn-view"
                       onClick={() => openProfile(emp)}
                       title="View full profile and assigned assets"
                     >
-                      👁 View
+                      <IconEye /> View
                     </button>
                     <button
-                      className="btn btn-primary btn-sm"
+                      className="emp-btn-assign"
                       onClick={() => setAssignTarget(emp)}
                       title="Assign an asset to this employee"
                     >
-                      ➕ Assign Asset
+                      <IconUserPlus /> Assign Asset
                     </button>
                   </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
+              );
+            })}
+          </div>
+        )}
+      </div>
 
       {/* Assign Asset Modal */}
       {assignTarget && (
