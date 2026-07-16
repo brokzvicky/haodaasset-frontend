@@ -538,12 +538,12 @@ export default function NetworkCredentials() {
   }), [credentials]);
 
   const kpis = [
-    { label: "Total Devices",  value: counts.total,        icon: <Network size={18} />,  cardGradient: "linear-gradient(135deg,#3b82f6,#1d4ed8)",   glow: "#3b82f640", type: null },
-    { label: "Routers",        value: counts.routers,      icon: <Router size={18} />,   cardGradient: "linear-gradient(135deg,#60a5fa,#2563eb)",   glow: "#2563eb40", type: "Router" },
-    { label: "Switches",       value: counts.switches,     icon: <Network size={18} />,  cardGradient: "linear-gradient(135deg,#a78bfa,#7c3aed)",   glow: "#7c3aed40", type: "Switch" },
-    { label: "Firewalls",      value: counts.firewalls,    icon: <Shield size={18} />,   cardGradient: "linear-gradient(135deg,#f87171,#dc2626)",   glow: "#ef444440", type: "Firewall" },
-    { label: "Access Points",  value: counts.accessPoints, icon: <Wifi size={18} />,     cardGradient: "linear-gradient(135deg,#fbbf24,#d97706)",   glow: "#f59e0b40", type: "Access Point" },
-    { label: "Servers",        value: counts.servers,      icon: <Server size={18} />,   cardGradient: "linear-gradient(135deg,#34d399,#059669)",   glow: "#10b98140", type: "Server" },
+    { label: "Total Devices",  value: counts.total,        icon: <Network size={15} />,  cardGradient: "linear-gradient(135deg,#3b82f6,#1d4ed8)",   glow: "#3b82f62e", type: null },
+    { label: "Routers",        value: counts.routers,      icon: <Router size={15} />,   cardGradient: "linear-gradient(135deg,#60a5fa,#2563eb)",   glow: "#2563eb2e", type: "Router" },
+    { label: "Switches",       value: counts.switches,     icon: <Network size={15} />,  cardGradient: "linear-gradient(135deg,#a78bfa,#7c3aed)",   glow: "#7c3aed2e", type: "Switch" },
+    { label: "Firewalls",      value: counts.firewalls,    icon: <Shield size={15} />,   cardGradient: "linear-gradient(135deg,#f87171,#dc2626)",   glow: "#ef44442e", type: "Firewall" },
+    { label: "Access Points",  value: counts.accessPoints, icon: <Wifi size={15} />,     cardGradient: "linear-gradient(135deg,#fbbf24,#d97706)",   glow: "#f59e0b2e", type: "Access Point" },
+    { label: "Servers",        value: counts.servers,      icon: <Server size={15} />,   cardGradient: "linear-gradient(135deg,#34d399,#059669)",   glow: "#10b9812e", type: "Server" },
   ];
 
   const activeFilterCount = [typeFilter, brandFilter, locationFilter, statusFilter].filter((v) => v !== "All").length;
@@ -603,20 +603,20 @@ export default function NetworkCredentials() {
       )}
 
       {/* ── KPI Cards ── */}
-      <div className="kpi-row kpi-row-6 stagger-in" style={{ marginBottom: 28 }}>
+      <div className="kpi-row kpi-row-6 netcred-kpi-row stagger-in" style={{ marginBottom: 18 }}>
         {kpis.map((k) => {
           const active = k.type && typeFilter === k.type;
           return (
             <div
               key={k.label}
-              className={`kpi-card-vivid ${k.type ? "clickable" : ""} ${active ? "is-active" : ""}`}
+              className={`kpi-card-vivid netcred-kpi-card ${k.type ? "clickable" : ""} ${active ? "is-active" : ""}`}
               onClick={k.type ? () => setTypeFilter(active ? "All" : k.type) : undefined}
               title={k.type ? (active ? `Showing ${k.type} only — click to clear` : `Filter to ${k.type}`) : undefined}
               style={{
                 background: k.cardGradient,
                 boxShadow: active
-                  ? `0 0 0 3px #fff, 0 0 0 5px ${k.glow.replace("40","99")}, 0 12px 32px ${k.glow}`
-                  : `0 8px 24px ${k.glow}`,
+                  ? `0 0 0 2px #fff, 0 0 0 4px ${k.glow.replace("2e","80")}, 0 6px 16px ${k.glow}`
+                  : `0 2px 8px ${k.glow}`,
               }}
             >
               <div className="kpi-vivid-icon">{k.icon}</div>
