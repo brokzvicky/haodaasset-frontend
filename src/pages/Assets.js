@@ -1,10 +1,12 @@
-import React, { useEffect, useMemo, useState, useCallback } from "react";
+import React, { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import axios from "axios";
 import { useSearchParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import Layout from "../components/Layout";
-import StatusPill from "../components/StatusPill";
+import StatusPill, { ConditionPill } from "../components/StatusPill";
 import EmailStatusPill from "../components/EmailStatusPill";
 import SendEmailModal from "../components/SendEmailModal";
+import CountUp from "../components/CountUp";
 import { useToast } from "../utils/Toast";
 import "./Assets.css";
 
@@ -32,6 +34,79 @@ const conditionStyles = {
   "Damaged":    { bg: "#f3f4f6", border: "#6b7280", text: "#374151" }
 };
 
+// ── Icon set (KPI cards + action menu) ─────────────────────────
+const IconBox     = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>;
+const IconLink    = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>;
+const IconCheck   = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>;
+const IconAlert   = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>;
+const IconArchive = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>;
+const IconWrench  = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>;
+const IconClock   = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>;
+const IconShield  = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>;
+const IconDots    = () => <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>;
+const IconEye     = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>;
+const IconEdit    = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4z"/></svg>;
+const IconUserPlus= () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="17" y1="11" x2="23" y2="11"/></svg>;
+const IconReturn  = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg>;
+const IconMail    = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16v16H4z" opacity="0"/><path d="M22 6l-10 7L2 6"/><rect x="2" y="4" width="20" height="16" rx="2"/></svg>;
+const IconTrash   = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>;
+const IconDownload= () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>;
+
+// ── Premium gradient KPI card (mirrors the Dashboard's vivid cards) ──
+const KpiCard = ({ icon, label, value, sub, gradient, glow, onClick, active }) => (
+  <div
+    className={`kpi-card-vivid ${onClick ? "clickable" : ""} ${active ? "is-active" : ""}`}
+    onClick={onClick}
+    style={{ background: gradient, boxShadow: `0 8px 24px ${glow}` }}
+  >
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+      <div className="kpi-vivid-icon">{icon}</div>
+      {active && <span className="kpi-vivid-active-badge">Filtered</span>}
+    </div>
+    {value === null || value === undefined
+      ? <div className="kpi-vivid-value-skeleton" />
+      : <div className="kpi-vivid-value"><CountUp value={value} /></div>}
+    <div className="kpi-vivid-label">{label}</div>
+    {sub && <div style={{ fontSize: 11, color: "rgba(255,255,255,0.75)", marginTop: 4 }}>{sub}</div>}
+  </div>
+);
+
+// ── Three-dot row action menu ─────────────────────────────────────
+const ActionMenu = ({ items, open, onToggle, onClose }) => {
+  const ref = useRef(null);
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) onClose(); };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open, onClose]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  return (
+    <div className="action-menu" ref={ref}>
+      <button className="action-menu-trigger" onClick={onToggle} title="More actions" aria-label="More actions">
+        <IconDots />
+      </button>
+      {open && (
+        <div className="action-menu-dropdown">
+          {items.filter(Boolean).map((it, i) => (
+            it.divider
+              ? <div key={i} className="action-menu-divider" />
+              : (
+                <button
+                  key={i}
+                  className={`action-menu-item${it.danger ? " is-danger" : ""}`}
+                  onClick={() => { onClose(); it.onClick(); }}
+                >
+                  <span className="action-menu-item-icon">{it.icon}</span>
+                  {it.label}
+                </button>
+              )
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
 // ── Skeleton loader ──────────────────────────────────────────────
 const SkeletonRow = () => {
   const cell = (w = 80) => (
@@ -39,7 +114,7 @@ const SkeletonRow = () => {
       <div className="skeleton skeleton-text" style={{ width: w, margin: 0 }} />
     </td>
   );
-  return <tr>{cell(30)}{cell(160)}{cell(140)}{cell(110)}{cell(90)}{cell(150)}</tr>;
+  return <tr><td></td>{cell(30)}{cell(160)}{cell(140)}{cell(110)}{cell(90)}{cell(30)}</tr>;
 };
 
 // ── Return Dialog (Modal) ────────────────────────────────────────
@@ -414,6 +489,13 @@ export default function Assets() {
   const [updating, setUpdating] = useState(new Set());
   const [editingAsset, setEditingAsset] = useState(null); // null = add mode, asset obj = edit mode
   const [employeeEmailById, setEmployeeEmailById] = useState({}); // employeeId -> email, for the Send Email gate/modal
+  const navigate = useNavigate();
+
+  // Premium UI state
+  const [selectedIds, setSelectedIds] = useState(new Set());   // bulk-select checkboxes
+  const [openMenuId, setOpenMenuId] = useState(null);           // which row's ⋯ menu is open
+  const [editingConditionId, setEditingConditionId] = useState(null); // which row's condition is in "edit" mode
+  const [quickFilter, setQuickFilter] = useState(null);         // "recent" | "warranty" | null — from KPI cards
 
   // ── Data loading ──────────────────────────────────────────────
   const loadData = useCallback(() => {
@@ -629,20 +711,37 @@ export default function Assets() {
     [assets]
   );
 
-  const filtered = useMemo(() =>
-    assets
-      .filter(a =>
-        (a.laptopName || "").toLowerCase().includes(searchText.toLowerCase()) ||
-        (a.serialNumber || "").toLowerCase().includes(searchText.toLowerCase()) ||
-        (a.brand || "").toLowerCase().includes(searchText.toLowerCase()) ||
-        (a.location || "").toLowerCase().includes(searchText.toLowerCase()) ||
-        (a.assetType || "").toLowerCase().includes(searchText.toLowerCase())
-      )
+  // Global search now spans every field a helpdesk admin would actually search by.
+  const filtered = useMemo(() => {
+    const q = searchText.trim().toLowerCase();
+    return assets
+      .filter(a => {
+        if (!q) return true;
+        return [
+          a.laptopName, a.assetId, a.serialNumber, a.brand, a.model,
+          a.vendor, a.location, a.assetType, a.employeeName, a.employeeId,
+        ].some(v => (v ?? "").toString().toLowerCase().includes(q));
+      })
       .filter(a => statusFilter === "All" || a.assetStatus === statusFilter)
       .filter(a => typeFilter === "All" || a.assetType === typeFilter)
-      .filter(a => locationFilter === "All" || (a.location || "") === locationFilter),
-    [assets, searchText, statusFilter, typeFilter, locationFilter]
-  );
+      .filter(a => locationFilter === "All" || (a.location || "") === locationFilter)
+      .filter(a => {
+        if (quickFilter === "recent") {
+          const d = daysUntil(a.purchaseDate);
+          return d !== null && d >= -30 && d <= 0;
+        }
+        if (quickFilter === "warranty") {
+          const d = daysUntil(a.warrantyExpiry);
+          return d !== null && d >= 0 && d <= 60;
+        }
+        return true;
+      });
+  }, [assets, searchText, statusFilter, typeFilter, locationFilter, quickFilter]);
+
+  const anyFilterActive = !!(searchText || statusFilter !== "All" || typeFilter !== "All" || locationFilter !== "All" || quickFilter);
+  const clearAllFilters = () => {
+    setSearchText(""); setStatusFilter("All"); setTypeFilter("All"); setLocationFilter("All"); setQuickFilter(null);
+  };
 
   const counts = useMemo(() => ({
     total: assets.length,
@@ -651,15 +750,19 @@ export default function Assets() {
     spare: assets.filter(a => a.assetStatus === "Spare").length,
     underRepair: assets.filter(a => a.assetStatus === "Under Repair").length,
     faulty: assets.filter(a => a.assetStatus === "Faulty").length,
+    recentlyAdded: assets.filter(a => { const d = daysUntil(a.purchaseDate); return d !== null && d >= -30 && d <= 0; }).length,
+    warrantyExpiring: assets.filter(a => { const d = daysUntil(a.warrantyExpiry); return d !== null && d >= 0 && d <= 60; }).length,
   }), [assets]);
 
   const kpis = [
-    { label: "Total", value: counts.total, icon: "📊", color: "var(--primary)", bg: "var(--primary-50)" },
-    { label: "Available", value: counts.available, icon: "✅", color: "var(--success)", bg: "var(--success-bg)" },
-    { label: "Assigned", value: counts.assigned, icon: "👤", color: "#3b82f6", bg: "#dbeafe" },
-    { label: "Spare", value: counts.spare, icon: "🔧", color: "#f59e0b", bg: "#fef3c7" },
-    { label: "Under Repair", value: counts.underRepair, icon: "🔨", color: "#f97316", bg: "#ffedd5" },
-    { label: "Faulty", value: counts.faulty, icon: "⚠️", color: "#ef4444", bg: "#fee2e2" },
+    { key: "Total",        label: "Total Assets",       value: counts.total,            sub: "All locations",           icon: <IconBox/>,      gradient: "linear-gradient(135deg,#60a5fa,#2563eb)", glow: "#2563eb40" },
+    { key: "Assigned",     label: "Assigned",           value: counts.assigned,         sub: "In active use",           icon: <IconLink/>,     gradient: "linear-gradient(135deg,#60a5fa,#1d4ed8)", glow: "#1d4ed840" },
+    { key: "Available",    label: "Available",          value: counts.available,        sub: "Ready to assign",         icon: <IconCheck/>,    gradient: "linear-gradient(135deg,#34d399,#059669)", glow: "#10b98140" },
+    { key: "Faulty",       label: "Faulty",              value: counts.faulty,           sub: "Defective",               icon: <IconAlert/>,    gradient: "linear-gradient(135deg,#f87171,#dc2626)", glow: "#dc262640" },
+    { key: "Spare",        label: "Spare",               value: counts.spare,            sub: "In reserve",              icon: <IconArchive/>,  gradient: "linear-gradient(135deg,#fbbf24,#ca8a04)", glow: "#d9770640" },
+    { key: "Under Repair", label: "Under Maintenance",   value: counts.underRepair,      sub: "At service",              icon: <IconWrench/>,   gradient: "linear-gradient(135deg,#fb923c,#ea580c)", glow: "#ea580c40" },
+    { key: "__recent",     label: "Recently Added",      value: counts.recentlyAdded,    sub: "Purchased last 30 days",  icon: <IconClock/>,    gradient: "linear-gradient(135deg,#a78bfa,#7c3aed)", glow: "#7c3aed40", quick: "recent" },
+    { key: "__warranty",   label: "Warranty Expiring",   value: counts.warrantyExpiring, sub: "Within 60 days",           icon: <IconShield/>,   gradient: "linear-gradient(135deg,#fb7185,#e11d48)", glow: "#e11d4840", quick: "warranty" },
   ];
 
   // ── Render ────────────────────────────────────────────────────
@@ -693,58 +796,25 @@ export default function Assets() {
       )}
 
       {/* ── KPI Cards ── */}
-      <div style={{
-        display:"grid",
-        gridTemplateColumns:"repeat(6, 1fr)",
-        gap:14,
-        marginBottom:28,
-      }}>
+      <div className="asset-kpi-grid">
         {kpis.map(s => {
-          const active = statusFilter === s.label;
+          const active = s.quick ? quickFilter === s.quick : statusFilter === s.key;
+          const toggle = () => {
+            if (s.quick) { setQuickFilter(active ? null : s.quick); }
+            else { setStatusFilter(active ? "All" : s.key); }
+          };
           return (
-            <div
-              key={s.label}
-              onClick={() => setStatusFilter(active ? "All" : s.label)}
-              style={{
-                background:"#fff",
-                borderRadius:12,
-                padding:"16px 18px",
-                borderLeft: `4px solid ${s.color}`,
-                boxShadow: active
-                  ? `0 0 0 2px ${s.color}30, var(--shadow-sm)`
-                  : "var(--shadow-xs)",
-                cursor:"pointer",
-                transition:"all 0.15s ease",
-                transform: active ? "translateY(-2px)" : "none",
-                border: active ? `1px solid ${s.color}40` : "1px solid transparent",
-              }}
-              onMouseEnter={(e) => { if (!active) e.currentTarget.style.transform = "translateY(-2px)"; }}
-              onMouseLeave={(e) => { if (!active) e.currentTarget.style.transform = "translateY(0)"; }}
-            >
-              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-                <div>
-                  <div style={{
-                    fontSize:24,
-                    fontWeight:800,
-                    color: loading ? "var(--gray-300)" : s.color,
-                    lineHeight:1.2,
-                  }}>
-                    {loading ? "—" : s.value}
-                  </div>
-                  <div style={{
-                    fontSize:10,
-                    fontWeight:700,
-                    color:"var(--gray-400)",
-                    marginTop:4,
-                    textTransform:"uppercase",
-                    letterSpacing:"0.05em",
-                  }}>
-                    {s.label}
-                  </div>
-                </div>
-                <div style={{ fontSize:28, opacity:0.5 }}>{s.icon}</div>
-              </div>
-            </div>
+            <KpiCard
+              key={s.key}
+              icon={s.icon}
+              label={s.label}
+              value={loading ? null : s.value}
+              sub={s.sub}
+              gradient={s.gradient}
+              glow={s.glow}
+              onClick={toggle}
+              active={active}
+            />
           );
         })}
       </div>
@@ -847,81 +917,109 @@ export default function Assets() {
 
       {/* ── Asset Table ── */}
       <div className="card">
-        <div className="card-header" style={{ flexWrap:"wrap", gap:10 }}>
-          <div>
-            <div className="card-title">Asset Inventory</div>
-            <div className="card-subtitle">
-              {loading ? "Loading…" : `${filtered.length} of ${assets.length} assets`}
+        <div className="asset-toolbar">
+          <div className="asset-toolbar-top">
+            <div>
+              <div className="card-title">Asset Inventory</div>
+              <div className="card-subtitle">
+                {loading ? "Loading…" : `${filtered.length} of ${assets.length} assets`}
+              </div>
             </div>
-          </div>
-          <div style={{ display:"flex", gap:8, flexWrap:"wrap", alignItems:"center" }}>
-            <select
-              className="input"
-              style={{ width:140 }}
-              value={typeFilter}
-              onChange={e => setTypeFilter(e.target.value)}
-            >
-              {uniqueTypes.map(t => <option key={t} value={t}>{t === "All" ? "All types" : t}</option>)}
-            </select>
-            <select
-              className="input"
-              style={{ width:140 }}
-              value={statusFilter}
-              onChange={e => setStatusFilter(e.target.value)}
-            >
-              <option value="All">All statuses</option>
-              {ASSET_STATUSES.map(s => <option key={s}>{s}</option>)}
-            </select>
-            <select
-              className="input"
-              style={{ width:160 }}
-              value={locationFilter}
-              onChange={e => setLocationFilter(e.target.value)}
-            >
-              <option value="All">All locations</option>
-              {LOCATIONS.map(l => <option key={l} value={l}>{l}</option>)}
-            </select>
-            <div style={{ position:"relative" }}>
-              <svg style={{
-                position:"absolute", left:12, top:"50%",
-                transform:"translateY(-50%)",
-                color:"var(--gray-400)",
-                pointerEvents:"none",
-              }} width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                <circle cx="11" cy="11" r="8" />
-                <path d="m21 21-4.35-4.35" />
-              </svg>
-              <input
-                className="input"
-                style={{ paddingLeft:34, width:200 }}
-                placeholder="Search assets…"
-                value={searchText}
-                onChange={e => setSearchText(e.target.value)}
-              />
-              {searchText && (
-                <button
-                  onClick={() => setSearchText("")}
-                  style={{
-                    position:"absolute", right:10, top:"50%",
-                    transform:"translateY(-50%)",
-                    background:"none", border:"none",
-                    cursor:"pointer", color:"var(--gray-400)",
-                    fontSize:14,
-                  }}
-                >
-                  ✕
-                </button>
-              )}
-            </div>
-            <button
-              className="btn btn-secondary btn-icon"
-              onClick={loadData}
-              disabled={loading}
-              style={{ fontSize:16 }}
-            >
-              ↻
+            <button className="btn btn-secondary btn-icon" onClick={loadData} disabled={loading} title="Refresh">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
             </button>
           </div>
+
+          {/* Large global search */}
+          <div className="asset-global-search">
+            <svg width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <circle cx="11" cy="11" r="8" />
+              <path d="m21 21-4.35-4.35" />
+            </svg>
+            <input
+              value={searchText}
+              onChange={e => setSearchText(e.target.value)}
+              placeholder="Search by asset name, ID, serial number, employee, vendor, model, or location…"
+            />
+            {searchText && (
+              <button className="asset-global-search-clear" onClick={() => setSearchText("")} aria-label="Clear search">✕</button>
+            )}
+          </div>
+
+          {/* Filter chips */}
+          <div className="asset-filter-chips">
+            <label className={`filter-chip ${typeFilter !== "All" ? "is-set" : ""}`}>
+              <span>Type</span>
+              <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)}>
+                {uniqueTypes.map(t => <option key={t} value={t}>{t === "All" ? "All types" : t}</option>)}
+              </select>
+            </label>
+            <label className={`filter-chip ${statusFilter !== "All" ? "is-set" : ""}`}>
+              <span>Status</span>
+              <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
+                <option value="All">All statuses</option>
+                {ASSET_STATUSES.map(s => <option key={s}>{s}</option>)}
+              </select>
+            </label>
+            <label className={`filter-chip ${locationFilter !== "All" ? "is-set" : ""}`}>
+              <span>Location</span>
+              <select value={locationFilter} onChange={e => setLocationFilter(e.target.value)}>
+                <option value="All">All locations</option>
+                {LOCATIONS.map(l => <option key={l} value={l}>{l}</option>)}
+              </select>
+            </label>
+            <label className={`filter-chip ${quickFilter === "warranty" ? "is-set" : ""}`}>
+              <span>Warranty</span>
+              <select
+                value={quickFilter === "warranty" ? "expiring" : "any"}
+                onChange={e => setQuickFilter(e.target.value === "expiring" ? "warranty" : null)}
+              >
+                <option value="any">Any</option>
+                <option value="expiring">Expiring in 60 days</option>
+              </select>
+            </label>
+            {anyFilterActive && (
+              <button className="filter-chip filter-chip-clear" onClick={clearAllFilters}>
+                ✕ Clear Filters
+              </button>
+            )}
+          </div>
+
+          {/* Bulk action bar — appears once rows are selected */}
+          {selectedIds.size > 0 && (
+            <div className="bulk-bar">
+              <span className="bulk-bar-count">{selectedIds.size} selected</span>
+              <button
+                className="btn btn-sm btn-secondary"
+                onClick={() => {
+                  const rows = filtered.filter(a => selectedIds.has(a.assetId));
+                  const cols = ["assetId","laptopName","assetType","brand","model","serialNumber","location","assetStatus","assetCondition","employeeName","vendor","purchaseDate","warrantyExpiry"];
+                  const csv = [cols.join(",")].concat(
+                    rows.map(a => cols.map(c => `"${(a[c] ?? "").toString().replace(/"/g,'""')}"`).join(","))
+                  ).join("\n");
+                  const blob = new Blob([csv], { type: "text/csv" });
+                  const url = URL.createObjectURL(blob);
+                  const link = document.createElement("a");
+                  link.href = url; link.download = "assets-export.csv"; link.click();
+                  URL.revokeObjectURL(url);
+                  toast(`Exported ${rows.length} asset(s) to CSV.`, "success");
+                }}
+              >
+                <IconDownload /> Export CSV
+              </button>
+              <button
+                className="btn btn-sm btn-danger"
+                onClick={() => {
+                  if (!window.confirm(`Permanently delete ${selectedIds.size} selected asset(s)? This cannot be undone.`)) return;
+                  Promise.allSettled([...selectedIds].map(id => axios.delete(`${API}/assets/${id}`)))
+                    .then(() => { toast("Selected assets deleted.", "success"); setSelectedIds(new Set()); loadData(); });
+                }}
+              >
+                <IconTrash /> Delete
+              </button>
+              <button className="btn btn-sm btn-ghost" onClick={() => setSelectedIds(new Set())}>Clear selection</button>
+            </div>
+          )}
         </div>
 
         {loading ? (
@@ -929,12 +1027,13 @@ export default function Assets() {
             <table className="data-table">
               <thead>
                 <tr>
+                  <th style={{ width:36 }}></th>
                   <th style={{ width:40, textAlign:"center" }}>#</th>
                   <th>Asset</th>
                   <th>Location</th>
                   <th style={{ minWidth:120 }}>Condition</th>
                   <th>Status</th>
-                  <th style={{ width:170 }}>Actions</th>
+                  <th style={{ width:60 }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -945,24 +1044,18 @@ export default function Assets() {
         ) : filtered.length === 0 ? (
           <div className="empty-state">
             <div className="empty-icon" style={{ opacity:0.3 }}>
-              {searchText || statusFilter !== "All" || typeFilter !== "All" || locationFilter !== "All" ? "🔍" : "📦"}
+              {anyFilterActive ? "🔍" : "📦"}
             </div>
             <div className="empty-title">
-              {searchText || statusFilter !== "All" || typeFilter !== "All" || locationFilter !== "All"
-                ? "No matching assets"
-                : "Inventory is empty"}
+              {anyFilterActive ? "No matching assets" : "Inventory is empty"}
             </div>
             <div className="empty-sub">
-              {searchText || statusFilter !== "All" || typeFilter !== "All" || locationFilter !== "All"
+              {anyFilterActive
                 ? "Try adjusting your filters or search terms"
                 : "Click 'Add Asset' to begin building your inventory"}
             </div>
-            {(searchText || statusFilter !== "All" || typeFilter !== "All" || locationFilter !== "All") && (
-              <button
-                className="btn btn-secondary"
-                style={{ marginTop:12 }}
-                onClick={() => { setSearchText(""); setStatusFilter("All"); setTypeFilter("All"); setLocationFilter("All"); }}
-              >
+            {anyFilterActive && (
+              <button className="btn btn-secondary" style={{ marginTop:12 }} onClick={clearAllFilters}>
                 Clear Filters
               </button>
             )}
@@ -972,12 +1065,23 @@ export default function Assets() {
             <table className="data-table">
               <thead>
                 <tr>
+                  <th style={{ width:36 }}>
+                    <input
+                      type="checkbox"
+                      className="row-checkbox"
+                      checked={filtered.length > 0 && filtered.every(a => selectedIds.has(a.assetId))}
+                      onChange={(e) => {
+                        setSelectedIds(e.target.checked ? new Set(filtered.map(a => a.assetId)) : new Set());
+                      }}
+                      title="Select all"
+                    />
+                  </th>
                   <th style={{ width:40, textAlign:"center" }}>#</th>
                   <th>Asset</th>
                   <th>Location</th>
                   <th style={{ minWidth:120 }}>Condition</th>
                   <th>Status</th>
-                  <th style={{ width:170 }}>Actions</th>
+                  <th style={{ width:60 }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -988,8 +1092,43 @@ export default function Assets() {
                   const canSendEmail = asset.assetStatus === "Assigned" && !!asset.employeeId && !!employeeEmail;
                   const visual = ASSET_TYPE_VISUALS[asset.assetType] || DEFAULT_TYPE_VISUAL;
 
+                  const isSelected = selectedIds.has(asset.assetId);
+                  const isEditingCondition = editingConditionId === asset.assetId;
+
+                  const menuItems = [
+                    { label: "View details", icon: <IconEye/>, onClick: () => setViewingAsset(asset) },
+                    { label: "Edit asset",   icon: <IconEdit/>, onClick: () => openEdit(asset) },
+                    asset.assetStatus === "Available" && {
+                      label: "Assign to employee", icon: <IconUserPlus/>,
+                      onClick: () => { toast("Opening Employees to assign this asset…", "info"); navigate("/employees"); },
+                    },
+                    asset.assetStatus === "Assigned" && {
+                      label: "Return asset", icon: <IconReturn/>, onClick: () => setReturnTarget(asset),
+                    },
+                    canSendEmail && {
+                      label: "Send email", icon: <IconMail/>,
+                      onClick: () => setEmailTarget({ ...asset, employeeEmail }),
+                    },
+                    { divider: true },
+                    { label: "Delete asset", icon: <IconTrash/>, danger: true, onClick: () => deleteAsset(asset.assetId) },
+                  ];
+
                   return (
-                    <tr key={asset.assetId} className="asset-row">
+                    <tr key={asset.assetId} className={`asset-row ${isSelected ? "is-selected" : ""}`}>
+                      <td>
+                        <input
+                          type="checkbox"
+                          className="row-checkbox"
+                          checked={isSelected}
+                          onChange={(e) => {
+                            setSelectedIds(prev => {
+                              const next = new Set(prev);
+                              if (e.target.checked) next.add(asset.assetId); else next.delete(asset.assetId);
+                              return next;
+                            });
+                          }}
+                        />
+                      </td>
                       <td style={{ textAlign:"center", fontWeight:600, color:"var(--gray-400)", fontSize:12 }}>
                         {index + 1}
                       </td>
@@ -1021,90 +1160,43 @@ export default function Assets() {
                       </td>
                       <td style={{ color:"var(--gray-600)" }}>{asset.location || "—"}</td>
                       <td>
-                        <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-                          {/* Coloured dot */}
-                          <span style={{
-                            display:"inline-block",
-                            width:12, height:12,
-                            borderRadius:"50%",
-                            background: style.border,
-                            flexShrink:0,
-                          }} />
-                          {/* Condition dropdown with styling */}
-                          <select
-                            className="condition-select"
-                            value={asset.assetCondition}
-                            onChange={(e) => updateAsset(asset.assetId, 'assetCondition', e.target.value)}
-                            disabled={isUpdating}
-                            style={{
-                              background: style.bg,
-                              borderColor: style.border,
-                              color: style.text,
-                              fontWeight:600,
-                            }}
+                        {isEditingCondition ? (
+                          <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+                            <select
+                              className="condition-select"
+                              autoFocus
+                              value={asset.assetCondition}
+                              onChange={(e) => updateAsset(asset.assetId, 'assetCondition', e.target.value)}
+                              onBlur={() => setEditingConditionId(null)}
+                              disabled={isUpdating}
+                              style={{ background: style.bg, borderColor: style.border, color: style.text, fontWeight:600 }}
+                            >
+                              {ASSET_CONDITIONS.map(c => {
+                                const s = conditionStyles[c] || conditionStyles["New"];
+                                return <option key={c} value={c} style={{ background:s.bg, color:s.text, fontWeight:600 }}>{c}</option>;
+                              })}
+                            </select>
+                            {isUpdating && <span style={{ fontSize:11, color:"var(--gray-400)" }}>⏳</span>}
+                          </div>
+                        ) : (
+                          <button
+                            className="condition-badge-btn"
+                            onClick={() => setEditingConditionId(asset.assetId)}
+                            title="Click to change condition"
                           >
-                            {ASSET_CONDITIONS.map(c => {
-                              const s = conditionStyles[c] || conditionStyles["New"];
-                              return (
-                                <option
-                                  key={c}
-                                  value={c}
-                                  style={{
-                                    background: s.bg,
-                                    color: s.text,
-                                    fontWeight:600,
-                                  }}
-                                >
-                                  {c}
-                                </option>
-                              );
-                            })}
-                          </select>
-                          {isUpdating && <span style={{ fontSize:11, color:"var(--gray-400)" }}>⏳</span>}
-                        </div>
+                            <ConditionPill condition={asset.assetCondition} />
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4z"/></svg>
+                          </button>
+                        )}
                       </td>
                       <td><StatusPill status={asset.assetStatus} /></td>
                       <td>
-                        <div style={{ display:"flex", gap:8, alignItems:"center" }}>
-                          <button
-                            className="action-view"
-                            onClick={() => setViewingAsset(asset)}
-                            title="View asset details"
-                          >
-                            👁 View
-                          </button>
-                          <button
-                            className="action-edit"
-                            onClick={() => openEdit(asset)}
-                            title="Edit asset"
-                          >
-                            ✏️
-                          </button>
-                          {asset.assetStatus === "Assigned" && (
-                            <button
-                              className="action-return"
-                              onClick={() => setReturnTarget(asset)}
-                            >
-                              ↩ Return
-                            </button>
-                          )}
-                          {canSendEmail && (
-                            <button
-                              className="action-send-email"
-                              onClick={() => setEmailTarget({ ...asset, employeeEmail })}
-                              title="Send assignment email"
-                            >
-                              📧 Email
-                            </button>
-                          )}
-                          <button
-                            className="action-delete"
-                            onClick={() => deleteAsset(asset.assetId)}
-                            title="Delete asset"
-                          >
-                            🗑
-                          </button>
-                        </div>
+                        <ActionMenu
+                          items={menuItems}
+                          open={openMenuId === asset.assetId}
+                          onToggle={() => setOpenMenuId(openMenuId === asset.assetId ? null : asset.assetId)}
+                          onClose={() => setOpenMenuId(null)}
+                        />
                       </td>
                     </tr>
                   );
@@ -1174,91 +1266,8 @@ export default function Assets() {
           opacity: 0.6;
           cursor: wait;
         }
-        .action-return {
-          background: var(--success-bg);
-          color: #065f46;
-          border: none;
-          padding: 4px 14px;
-          border-radius: 20px;
-          font-size: 12px;
-          font-weight: 600;
-          cursor: pointer;
-          transition: 0.15s;
-          display: inline-flex;
-          align-items: center;
-          gap: 4px;
-        }
-        .action-return:hover {
-          background: #a7f3d0;
-          transform: scale(1.04);
-        }
-        .action-send-email {
+        .asset-row.is-selected td {
           background: var(--primary-50);
-          border: 1px solid var(--primary-200);
-          color: var(--primary-700);
-          border-radius: 20px;
-          padding: 4px 12px;
-          font-size: 12px;
-          font-weight: 600;
-          cursor: pointer;
-          transition: 0.15s;
-          display: inline-flex;
-          align-items: center;
-          gap: 4px;
-          white-space: nowrap;
-        }
-        .action-send-email:hover {
-          background: var(--primary-100);
-          border-color: var(--primary-300, var(--primary-200));
-          transform: translateY(-1px);
-        }
-        .action-view {
-          background: var(--primary-50);
-          border: 1px solid var(--primary-200);
-          color: var(--primary-700);
-          border-radius: 7px;
-          padding: 5px 10px;
-          font-size: 12.5px;
-          font-weight: 600;
-          cursor: pointer;
-          transition: all 0.15s ease;
-          display: flex; align-items: center; gap: 4px;
-          white-space: nowrap;
-        }
-        .action-view:hover {
-          background: var(--primary-100);
-          border-color: var(--primary-300, var(--primary-200));
-          transform: translateY(-1px);
-        }
-        .action-edit {
-          background: #eff6ff;
-          border: 1px solid #bfdbfe;
-          color: #1d4ed8;
-          border-radius: 7px;
-          padding: 5px 10px;
-          font-size: 13px;
-          cursor: pointer;
-          transition: all 0.15s ease;
-          display: flex; align-items: center; gap: 4px;
-        }
-        .action-edit:hover {
-          background: #dbeafe;
-          border-color: #93c5fd;
-          transform: translateY(-1px);
-        }
-        .action-delete {
-          background: transparent;
-          border: none;
-          color: var(--gray-400);
-          cursor: pointer;
-          font-size: 18px;
-          padding: 4px 6px;
-          border-radius: 6px;
-          transition: 0.15s;
-        }
-        .action-delete:hover {
-          background: #fee2e2;
-          color: #ef4444;
         }
       `}</style>
     </Layout>
