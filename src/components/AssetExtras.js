@@ -11,8 +11,8 @@ const DOC_TYPES = ["Invoice", "Warranty Card", "Insurance", "Manual", "Other"];
  * each panel only calls its endpoint when the admin expands it, keeping
  * the drawer's initial open fast.
  */
-export default function AssetExtras({ asset, apiBase, token }) {
-  const [openPanel, setOpenPanel] = useState(null); // 'qr' | 'docs' | 'maintenance' | 'timeline' | null
+export default function AssetExtras({ asset, apiBase, token, initialPanel = null }) {
+  const [openPanel, setOpenPanel] = useState(initialPanel); // 'qr' | 'docs' | 'maintenance' | 'timeline' | null
   const toast = useToast();
 
   const authHeaders = token ? { Authorization: `Bearer ${token}` } : {};

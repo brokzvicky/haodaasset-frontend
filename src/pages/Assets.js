@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useState, useCallback, useRef } from "react";
+import React, { useEffect, useLayoutEffect, useMemo, useState, useCallback, useRef } from "react";
+import { createPortal } from "react-dom";
 import axios from "axios";
 import { useSearchParams } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
@@ -52,6 +53,7 @@ const IconReturn  = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="
 const IconMail    = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16v16H4z" opacity="0"/><path d="M22 6l-10 7L2 6"/><rect x="2" y="4" width="20" height="16" rx="2"/></svg>;
 const IconTrash   = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>;
 const IconDownload= () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>;
+const IconHistory = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 5v4h4"/><polyline points="12 8 12 12 15 14"/></svg>;
 
 // ── Premium gradient KPI card (mirrors the Dashboard's vivid cards) ──
 const KpiCard = ({ icon, label, value, sub, gradient, glow, onClick, active }) => (
@@ -72,39 +74,155 @@ const KpiCard = ({ icon, label, value, sub, gradient, glow, onClick, active }) =
   </div>
 );
 
-// ── Three-dot row action menu ─────────────────────────────────────
+// ── Three-dot row action menu ──────────────────────────────────────
+// Enterprise-grade dropdown: renders into a portal (so it's never clipped
+// by the table's overflow/scroll), measures available viewport space to
+// flip up/left as needed, and supports full keyboard navigation.
+const ACTION_MENU_WIDTH = 232;
+const ACTION_MENU_MARGIN = 8;
+
 const ActionMenu = ({ items, open, onToggle, onClose }) => {
-  const ref = useRef(null);
+  const triggerRef = useRef(null);
+  const menuRef = useRef(null);
+  const itemRefs = useRef([]);
+  const [coords, setCoords] = useState(null); // { top, left, openUp }
+  const [activeIndex, setActiveIndex] = useState(-1);
+
+  const actionableItems = items.filter((it) => it && !it.divider);
+
+  // ── Position the menu relative to the trigger, flipping to stay on-screen ──
+  const computePosition = useCallback(() => {
+    const trigger = triggerRef.current;
+    if (!trigger) return;
+    const rect = trigger.getBoundingClientRect();
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const estimatedHeight = menuRef.current?.offsetHeight || actionableItems.length * 38 + 60;
+
+    const spaceBelow = vh - rect.bottom;
+    const openUp = spaceBelow < estimatedHeight + ACTION_MENU_MARGIN && rect.top > estimatedHeight;
+
+    let top = openUp ? rect.top - estimatedHeight - 6 : rect.bottom + 6;
+    top = Math.max(ACTION_MENU_MARGIN, Math.min(top, vh - ACTION_MENU_MARGIN - (openUp ? 0 : 0)));
+
+    // Prefer aligning the menu's right edge with the trigger's right edge;
+    // fall back to the left edge if that would overflow off-screen.
+    let left = rect.right - ACTION_MENU_WIDTH;
+    if (left < ACTION_MENU_MARGIN) left = rect.left;
+    if (left + ACTION_MENU_WIDTH > vw - ACTION_MENU_MARGIN) left = vw - ACTION_MENU_WIDTH - ACTION_MENU_MARGIN;
+    left = Math.max(ACTION_MENU_MARGIN, left);
+
+    setCoords({ top, left, openUp });
+  }, [actionableItems.length]);
+
+  useLayoutEffect(() => {
+    if (!open) { setCoords(null); return; }
+    computePosition();
+    // Menu isn't in the DOM yet on the very first pass (height was estimated),
+    // so measure again on the next frame once it has actually rendered.
+    const raf = requestAnimationFrame(computePosition);
+    return () => cancelAnimationFrame(raf);
+  }, [open, computePosition]);
+
+  // Close on outside click, Escape, scroll, or resize; keep position fresh.
   useEffect(() => {
     if (!open) return;
-    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) onClose(); };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [open, onClose]); // eslint-disable-line react-hooks/exhaustive-deps
+    const handleClick = (e) => {
+      if (menuRef.current?.contains(e.target) || triggerRef.current?.contains(e.target)) return;
+      onClose();
+    };
+    const handleKey = (e) => { if (e.key === "Escape") { onClose(); triggerRef.current?.focus(); } };
+    const handleReposition = () => computePosition();
+
+    document.addEventListener("mousedown", handleClick);
+    document.addEventListener("keydown", handleKey);
+    window.addEventListener("scroll", handleReposition, true);
+    window.addEventListener("resize", handleReposition);
+    return () => {
+      document.removeEventListener("mousedown", handleClick);
+      document.removeEventListener("keydown", handleKey);
+      window.removeEventListener("scroll", handleReposition, true);
+      window.removeEventListener("resize", handleReposition);
+    };
+  }, [open, onClose, computePosition]);
+
+  // Focus management: land on the first item when opened via keyboard/mouse.
+  useEffect(() => {
+    if (open) setActiveIndex(0);
+    else setActiveIndex(-1);
+  }, [open]);
+
+  useEffect(() => {
+    if (open && activeIndex >= 0) itemRefs.current[activeIndex]?.focus();
+  }, [activeIndex, open]);
+
+  const handleTriggerKeyDown = (e) => {
+    if (e.key === "ArrowDown" || e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      if (!open) onToggle();
+    }
+  };
+
+  const handleMenuKeyDown = (e) => {
+    const count = actionableItems.length;
+    if (!count) return;
+    switch (e.key) {
+      case "ArrowDown": e.preventDefault(); setActiveIndex((i) => (i + 1) % count); break;
+      case "ArrowUp":   e.preventDefault(); setActiveIndex((i) => (i - 1 + count) % count); break;
+      case "Home":      e.preventDefault(); setActiveIndex(0); break;
+      case "End":       e.preventDefault(); setActiveIndex(count - 1); break;
+      case "Tab":       onClose(); break;
+      default: break;
+    }
+  };
+
+  itemRefs.current = [];
+
+  const menu = open && coords && createPortal(
+    <div
+      ref={menuRef}
+      className={`action-menu-dropdown ${coords.openUp ? "opens-up" : "opens-down"}`}
+      style={{ top: coords.top, left: coords.left, width: ACTION_MENU_WIDTH, visibility: coords ? "visible" : "hidden" }}
+      role="menu"
+      aria-label="Asset actions"
+      onKeyDown={handleMenuKeyDown}
+    >
+      {items.filter(Boolean).map((it, i) => {
+        if (it.divider) return <div key={`divider-${i}`} className="action-menu-divider" role="separator" />;
+        const actionIndex = actionableItems.indexOf(it);
+        return (
+          <button
+            key={it.label}
+            ref={(el) => { itemRefs.current[actionIndex] = el; }}
+            role="menuitem"
+            tabIndex={activeIndex === actionIndex ? 0 : -1}
+            className={`action-menu-item${it.danger ? " is-danger" : ""}`}
+            onClick={() => { onClose(); it.onClick(); }}
+          >
+            <span className="action-menu-item-icon">{it.icon}</span>
+            <span className="action-menu-item-label">{it.label}</span>
+          </button>
+        );
+      })}
+    </div>,
+    document.body
+  );
 
   return (
-    <div className="action-menu" ref={ref}>
-      <button className="action-menu-trigger" onClick={onToggle} title="More actions" aria-label="More actions">
+    <div className="action-menu">
+      <button
+        ref={triggerRef}
+        className={`action-menu-trigger${open ? " is-active" : ""}`}
+        onClick={onToggle}
+        onKeyDown={handleTriggerKeyDown}
+        title="More actions"
+        aria-label="More actions"
+        aria-haspopup="menu"
+        aria-expanded={open}
+      >
         <IconDots />
       </button>
-      {open && (
-        <div className="action-menu-dropdown">
-          {items.filter(Boolean).map((it, i) => (
-            it.divider
-              ? <div key={i} className="action-menu-divider" />
-              : (
-                <button
-                  key={i}
-                  className={`action-menu-item${it.danger ? " is-danger" : ""}`}
-                  onClick={() => { onClose(); it.onClick(); }}
-                >
-                  <span className="action-menu-item-icon">{it.icon}</span>
-                  {it.label}
-                </button>
-              )
-          ))}
-        </div>
-      )}
+      {menu}
     </div>
   );
 };
@@ -274,7 +392,7 @@ const formatDate = (dateStr) => {
 };
 
 // ── Asset Detail Drawer ─────────────────────────────────────────
-const AssetDetailDrawer = ({ asset, onClose, onEdit }) => {
+const AssetDetailDrawer = ({ asset, onClose, onEdit, focusPanel }) => {
   const [copied, setCopied] = useState(false);
   if (!asset) return null;
 
@@ -460,7 +578,7 @@ const AssetDetailDrawer = ({ asset, onClose, onEdit }) => {
 
           <div className="asset-drawer-section">
             <div className="asset-drawer-section-title">More</div>
-            <AssetExtras asset={asset} apiBase={API} />
+            <AssetExtras key={`${asset.assetId}-${focusPanel || "default"}`} asset={asset} apiBase={API} initialPanel={focusPanel || null} />
           </div>
         </div>
 
@@ -491,6 +609,7 @@ export default function Assets() {
   const [returnTarget, setReturnTarget] = useState(null);
   const [returning, setReturning] = useState(false);
   const [viewingAsset, setViewingAsset] = useState(null); // asset currently shown in the detail drawer
+  const [viewingFocusPanel, setViewingFocusPanel] = useState(null); // which AssetExtras tab to auto-open (e.g. "timeline" for Asset History)
   const [emailTarget, setEmailTarget] = useState(null); // asset currently in the Send Email modal
   const [updating, setUpdating] = useState(new Set());
   const [editingAsset, setEditingAsset] = useState(null); // null = add mode, asset obj = edit mode
@@ -1128,21 +1247,22 @@ export default function Assets() {
                   const isEditingCondition = editingConditionId === asset.assetId;
 
                   const menuItems = [
-                    { label: "View details", icon: <IconEye/>, onClick: () => setViewingAsset(asset) },
-                    { label: "Edit asset",   icon: <IconEdit/>, onClick: () => openEdit(asset) },
+                    { label: "View Details", icon: <IconEye/>, onClick: () => { setViewingFocusPanel(null); setViewingAsset(asset); } },
+                    { label: "Edit Asset",   icon: <IconEdit/>, onClick: () => openEdit(asset) },
                     asset.assetStatus === "Available" && {
-                      label: "Assign to employee", icon: <IconUserPlus/>,
+                      label: "Assign Asset", icon: <IconUserPlus/>,
                       onClick: () => { toast("Opening Employees to assign this asset…", "info"); navigate("/employees"); },
                     },
                     asset.assetStatus === "Assigned" && {
-                      label: "Return asset", icon: <IconReturn/>, onClick: () => setReturnTarget(asset),
+                      label: "Return Asset", icon: <IconReturn/>, onClick: () => setReturnTarget(asset),
                     },
                     canSendEmail && {
-                      label: "Send email", icon: <IconMail/>,
+                      label: "Send Email", icon: <IconMail/>,
                       onClick: () => setEmailTarget({ ...asset, employeeEmail }),
                     },
+                    { label: "Asset History", icon: <IconHistory/>, onClick: () => { setViewingFocusPanel("timeline"); setViewingAsset(asset); } },
                     { divider: true },
-                    { label: "Delete asset", icon: <IconTrash/>, danger: true, onClick: () => deleteAsset(asset.assetId) },
+                    { label: "Delete Asset", icon: <IconTrash/>, danger: true, onClick: () => deleteAsset(asset.assetId) },
                   ];
 
                   return (
@@ -1177,7 +1297,7 @@ export default function Assets() {
                           <div style={{ minWidth:0 }}>
                             <div
                               style={{ fontWeight:600, color:"var(--gray-900)", fontSize:13.5, cursor:"pointer" }}
-                              onClick={() => setViewingAsset(asset)}
+                              onClick={() => { setViewingFocusPanel(null); setViewingAsset(asset); }}
                               title="Click to view full details"
                             >
                               {asset.laptopName}
@@ -1248,8 +1368,9 @@ export default function Assets() {
 
       <AssetDetailDrawer
         asset={viewingAsset}
-        onClose={() => setViewingAsset(null)}
-        onEdit={(asset) => { setViewingAsset(null); openEdit(asset); }}
+        focusPanel={viewingFocusPanel}
+        onClose={() => { setViewingAsset(null); setViewingFocusPanel(null); }}
+        onEdit={(asset) => { setViewingAsset(null); setViewingFocusPanel(null); openEdit(asset); }}
       />
 
       <SendEmailModal
