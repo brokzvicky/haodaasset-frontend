@@ -4,18 +4,15 @@ import axios from "axios";
 import {
   Router, Network, Shield, Wifi, Server, HardDrive, Printer, Lock,
   Plus, X, Search, RefreshCw, Eye, EyeOff, Copy, Pencil, Trash2,
-  Check, AlertTriangle, MoreVertical,
-  ShieldCheck, Unlock, TimerReset, Download,
-  ArrowUpDown, CheckSquare, Square,
-  ShieldAlert, KeyRound, RotateCw, Activity,
-  Cable, ChevronLeft, ChevronRight,
-  AlertCircle, CheckCircle
+  ChevronDown, ChevronUp, Check, AlertTriangle, MoreVertical,
+  SlidersHorizontal, ShieldCheck, Unlock, TimerReset,
 } from "lucide-react";
 import Layout from "../components/Layout";
 import { useToast } from "../utils/Toast";
 import CredentialUnlockDialog from "../components/CredentialUnlockDialog";
 import CountUp from "../components/CountUp";
 import "./NetworkCredentials.css";
+import "../components/DetailDrawer.css";
 
 const API = "https://haodaasset-backend-1.onrender.com";
 
@@ -23,6 +20,7 @@ const DEVICE_TYPES = [
   "Router", "Switch", "Firewall", "Access Point", "Server", "NAS",
   "Printer", "VPN Gateway", "Other",
 ];
+
 const DEVICE_STATUSES = ["Active", "Inactive", "Maintenance"];
 const LOCATIONS = [
   "Chennai - Kilpauk",
@@ -31,8 +29,8 @@ const LOCATIONS = [
 ];
 
 const DEVICE_TYPE_ICON = {
-  Router, Switch: Network, Firewall: Shield, "Access Point": Wifi,
-  Server, NAS: HardDrive, Printer, "VPN Gateway": Lock, Other: Network,
+  Router: Router, Switch: Network, Firewall: Shield, "Access Point": Wifi,
+  Server: Server, NAS: HardDrive, Printer: Printer, "VPN Gateway": Lock, Other: Network,
 };
 
 const EMPTY_FORM = {
@@ -42,45 +40,59 @@ const EMPTY_FORM = {
   deviceStatus: "Active",
 };
 
-// ── Status helpers ───────────────────────────────────────────────
-const ROTATION_HEALTHY_DAYS = 90;
-const ROTATION_DUE_DAYS = 180;
+// ── Status pill ────────────────────────────────────────────────────
+function DeviceStatusPill({ status }) {
+  const cls = {
+    Active: "active",
+    Inactive: "inactive",
+    Maintenance: "maintenance",
+  }[status] || "inactive";
 
-function daysSince(dateStr) {
-  if (!dateStr) return null;
-  const d = new Date(dateStr);
-  if (isNaN(d)) return null;
-  return Math.max(0, Math.floor((Date.now() - d.getTime()) / 86400000));
+  return (
+    <span className={`netcred-status-pill ${cls}`}>
+      <span className="dot" />
+      {status}
+    </span>
+  );
 }
 
-function rotationStatus(cred) {
-  const age = daysSince(cred.updatedAt || cred.createdAt);
-  if (age === null) return { cls: "unknown", label: "Unknown", age: null };
-  if (age <= ROTATION_HEALTHY_DAYS) return { cls: "healthy", label: "Healthy", age };
-  if (age <= ROTATION_DUE_DAYS) return { cls: "due", label: "Due Soon", age };
-  return { cls: "overdue", label: "Overdue", age };
+// ── Device type icon ───────────────────────────────────────────────
+function DeviceTypeIcon({ type, size = 12 }) {
+  const Icon = DEVICE_TYPE_ICON[type] || Network;
+  return <Icon size={size} />;
 }
 
-function credentialHealth(cred) {
-  const rot = rotationStatus(cred);
-  if (cred.deviceStatus === "Inactive" || rot.cls === "overdue")
-    return { cls: "critical", label: "Critical" };
-  if (cred.deviceStatus === "Maintenance" || rot.cls === "due")
-    return { cls: "risk", label: "At Risk" };
-  if (rot.cls === "unknown") return { cls: "unknown", label: "Unknown" };
-  return { cls: "good", label: "Good" };
+// ── Date helpers ───────────────────────────────────────────────────
+function formatDate(value) {
+  if (!value) return "—";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleDateString(undefined, { day: "2-digit", month: "short", year: "numeric" });
 }
-
-// formatDate is not used; only formatDateTime is used
 function formatDateTime(value) {
   if (!value) return "—";
   const d = new Date(value);
-  if (isNaN(d)) return "—";
+  if (Number.isNaN(d.getTime())) return "—";
   return d.toLocaleString(undefined, {
     day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
   });
 }
 
+// ── Skeleton row ───────────────────────────────────────────────────
+const SkeletonRow = () => {
+  const cell = (w = 80) => (
+    <td>
+      <div className="nc-skeleton" style={{ width: w }} />
+    </td>
+  );
+  return (
+    <tr>
+      {cell(28)}{cell(160)}{cell(90)}{cell(110)}{cell(130)}{cell(90)}{cell(24)}
+    </tr>
+  );
+};
+
+// ── Device type → gradient (drives the drawer hero) ─────────────────
 const DEVICE_TYPE_GRADIENT = {
   Router:        "linear-gradient(135deg,#2563eb,#1d4ed8)",
   Switch:        "linear-gradient(135deg,#7c3aed,#5b21b6)",
@@ -93,523 +105,200 @@ const DEVICE_TYPE_GRADIENT = {
   Other:         "linear-gradient(135deg,#64748b,#334155)",
 };
 
-// ── Sub‑components ──────────────────────────────────────────────
-
-const DeviceStatusPill = ({ status }) => {
-  const cls = { Active: "active", Inactive: "inactive", Maintenance: "maintenance" }[status] || "inactive";
-  return (
-    <span className={`nc-status-pill ${cls}`}>
-      <span className="dot" />
-      {status}
-    </span>
-  );
-};
-
-const DeviceTypeIcon = ({ type, size = 14 }) => {
-  const Icon = DEVICE_TYPE_ICON[type] || Network;
-  return <Icon size={size} />;
-};
-
-const RotationBadge = ({ cred }) => {
-  const rot = rotationStatus(cred);
-  const text = rot.age === null ? rot.label : `${rot.label} · ${rot.age}d`;
-  return <span className={`nc-rotation-badge ${rot.cls}`}>{text}</span>;
-};
-
-const HealthBadge = ({ cred }) => {
-  const h = credentialHealth(cred);
-  return (
-    <span className={`nc-health-badge ${h.cls}`}>
-      {h.cls === "critical" && <AlertTriangle size={10} />}
-      {h.cls === "risk" && <AlertCircle size={10} />}
-      {h.cls === "good" && <CheckCircle size={10} />}
-      {h.label}
-    </span>
-  );
-};
-
-const SkeletonCard = () => (
-  <div className="nc-card-skeleton">
-    <div className="nc-skeleton" style={{ width: 40, height: 40, borderRadius: 10 }} />
-    <div className="nc-skeleton" style={{ width: "60%", height: 14, marginTop: 8 }} />
-    <div className="nc-skeleton" style={{ width: "40%", height: 12, marginTop: 6 }} />
-    <div className="nc-skeleton" style={{ width: "80%", height: 12, marginTop: 6 }} />
-  </div>
-);
-
-// ── Compact Device Card ─────────────────────────────────────────
-const DeviceCard = ({
-  cred,
-  isSelected,
-  onSelect,
-  onViewDetail,
-  onOpenMenu,
-  isMenuOpen,
-  menuPos,
-  onCloseMenu,
-  onEdit,
-  onDelete,
-  onCopyIp,
-  onRotatePassword,
-  onDownload,
-}) => {
+// ── Network Credential Detail Drawer ────────────────────────────────
+function NetworkDetailDrawer({
+  cred, onClose, onEdit, onDelete,
+  unlocked, revealed, revealingId, copiedKey,
+  onTogglePassword, onCopyUsername, onCopyPassword,
+}) {
+  if (!cred) return null;
   const gradient = DEVICE_TYPE_GRADIENT[cred.deviceType] || DEVICE_TYPE_GRADIENT.Other;
+  const rev = revealed[cred.id];
+  const isRevealing = revealingId === cred.id;
 
   return (
-    <div
-      className={`nc-compact-card ${isSelected ? "is-selected" : ""}`}
-      onClick={() => onViewDetail(cred)}
-    >
-      <div className="nc-compact-card-left">
-        <div className="nc-compact-card-icon" style={{ background: gradient }}>
-          <DeviceTypeIcon type={cred.deviceType} size={16} />
-        </div>
-        <div className="nc-compact-card-info">
-          <div className="nc-compact-card-name">{cred.deviceName || "Unnamed"}</div>
-          <div className="nc-compact-card-meta">
-            <span className="nc-compact-card-type">{cred.deviceType}</span>
+    <div className="detail-drawer-overlay" onClick={onClose}>
+      <div className="detail-drawer" onClick={(e) => e.stopPropagation()}>
+
+        {/* Hero */}
+        <div className="detail-drawer-hero" style={{ background: gradient }}>
+          <button className="detail-drawer-close" onClick={onClose} aria-label="Close"><X size={15} /></button>
+          <div className="detail-drawer-icon"><DeviceTypeIcon type={cred.deviceType} size={24} /></div>
+          <h3 className="detail-drawer-name">{cred.deviceName}</h3>
+          <div className="detail-drawer-sub">
+            {cred.deviceType}{cred.brand ? ` · ${cred.brand}` : ""}{cred.model ? ` ${cred.model}` : ""}
+          </div>
+          <div className="detail-drawer-pills">
             <DeviceStatusPill status={cred.deviceStatus} />
           </div>
         </div>
-      </div>
-      <div className="nc-compact-card-right">
-        <div className="nc-compact-card-badges">
-          <HealthBadge cred={cred} />
-          <RotationBadge cred={cred} />
-        </div>
-        <div className="nc-compact-card-actions">
-          <button
-            className="nc-checkbox-btn"
-            onClick={(e) => { e.stopPropagation(); onSelect(cred.id); }}
-          >
-            {isSelected ? <CheckSquare size={16} /> : <Square size={16} />}
-          </button>
-          <button
-            className="nc-card-menu-btn"
-            onClick={(e) => { e.stopPropagation(); onOpenMenu(e, cred.id); }}
-          >
-            <MoreVertical size={16} />
-          </button>
-        </div>
-        {isMenuOpen && menuPos && createPortal(
-          <div className="nc-card-menu" style={{ top: menuPos.top, left: menuPos.left }}>
-            <button className="nc-menu-item" onClick={() => { onViewDetail(cred); onCloseMenu(); }}>
-              <Eye size={14} /> View Details
-            </button>
-            <button className="nc-menu-item" onClick={() => { onEdit(cred); onCloseMenu(); }}>
-              <Pencil size={14} /> Edit
-            </button>
-            <button className="nc-menu-item" onClick={() => { onCopyIp(cred); onCloseMenu(); }}>
-              <Copy size={14} /> Copy IP
-            </button>
-            <button className="nc-menu-item" onClick={() => { onRotatePassword(cred); onCloseMenu(); }}>
-              <KeyRound size={14} /> Rotate Password
-            </button>
-            <button className="nc-menu-item" onClick={() => { onDownload(cred); onCloseMenu(); }}>
-              <Download size={14} /> Download
-            </button>
-            <div className="nc-menu-divider" />
-            <button className="nc-menu-item danger" onClick={() => { onDelete(cred); onCloseMenu(); }}>
-              <Trash2 size={14} /> Delete
-            </button>
-          </div>,
-          document.body
-        )}
-      </div>
-    </div>
-  );
-};
 
-// ── Detail Panel ──────────────────────────────────────────────────
-const DetailPanel = ({
-  cred,
-  onClose,
-  onEdit,
-  onDelete,
-  unlocked,
-  revealed,
-  revealingId,
-  copiedKey,
-  onTogglePassword,
-  onCopyUsername,
-  onCopyPassword,
-}) => {
-  const [tab, setTab] = useState("overview");
-  useEffect(() => { setTab("overview"); }, [cred]);
-  if (!cred) return null;
+        {/* Body */}
+        <div className="detail-drawer-body">
 
-  const gradient = DEVICE_TYPE_GRADIENT[cred.deviceType] || DEVICE_TYPE_GRADIENT.Other;
-  const rev = revealed[cred.id] || {};
-  const isRevealing = revealingId === cred.id;
-  const rot = rotationStatus(cred);
-
-  const tabs = [
-    { key: "overview", label: "Overview", icon: ShieldCheck },
-    { key: "credentials", label: "Credentials", icon: Lock },
-    { key: "connection", label: "Connection", icon: Cable },
-    { key: "security", label: "Security", icon: ShieldAlert },
-    { key: "timeline", label: "Timeline", icon: Activity },
-  ];
-
-  return (
-    <div className="nc-detail-panel">
-      <div className="nc-detail-panel-header" style={{ background: gradient }}>
-        <div className="nc-detail-panel-identity">
-          <div className="nc-detail-panel-icon">
-            <DeviceTypeIcon type={cred.deviceType} size={24} />
-          </div>
-          <div>
-            <div className="nc-detail-panel-name">{cred.deviceName}</div>
-            <div className="nc-detail-panel-sub">
-              {cred.deviceType}{cred.brand ? ` · ${cred.brand}` : ""}{cred.model ? ` ${cred.model}` : ""}
+          <div className="detail-drawer-section">
+            <div className="detail-drawer-section-title">Network</div>
+            <div className="detail-drawer-grid">
+              <div className="detail-drawer-stat">
+                <div className="detail-drawer-stat-label">IP Address</div>
+                <div className="detail-drawer-stat-value">{cred.ipAddress || "—"}</div>
+              </div>
+              <div className="detail-drawer-stat">
+                <div className="detail-drawer-stat-label">Hostname</div>
+                <div className="detail-drawer-stat-value">{cred.hostname || "—"}</div>
+              </div>
+              <div className="detail-drawer-stat">
+                <div className="detail-drawer-stat-label">VLAN</div>
+                <div className="detail-drawer-stat-value">{cred.vlan || "—"}</div>
+              </div>
+              <div className="detail-drawer-stat">
+                <div className="detail-drawer-stat-label">ISP</div>
+                <div className="detail-drawer-stat-value">{cred.isp || "—"}</div>
+              </div>
+              <div className="detail-drawer-stat">
+                <div className="detail-drawer-stat-label">Location</div>
+                <div className="detail-drawer-stat-value">{cred.location || "—"}</div>
+              </div>
+              <div className="detail-drawer-stat">
+                <div className="detail-drawer-stat-label">SSH / Web Port</div>
+                <div className="detail-drawer-stat-value">{cred.sshPort || "—"} / {cred.webPort || "—"}</div>
+              </div>
             </div>
           </div>
-        </div>
-        <button className="nc-detail-panel-close" onClick={onClose}>
-          <X size={20} />
-        </button>
-        <div className="nc-detail-panel-status">
-          <DeviceStatusPill status={cred.deviceStatus} />
-        </div>
-      </div>
 
-      <div className="nc-detail-panel-tabs">
-        {tabs.map((t) => (
-          <button
-            key={t.key}
-            className={`nc-detail-tab ${tab === t.key ? "is-active" : ""}`}
-            onClick={() => setTab(t.key)}
-          >
-            <t.icon size={14} />
-            <span>{t.label}</span>
-          </button>
-        ))}
-      </div>
+          <div className="detail-drawer-section">
+            <div className="detail-drawer-section-title"><Lock size={11} /> Access Credentials</div>
 
-      <div className="nc-detail-panel-body">
-        {tab === "overview" && (
-          <>
-            <div className="nc-detail-section">
-              <h4>Device Summary</h4>
-              <div className="nc-detail-grid">
-                <div><label>Type</label><div>{cred.deviceType || "—"}</div></div>
-                <div><label>Vendor</label><div>{cred.brand || "—"}{cred.model ? ` · ${cred.model}` : ""}</div></div>
-                <div><label>Location</label><div>{cred.location || "—"}</div></div>
-                <div><label>Status</label><div><DeviceStatusPill status={cred.deviceStatus} /></div></div>
-              </div>
-            </div>
-            <div className="nc-detail-section">
-              <h4>Credential Health</h4>
-              <div className="nc-detail-grid">
-                <div><label>Overall</label><div><HealthBadge cred={cred} /></div></div>
-                <div><label>Rotation</label><div><RotationBadge cred={cred} /></div></div>
-              </div>
-            </div>
-            {cred.notes && (
-              <div className="nc-detail-section">
-                <h4>Notes</h4>
-                <div className="nc-detail-notes">{cred.notes}</div>
-              </div>
-            )}
-          </>
-        )}
-
-        {tab === "credentials" && (
-          <div className="nc-detail-section">
-            <h4><Lock size={14} /> Access Credentials</h4>
-            <div className="nc-detail-secret">
-              <span className="nc-detail-secret-label">Username</span>
-              <span className="nc-detail-secret-value">
+            <div className="detail-drawer-secret">
+              <span className="detail-drawer-secret-label">Username</span>
+              <span className="detail-drawer-secret-value">
                 {unlocked ? cred.username : "••••••••"}
               </span>
-              <div className="nc-detail-secret-actions">
+              <div className="detail-drawer-secret-actions">
                 <button
-                  className={`nc-icon-btn ${copiedKey === `user-${cred.id}` ? "is-copied" : ""}`}
+                  className={"detail-drawer-icon-btn" + (copiedKey === `user-${cred.id}` ? " is-copied" : "")}
+                  title="Copy username"
                   onClick={() => onCopyUsername(cred)}
                 >
-                  {copiedKey === `user-${cred.id}` ? <Check size={14} /> : <Copy size={14} />}
+                  {copiedKey === `user-${cred.id}` ? <Check size={12} /> : <Copy size={12} />}
                 </button>
               </div>
             </div>
-            <div className="nc-detail-secret">
-              <span className="nc-detail-secret-label">Password</span>
-              <span className="nc-detail-secret-value">
-                {isRevealing ? "Decrypting…" : rev.visible ? rev.password : "••••••••"}
+
+            <div className="detail-drawer-secret">
+              <span className="detail-drawer-secret-label">Password</span>
+              <span className="detail-drawer-secret-value">
+                {isRevealing ? "Decrypting…" : rev?.visible ? rev.password : "••••••••"}
               </span>
-              <div className="nc-detail-secret-actions">
+              <div className="detail-drawer-secret-actions">
                 <button
-                  className="nc-icon-btn"
+                  className="detail-drawer-icon-btn"
+                  title={rev?.visible ? "Hide password" : "Show password"}
                   onClick={() => onTogglePassword(cred)}
                   disabled={isRevealing}
                 >
-                  {rev.visible ? <EyeOff size={14} /> : <Eye size={14} />}
+                  {rev?.visible ? <EyeOff size={12} /> : <Eye size={12} />}
                 </button>
                 <button
-                  className={`nc-icon-btn ${copiedKey === `pwd-${cred.id}` ? "is-copied" : ""}`}
+                  className={"detail-drawer-icon-btn" + (copiedKey === `pwd-${cred.id}` ? " is-copied" : "")}
+                  title="Copy password"
                   onClick={() => onCopyPassword(cred)}
                   disabled={isRevealing}
                 >
-                  {copiedKey === `pwd-${cred.id}` ? <Check size={14} /> : <Copy size={14} />}
+                  {copiedKey === `pwd-${cred.id}` ? <Check size={12} /> : <Copy size={12} />}
                 </button>
               </div>
             </div>
+
             {!unlocked && (
-              <div className="nc-detail-lock-hint">
-                <Lock size={12} /> Verify identity to reveal or copy credentials
+              <div style={{ fontSize: 11.5, color: "var(--gray-400)", marginTop: 8, display: "flex", alignItems: "center", gap: 6 }}>
+                <Lock size={11} /> Verify identity to reveal or copy credentials
               </div>
             )}
           </div>
-        )}
 
-        {tab === "connection" && (
-          <div className="nc-detail-section">
-            <h4>Network Details</h4>
-            <div className="nc-detail-grid">
-              <div><label>IP Address</label><div>{cred.ipAddress || "—"}</div></div>
-              <div><label>Hostname</label><div>{cred.hostname || "—"}</div></div>
-              <div><label>VLAN</label><div>{cred.vlan || "—"}</div></div>
-              <div><label>ISP</label><div>{cred.isp || "—"}</div></div>
-              <div><label>SSH Port</label><div>{cred.sshPort || "—"}</div></div>
-              <div><label>Web Port</label><div>{cred.webPort || "—"}</div></div>
+          {cred.notes && (
+            <div className="detail-drawer-section">
+              <div className="detail-drawer-section-title">Notes</div>
+              <div className="detail-drawer-notes">{cred.notes}</div>
             </div>
-          </div>
-        )}
+          )}
 
-        {tab === "security" && (
-          <>
-            <div className="nc-detail-section">
-              <h4><RotateCw size={14} /> Password Rotation</h4>
-              <div className="nc-detail-grid">
-                <div><label>Health</label><div><RotationBadge cred={cred} /></div></div>
-                <div><label>Age</label><div>{rot.age === null ? "—" : `${rot.age} days`}</div></div>
-              </div>
-            </div>
-            <div className="nc-detail-section">
-              <h4><ShieldCheck size={14} /> Vault</h4>
-              <div className="nc-detail-grid">
-                <div><label>Encryption</label><div>AES-256</div></div>
-                <div><label>Access</label><div>{unlocked ? "Unlocked" : "Locked"}</div></div>
-              </div>
-            </div>
-          </>
-        )}
-
-        {tab === "timeline" && (
-          <div className="nc-detail-section">
-            <h4><Activity size={14} /> Timeline</h4>
-            <div className="nc-timeline">
-              <div className="nc-timeline-item">
-                <span className="nc-timeline-dot" />
-                <div>
-                  <div className="nc-timeline-label">Credential Created</div>
-                  <div className="nc-timeline-time">
-                    {formatDateTime(cred.createdAt)}{cred.createdBy ? ` · ${cred.createdBy}` : ""}
-                  </div>
-                </div>
-              </div>
-              <div className="nc-timeline-item">
-                <span className="nc-timeline-dot" />
-                <div>
-                  <div className="nc-timeline-label">Last Updated</div>
-                  <div className="nc-timeline-time">{formatDateTime(cred.updatedAt)}</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
-      <div className="nc-detail-panel-footer">
-        <button className="btn btn-secondary" onClick={onClose}>Close</button>
-        <button className="btn btn-primary" onClick={() => onEdit(cred)}>
-          <Pencil size={14} style={{ marginRight: 6 }} /> Edit
-        </button>
-        <button className="btn btn-danger" onClick={() => onDelete(cred)}>
-          <Trash2 size={14} />
-        </button>
-      </div>
-    </div>
-  );
-};
-
-// ── Add/Edit Modal ──────────────────────────────────────────────
-const CredentialFormModal = ({
-  isOpen,
-  onClose,
-  editingId,
-  form,
-  setForm,
-  formErrors,
-  setFormErrors,
-  saving,
-  onSave,
-}) => {
-  if (!isOpen) return null;
-
-  const field = (key) => ({
-    value: form[key],
-    onChange: (e) => {
-      setForm((f) => ({ ...f, [key]: e.target.value }));
-      if (formErrors[key]) setFormErrors((f) => ({ ...f, [key]: undefined }));
-    },
-  });
-
-  return createPortal(
-    <div className="nc-modal-overlay" onClick={onClose}>
-      <div className="nc-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="nc-modal-header">
-          <h3>{editingId ? "Edit Credential" : "Add Network Credential"}</h3>
-          <button className="nc-modal-close" onClick={onClose}><X size={18} /></button>
-        </div>
-        <div className="nc-modal-body">
-          <div className="nc-form-section">Device Information</div>
-          <div className="nc-form-grid">
-            <div className="field">
-              <label>Device Name *</label>
-              <input {...field("deviceName")} placeholder="e.g. HQ-Core-Switch-01" />
-              {formErrors.deviceName && <span className="field-error">{formErrors.deviceName}</span>}
-            </div>
-            <div className="field">
-              <label>Device Type *</label>
-              <select {...field("deviceType")}>
-                <option value="">Select type…</option>
-                {DEVICE_TYPES.map((t) => <option key={t}>{t}</option>)}
-              </select>
-              {formErrors.deviceType && <span className="field-error">{formErrors.deviceType}</span>}
-            </div>
-            <div className="field">
-              <label>Brand</label>
-              <input {...field("brand")} placeholder="e.g. Cisco" />
-            </div>
-            <div className="field">
-              <label>Model</label>
-              <input {...field("model")} placeholder="e.g. Catalyst 2960" />
-            </div>
-            <div className="field">
-              <label>IP Address</label>
-              <input {...field("ipAddress")} placeholder="192.168.1.1" />
-              {formErrors.ipAddress && <span className="field-error">{formErrors.ipAddress}</span>}
-            </div>
-            <div className="field">
-              <label>Hostname</label>
-              <input {...field("hostname")} placeholder="hq-sw-01.lan" />
-            </div>
-          </div>
-
-          <div className="nc-form-section">Access Credentials</div>
-          <div className="nc-form-grid">
-            <div className="field">
-              <label>Username *</label>
-              <input {...field("username")} autoComplete="off" placeholder="admin" />
-              {formErrors.username && <span className="field-error">{formErrors.username}</span>}
-            </div>
-            <div className="field">
-              <label>Password {editingId ? "" : "*"}</label>
-              <input {...field("password")} type="password" autoComplete="new-password"
-                placeholder={editingId ? "Leave blank to keep current" : "Enter password"} />
-              {formErrors.password && <span className="field-error">{formErrors.password}</span>}
-            </div>
-            <div className="field">
-              <label>Enable Password</label>
-              <input {...field("enablePassword")} type="password" autoComplete="new-password"
-                placeholder="Optional privileged-mode password" />
-            </div>
-            <div className="field">
-              <label>SSH Port</label>
-              <input {...field("sshPort")} type="number" min="1" max="65535" placeholder="22" />
-              {formErrors.sshPort && <span className="field-error">{formErrors.sshPort}</span>}
-            </div>
-            <div className="field">
-              <label>Web Port</label>
-              <input {...field("webPort")} type="number" min="1" max="65535" placeholder="443" />
-              {formErrors.webPort && <span className="field-error">{formErrors.webPort}</span>}
-            </div>
-            <div className="field">
-              <label>Status</label>
-              <select {...field("deviceStatus")}>
-                {DEVICE_STATUSES.map((s) => <option key={s}>{s}</option>)}
-              </select>
-            </div>
-          </div>
-
-          <div className="nc-form-section">Location & Network</div>
-          <div className="nc-form-grid">
-            <div className="field">
-              <label>Location</label>
-              <select {...field("location")}>
-                <option value="">Select Location</option>
-                {LOCATIONS.map((loc) => <option key={loc} value={loc}>{loc}</option>)}
-              </select>
-            </div>
-            <div className="field">
-              <label>VLAN</label>
-              <input {...field("vlan")} placeholder="VLAN 10" />
-            </div>
-            <div className="field">
-              <label>ISP</label>
-              <input {...field("isp")} placeholder="Airtel Business" />
-            </div>
-            <div className="field" style={{ gridColumn: "span 3" }}>
-              <label>Notes</label>
-              <input {...field("notes")} placeholder="Any additional notes" />
+          <div className="detail-drawer-section" style={{ marginBottom: 4 }}>
+            <div className="detail-drawer-section-title">Record History</div>
+            <div style={{ fontSize: 12, color: "var(--gray-500)", lineHeight: 1.7 }}>
+              Created {formatDateTime(cred.createdAt)}{cred.createdBy ? ` by ${cred.createdBy}` : ""}<br />
+              Last updated {formatDateTime(cred.updatedAt)}
             </div>
           </div>
         </div>
-        <div className="nc-modal-footer">
-          <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
-          <button className="btn btn-primary" onClick={onSave} disabled={saving}>
-            {saving ? <RefreshCw size={16} className="spinning" /> : editingId ? <Check size={16} /> : <Plus size={16} />}
-            {saving ? "Saving…" : editingId ? "Save Changes" : "Add Credential"}
+
+        {/* Footer */}
+        <div className="detail-drawer-footer">
+          <button className="btn btn-secondary" style={{ flex: 1 }} onClick={onClose}>Close</button>
+          <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => onEdit(cred)}>
+            <Pencil size={13} style={{ marginRight: 6 }} /> Edit
+          </button>
+          <button
+            className="btn btn-secondary"
+            style={{ color: "var(--danger)", borderColor: "var(--danger-border)" }}
+            title="Delete credential"
+            onClick={() => onDelete(cred)}
+          >
+            <Trash2 size={14} />
           </button>
         </div>
       </div>
-    </div>,
-    document.body
+    </div>
   );
-};
+}
 
-// ── Main Component ──────────────────────────────────────────────
+// ── Form section divider ───────────────────────────────────────────
+function FormSection({ icon, label }) {
+  return (
+    <div className="netcred-form-section" style={{ marginTop: 24, marginBottom: 16 }}>
+      {icon && <span style={{ color: "#3b82f6", display: "flex" }}>{icon}</span>}
+      {label}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════
 export default function NetworkCredentials() {
   const toast = useToast();
 
-  // ── State ──────────────────────────────────────────────────────
-  const [credentials, setCredentials] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [credentials, setCredentials]   = useState([]);
+  const [loading, setLoading]           = useState(true);
+  const [error, setError]               = useState("");
 
-  const [showForm, setShowForm] = useState(false);
-  const [editingId, setEditingId] = useState(null);
-  const [form, setForm] = useState(EMPTY_FORM);
-  const [saving, setSaving] = useState(false);
-  const [formErrors, setFormErrors] = useState({});
+  const [showForm, setShowForm]         = useState(false);
+  const [editingId, setEditingId]       = useState(null);
+  const [form, setForm]                 = useState(EMPTY_FORM);
+  const [saving, setSaving]             = useState(false);
+  const [formErrors, setFormErrors]     = useState({});
 
-  const [searchText, setSearchText] = useState("");
-  const [typeFilter, setTypeFilter] = useState("All");
-  const [brandFilter, setBrandFilter] = useState("All");
+  const [searchText, setSearchText]     = useState("");
+  const [showFilters, setShowFilters]   = useState(false);
+  const [typeFilter, setTypeFilter]     = useState("All");
+  const [brandFilter, setBrandFilter]   = useState("All");
   const [locationFilter, setLocationFilter] = useState("All");
   const [statusFilter, setStatusFilter] = useState("All");
-  const [rotationFilter, setRotationFilter] = useState("All");
 
-  const [sortKey, setSortKey] = useState(null);
-  const [sortDir, setSortDir] = useState("asc");
-  const [selectedIds, setSelectedIds] = useState(new Set());
-  const [bulkDeleting, setBulkDeleting] = useState(false);
-  const [page, setPage] = useState(1);
-  const PAGE_SIZE = 8;
+  const [revealed, setRevealed]         = useState({});
+  const [revealingId, setRevealingId]   = useState(null);
+  const [deletingId, setDeletingId]     = useState(null);
+  const [viewingCred, setViewingCred]   = useState(null);
+  const [openMenuId, setOpenMenuId]     = useState(null);
+  const [menuPos, setMenuPos]           = useState(null);
+  const [copiedKey, setCopiedKey]       = useState(null);
 
-  const [revealed, setRevealed] = useState({});
-  const [revealingId, setRevealingId] = useState(null);
-  const [viewingCred, setViewingCred] = useState(null);
-  const [openMenuId, setOpenMenuId] = useState(null);
-  const [menuPos, setMenuPos] = useState(null);
-  const [copiedKey, setCopiedKey] = useState(null);
-
-  const [unlocked, setUnlocked] = useState(false);
+  // ── Sensitive-credential unlock (OTP-gated, 60s window) ──────────
+  const [unlocked, setUnlocked]                 = useState(false);
   const [unlockSecondsLeft, setUnlockSecondsLeft] = useState(0);
   const [showUnlockDialog, setShowUnlockDialog] = useState(false);
-  const [pendingAction, setPendingAction] = useState(null);
+  const [pendingAction, setPendingAction]       = useState(null);
 
-  // ── Restore unlock state ──
+  // Restore unlock state on mount (e.g. after a refresh, if the 60s window is still live server-side).
   useEffect(() => {
     axios.get(`${API}/api/network/credential-access/status`)
       .then((r) => {
@@ -621,6 +310,7 @@ export default function NetworkCredentials() {
       .catch(() => {});
   }, []);
 
+  // Tick the unlock countdown; auto re-lock (and re-mask everything) when it hits zero.
   useEffect(() => {
     if (!unlocked) return;
     const t = setInterval(() => {
@@ -636,6 +326,7 @@ export default function NetworkCredentials() {
     return () => clearInterval(t);
   }, [unlocked]);
 
+  /** Runs `action` immediately if already unlocked, otherwise opens the OTP dialog and queues it. */
   const requireUnlock = useCallback((action) => {
     if (unlocked) { action(); return; }
     setPendingAction(() => action);
@@ -664,7 +355,7 @@ export default function NetworkCredentials() {
     setTimeout(() => setCopiedKey((k) => (k === key ? null : k)), 900);
   };
 
-  // ── Data ──
+  // ── Data ──────────────────────────────────────────────────────
   const loadData = useCallback(() => {
     setLoading(true);
     axios.get(`${API}/api/network`)
@@ -688,7 +379,15 @@ export default function NetworkCredentials() {
     };
   }, [openMenuId]);
 
-  // ── Form ──
+  // ── Form ──────────────────────────────────────────────────────
+  const field = (key) => ({
+    value: form[key],
+    onChange: (e) => {
+      setForm((f) => ({ ...f, [key]: e.target.value }));
+      if (formErrors[key]) setFormErrors((f) => ({ ...f, [key]: undefined }));
+    },
+  });
+
   const openCreateForm = () => {
     setEditingId(null); setForm(EMPTY_FORM); setFormErrors({}); setShowForm(true);
   };
@@ -710,6 +409,7 @@ export default function NetworkCredentials() {
     setShowForm(false); setEditingId(null); setForm(EMPTY_FORM); setFormErrors({});
   };
 
+  // ── Validate + save ───────────────────────────────────────────
   const validate = () => {
     const errs = {};
     if (!form.deviceName.trim()) errs.deviceName = "Device name is required";
@@ -745,21 +445,22 @@ export default function NetworkCredentials() {
       .finally(() => setSaving(false));
   };
 
-  // ── Delete ──
+  // ── Delete ────────────────────────────────────────────────────
   const deleteCredential = (cred) => {
     setOpenMenuId(null);
-    if (!window.confirm(`Permanently delete "${cred.deviceName}"? This cannot be undone.`)) return;
+    if (!window.confirm(`Permanently delete credentials for "${cred.deviceName}"? This cannot be undone.`)) return;
+    setDeletingId(cred.id);
     axios.delete(`${API}/api/network/${cred.id}`)
       .then(() => {
         toast("Credential deleted.", "success");
         setRevealed((r) => { const n = { ...r }; delete n[cred.id]; return n; });
-        if (viewingCred?.id === cred.id) setViewingCred(null);
         loadData();
       })
-      .catch(() => toast("Couldn't delete credential.", "error"));
+      .catch(() => toast("Couldn't delete credential.", "error"))
+      .finally(() => setDeletingId(null));
   };
 
-  // ── Reveal password ──
+  // ── Reveal password ───────────────────────────────────────────
   const togglePasswordVisible = (cred) => {
     setOpenMenuId(null);
     const cur = revealed[cred.id];
@@ -801,8 +502,8 @@ export default function NetworkCredentials() {
     });
   };
 
-  // ── Derived data ──
-  const uniqueBrands = useMemo(() => ["All", ...new Set(credentials.map((c) => c.brand).filter(Boolean))], [credentials]);
+  // ── Derived ───────────────────────────────────────────────────
+  const uniqueBrands    = useMemo(() => ["All", ...new Set(credentials.map((c) => c.brand).filter(Boolean))], [credentials]);
   const uniqueLocations = useMemo(() => ["All", ...new Set(credentials.map((c) => c.location).filter(Boolean))], [credentials]);
 
   const filtered = useMemo(() =>
@@ -823,468 +524,583 @@ export default function NetworkCredentials() {
       .filter((c) => typeFilter === "All" || c.deviceType === typeFilter)
       .filter((c) => brandFilter === "All" || c.brand === brandFilter)
       .filter((c) => locationFilter === "All" || c.location === locationFilter)
-      .filter((c) => statusFilter === "All" || c.deviceStatus === statusFilter)
-      .filter((c) => rotationFilter === "All" || rotationStatus(c).cls === rotationFilter),
-    [credentials, searchText, typeFilter, brandFilter, locationFilter, statusFilter, rotationFilter]
-  );
-
-  const sorted = useMemo(() => {
-    const SORT_ACCESSORS = {
-      device:   (c) => (c.deviceName || "").toLowerCase(),
-      vendor:   (c) => (c.brand || "").toLowerCase(),
-      ip:       (c) => (c.ipAddress || ""),
-      location: (c) => (c.location || "").toLowerCase(),
-      rotation: (c) => rotationStatus(c).age ?? -1,
-      updated:  (c) => new Date(c.updatedAt || c.createdAt || 0).getTime(),
-    };
-    if (!sortKey) return filtered;
-    const acc = SORT_ACCESSORS[sortKey];
-    const arr = [...filtered].sort((a, b) => {
-      const av = acc(a), bv = acc(b);
-      if (av < bv) return -1;
-      if (av > bv) return 1;
-      return 0;
-    });
-    if (sortDir === "desc") arr.reverse();
-    return arr;
-  }, [filtered, sortKey, sortDir]);
-
-  const toggleSort = (key) => {
-    if (sortKey !== key) { setSortKey(key); setSortDir("asc"); return; }
-    if (sortDir === "asc") { setSortDir("desc"); return; }
-    setSortKey(null); setSortDir("asc");
-  };
-
-  useEffect(() => { setPage(1); }, [searchText, typeFilter, brandFilter, locationFilter, statusFilter, rotationFilter, sortKey, sortDir]);
-  const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
-  const currentPage = Math.min(page, totalPages);
-  const paged = useMemo(
-    () => sorted.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE),
-    [sorted, currentPage]
+      .filter((c) => statusFilter === "All" || c.deviceStatus === statusFilter),
+    [credentials, searchText, typeFilter, brandFilter, locationFilter, statusFilter]
   );
 
   const counts = useMemo(() => ({
     total: credentials.length,
-    active: credentials.filter((c) => c.deviceStatus === "Active").length,
-    unhealthy: credentials.filter((c) => credentialHealth(c).cls === "critical" || credentialHealth(c).cls === "risk").length,
-    overdueRotation: credentials.filter((c) => rotationStatus(c).cls === "overdue").length,
+    routers: credentials.filter((c) => c.deviceType === "Router").length,
+    switches: credentials.filter((c) => c.deviceType === "Switch").length,
+    firewalls: credentials.filter((c) => c.deviceType === "Firewall").length,
+    accessPoints: credentials.filter((c) => c.deviceType === "Access Point").length,
+    servers: credentials.filter((c) => c.deviceType === "Server").length,
   }), [credentials]);
 
-  const rotationBuckets = useMemo(() => {
-    const b = { healthy: 0, due: 0, overdue: 0, unknown: 0 };
-    credentials.forEach((c) => { b[rotationStatus(c).cls]++; });
-    return b;
-  }, [credentials]);
+  const kpis = [
+    { label: "Total Devices",  value: counts.total,        icon: <Network size={15} />,  cardGradient: "linear-gradient(135deg,#3b82f6,#1d4ed8)",   glow: "#3b82f62e", type: null },
+    { label: "Routers",        value: counts.routers,      icon: <Router size={15} />,   cardGradient: "linear-gradient(135deg,#60a5fa,#2563eb)",   glow: "#2563eb2e", type: "Router" },
+    { label: "Switches",       value: counts.switches,     icon: <Network size={15} />,  cardGradient: "linear-gradient(135deg,#a78bfa,#7c3aed)",   glow: "#7c3aed2e", type: "Switch" },
+    { label: "Firewalls",      value: counts.firewalls,    icon: <Shield size={15} />,   cardGradient: "linear-gradient(135deg,#f87171,#dc2626)",   glow: "#ef44442e", type: "Firewall" },
+    { label: "Access Points",  value: counts.accessPoints, icon: <Wifi size={15} />,     cardGradient: "linear-gradient(135deg,#fbbf24,#d97706)",   glow: "#f59e0b2e", type: "Access Point" },
+    { label: "Servers",        value: counts.servers,      icon: <Server size={15} />,   cardGradient: "linear-gradient(135deg,#34d399,#059669)",   glow: "#10b9812e", type: "Server" },
+  ];
 
-  const activeFilterCount = [typeFilter, brandFilter, locationFilter, statusFilter, rotationFilter].filter((v) => v !== "All").length;
-  const clearAllFilters = () => {
-    setSearchText("");
-    setTypeFilter("All");
-    setBrandFilter("All");
-    setLocationFilter("All");
-    setStatusFilter("All");
-    setRotationFilter("All");
-  };
+  const activeFilterCount = [typeFilter, brandFilter, locationFilter, statusFilter].filter((v) => v !== "All").length;
+  const clearAllFilters   = () => { setSearchText(""); setTypeFilter("All"); setBrandFilter("All"); setLocationFilter("All"); setStatusFilter("All"); };
 
-  const toggleSelectOne = (id) => {
-    setSelectedIds((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
-  };
-  const allVisibleSelected = paged.length > 0 && paged.every((c) => selectedIds.has(c.id));
-  const toggleSelectAll = () => {
-    setSelectedIds((s) => {
-      const n = new Set(s);
-      if (allVisibleSelected) { paged.forEach((c) => n.delete(c.id)); return n; }
-      paged.forEach((c) => n.add(c.id));
-      return n;
-    });
-  };
-  const clearSelection = () => setSelectedIds(new Set());
+  // ── Layout title ──────────────────────────────────────────────
+  const pageTitle = (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 12 }}>
+      <span className="netcred-title-icon">
+        <ShieldCheck size={17} />
+      </span>
+      <span>
+        <span className="netcred-title-accent">Network Credentials</span>
+        <span className="netcred-vault-pill">
+          <Lock size={10} /> Encrypted vault
+        </span>
+      </span>
+    </span>
+  );
 
-  const bulkDeleteSelected = () => {
-    const ids = [...selectedIds];
-    if (!ids.length) return;
-    if (!window.confirm(`Delete ${ids.length} selected credential${ids.length > 1 ? "s" : ""}?`)) return;
-    setBulkDeleting(true);
-    Promise.allSettled(ids.map((id) => axios.delete(`${API}/api/network/${id}`)))
-      .then((results) => {
-        const okCount = results.filter((r) => r.status === "fulfilled").length;
-        toast(`${okCount} of ${ids.length} credential(s) deleted.`, okCount === ids.length ? "success" : "error");
-        clearSelection();
-        if (viewingCred && ids.includes(viewingCred.id)) setViewingCred(null);
-        loadData();
-      })
-      .finally(() => setBulkDeleting(false));
-  };
-
-  const exportCSV = () => {
-    const cols = ["deviceName", "deviceType", "brand", "model", "ipAddress", "hostname",
-      "location", "vlan", "isp", "deviceStatus", "username", "createdAt", "updatedAt"];
-    const rows = [cols.join(",")];
-    sorted.forEach((c) => {
-      rows.push(cols.map((k) => {
-        const v = c[k] == null ? "" : String(c[k]).replace(/"/g, '""');
-        return /[",\n]/.test(v) ? `"${v}"` : v;
-      }).join(","));
-    });
-    const blob = new Blob([rows.join("\n")], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `network-credentials-${new Date().toISOString().slice(0, 10)}.csv`;
-    document.body.appendChild(a); a.click(); a.remove();
-    URL.revokeObjectURL(url);
-    toast("Exported CSV (credentials/secrets excluded).", "success");
-  };
-
-  const downloadCredential = (cred) => {
-    setOpenMenuId(null);
-    const { password, enablePassword, ...safe } = cred;
-    const blob = new Blob([JSON.stringify(safe, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${(cred.deviceName || "device").replace(/\s+/g, "-")}.json`;
-    document.body.appendChild(a); a.click(); a.remove();
-    URL.revokeObjectURL(url);
-  };
-
-  const copyIp = async (cred) => {
-    setOpenMenuId(null);
-    if (!cred.ipAddress) { toast("No IP address on record.", "error"); return; }
-    try { await navigator.clipboard.writeText(cred.ipAddress); toast("IP address copied.", "success"); }
-    catch { toast("Couldn't copy to clipboard.", "error"); }
-  };
-
-  const rotatePassword = (cred) => {
-    setOpenMenuId(null);
-    openEditForm(cred);
-    toast("Enter and save a new password below to complete the rotation.", "success");
-  };
-
-  const handleOpenMenu = (e, id) => {
-    e.stopPropagation();
-    if (openMenuId === id) {
-      setOpenMenuId(null);
-      setMenuPos(null);
-      return;
-    }
-    const rect = e.currentTarget.getBoundingClientRect();
-    const menuWidth = 200;
-    const menuHeight = 200;
-    const spaceBelow = window.innerHeight - rect.bottom;
-    const spaceAbove = rect.top;
-    const openUp = spaceBelow < menuHeight && spaceAbove > menuHeight;
-    setMenuPos({
-      top: openUp ? rect.top - menuHeight - 8 : rect.bottom + 8,
-      left: Math.max(8, Math.min(rect.right - menuWidth, window.innerWidth - menuWidth - 8)),
-    });
-    setOpenMenuId(id);
-  };
-
-  // ── Render ──
   return (
     <>
-      <Layout
-        title={
-          <span className="nc-layout-title">
-            <ShieldCheck size={18} />
-            <span>Network Credentials</span>
-          </span>
-        }
-        subtitle="Securely manage encrypted infrastructure credentials"
-        actions={
-          <div className="nc-header-actions">
-            <button className="nc-header-btn" onClick={loadData} disabled={loading}>
-              <RefreshCw size={16} className={loading ? "spinning" : ""} />
-            </button>
-            <button className="nc-header-btn" onClick={exportCSV} disabled={loading || sorted.length === 0}>
-              <Download size={16} />
-            </button>
-            <button className="btn btn-primary nc-header-add" onClick={openCreateForm}>
-              <Plus size={16} /> Add Device
+    <Layout
+      title={pageTitle}
+      subtitle="Securely manage IT infrastructure device access"
+      actions={
+        <button
+          className="btn btn-primary"
+          onClick={showForm && !editingId ? closeForm : openCreateForm}
+          style={{ display: "flex", alignItems: "center", gap: 7, borderRadius: 10, padding: "8px 16px", fontWeight: 600 }}
+        >
+          {showForm && !editingId ? <X size={15} /> : <Plus size={15} />}
+          {showForm && !editingId ? "Cancel" : "Add Credential"}
+        </button>
+      }
+    >
+      <div className="netcred-page">
+      {/* ── Error banner ── */}
+      {error && (
+        <div className="netcred-error-banner">
+          <AlertTriangle size={16} /> {error}
+        </div>
+      )}
+
+      {/* ── Unlock status banner ── */}
+      {unlocked && (
+        <div className="netcred-unlock-banner">
+          <Unlock size={14} />
+          Sensitive credentials unlocked — auto-locks in {unlockSecondsLeft}s
+          <button
+            className="netcred-unlock-banner-btn"
+            onClick={() => { setUnlocked(false); setRevealed({}); axios.post(`${API}/api/network/credential-access/lock`).catch(() => {}); }}
+          >
+            <TimerReset size={12} /> Lock now
+          </button>
+        </div>
+      )}
+
+      {/* ── KPI Cards ── */}
+      <div className="kpi-row kpi-row-6 netcred-kpi-row stagger-in" style={{ marginBottom: 18 }}>
+        {kpis.map((k) => {
+          const active = k.type && typeFilter === k.type;
+          return (
+            <div
+              key={k.label}
+              className={`kpi-card-vivid netcred-kpi-card ${k.type ? "clickable" : ""} ${active ? "is-active" : ""}`}
+              onClick={k.type ? () => setTypeFilter(active ? "All" : k.type) : undefined}
+              title={k.type ? (active ? `Showing ${k.type} only — click to clear` : `Filter to ${k.type}`) : undefined}
+              style={{
+                background: k.cardGradient,
+                boxShadow: active
+                  ? `0 0 0 2px #fff, 0 0 0 4px ${k.glow.replace("2e","80")}, 0 6px 16px ${k.glow}`
+                  : `0 2px 8px ${k.glow}`,
+              }}
+            >
+              <div className="kpi-vivid-icon">{k.icon}</div>
+              <div className="kpi-vivid-value">{loading ? "—" : <CountUp value={k.value} />}</div>
+              <div className="kpi-vivid-label">{k.label}</div>
+              {active && <div className="kpi-vivid-active-badge">✓ Filtered</div>}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* ── Add / Edit Form ── */}
+      {showForm && (
+        <div className="netcred-form-card">
+          <div className="netcred-form-header">
+            <div>
+              <div className="netcred-form-title">
+                {editingId ? "Edit Credential" : "Add Network Credential"}
+              </div>
+              <div className="netcred-form-subtitle">
+                {editingId
+                  ? "Leave password fields blank to keep the current password"
+                  : "Fill in the device details to register a new credential"}
+              </div>
+            </div>
+            <button className="icon-btn" onClick={closeForm} title="Close form" style={{ width: 32, height: 32 }}>
+              <X size={15} />
             </button>
           </div>
-        }
-      >
-        <div className="nc-workspace">
-          {/* Sidebar */}
-          <aside className="nc-sidebar">
-            <div className="nc-sidebar-stats">
-              <div className="nc-stat">
-                <span className="nc-stat-value"><CountUp value={counts.total} /></span>
-                <span className="nc-stat-label">Devices</span>
+
+          <div style={{ padding: "22px 24px" }}>
+            <FormSection icon={<Server size={12} />} label="Device Information" />
+            <div className="form-grid">
+              <div className="field">
+                <label className="field-label">Device Name *</label>
+                <input className="input" {...field("deviceName")} placeholder="e.g. HQ-Core-Switch-01" />
+                {formErrors.deviceName && <div className="field-error"><AlertTriangle size={11} />{formErrors.deviceName}</div>}
               </div>
-              <div className="nc-stat">
-                <span className="nc-stat-value"><CountUp value={counts.active} /></span>
-                <span className="nc-stat-label">Active</span>
+              <div className="field">
+                <label className="field-label">Device Type *</label>
+                <select className="input" {...field("deviceType")}>
+                  <option value="">Select type…</option>
+                  {DEVICE_TYPES.map((t) => <option key={t}>{t}</option>)}
+                </select>
+                {formErrors.deviceType && <div className="field-error"><AlertTriangle size={11} />{formErrors.deviceType}</div>}
               </div>
-              <div className="nc-stat">
-                <span className="nc-stat-value"><CountUp value={counts.unhealthy} /></span>
-                <span className="nc-stat-label">Unhealthy</span>
+              <div className="field">
+                <label className="field-label">Brand</label>
+                <input className="input" {...field("brand")} placeholder="e.g. Cisco, MikroTik, Fortinet" />
               </div>
-              <div className="nc-stat">
-                <span className="nc-stat-value"><CountUp value={rotationBuckets.overdue} /></span>
-                <span className="nc-stat-label">Overdue</span>
+              <div className="field">
+                <label className="field-label">Model</label>
+                <input className="input" {...field("model")} placeholder="e.g. Catalyst 2960" />
+              </div>
+              <div className="field">
+                <label className="field-label">IP Address</label>
+                <input className="input" {...field("ipAddress")} placeholder="e.g. 192.168.1.1" />
+                {formErrors.ipAddress && <div className="field-error"><AlertTriangle size={11} />{formErrors.ipAddress}</div>}
+              </div>
+              <div className="field">
+                <label className="field-label">Hostname</label>
+                <input className="input" {...field("hostname")} placeholder="e.g. hq-sw-01.lan" />
               </div>
             </div>
 
-            <div className="nc-sidebar-filters">
-              <div className="nc-filter-group">
-                <div className="nc-filter-header">
-                  <span>Type</span>
-                  <span className="nc-filter-count">{typeFilter !== "All" ? 1 : 0}</span>
-                </div>
-                <select
-                  className="nc-filter-select"
-                  value={typeFilter}
-                  onChange={(e) => setTypeFilter(e.target.value)}
-                >
-                  <option value="All">All types</option>
-                  {DEVICE_TYPES.map((t) => <option key={t}>{t}</option>)}
-                </select>
+            <FormSection icon={<Lock size={12} />} label="Access Credentials" />
+            <div className="form-grid">
+              <div className="field">
+                <label className="field-label">Username *</label>
+                <input className="input" autoComplete="off" {...field("username")} placeholder="e.g. admin" />
+                {formErrors.username && <div className="field-error"><AlertTriangle size={11} />{formErrors.username}</div>}
               </div>
-
-              <div className="nc-filter-group">
-                <div className="nc-filter-header">
-                  <span>Brand</span>
-                  <span className="nc-filter-count">{brandFilter !== "All" ? 1 : 0}</span>
-                </div>
-                <select
-                  className="nc-filter-select"
-                  value={brandFilter}
-                  onChange={(e) => setBrandFilter(e.target.value)}
-                >
-                  {uniqueBrands.map((b) => <option key={b} value={b}>{b === "All" ? "All brands" : b}</option>)}
-                </select>
+              <div className="field">
+                <label className="field-label">Password {editingId ? "" : "*"}</label>
+                <input className="input" type="password" autoComplete="new-password" {...field("password")}
+                  placeholder={editingId ? "Leave blank to keep current" : "Enter password"} />
+                {formErrors.password && <div className="field-error"><AlertTriangle size={11} />{formErrors.password}</div>}
               </div>
-
-              <div className="nc-filter-group">
-                <div className="nc-filter-header">
-                  <span>Location</span>
-                  <span className="nc-filter-count">{locationFilter !== "All" ? 1 : 0}</span>
-                </div>
-                <select
-                  className="nc-filter-select"
-                  value={locationFilter}
-                  onChange={(e) => setLocationFilter(e.target.value)}
-                >
-                  {uniqueLocations.map((l) => <option key={l} value={l}>{l === "All" ? "All locations" : l}</option>)}
-                </select>
+              <div className="field">
+                <label className="field-label">Enable Password</label>
+                <input className="input" type="password" autoComplete="new-password" {...field("enablePassword")}
+                  placeholder="Optional privileged-mode password" />
               </div>
-
-              <div className="nc-filter-group">
-                <div className="nc-filter-header">
-                  <span>Status</span>
-                  <span className="nc-filter-count">{statusFilter !== "All" ? 1 : 0}</span>
-                </div>
-                <select
-                  className="nc-filter-select"
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                >
-                  <option value="All">All statuses</option>
+              <div className="field">
+                <label className="field-label">SSH Port</label>
+                <input className="input" type="number" min="1" max="65535" {...field("sshPort")} placeholder="22" />
+                {formErrors.sshPort && <div className="field-error"><AlertTriangle size={11} />{formErrors.sshPort}</div>}
+              </div>
+              <div className="field">
+                <label className="field-label">Web Port</label>
+                <input className="input" type="number" min="1" max="65535" {...field("webPort")} placeholder="443" />
+                {formErrors.webPort && <div className="field-error"><AlertTriangle size={11} />{formErrors.webPort}</div>}
+              </div>
+              <div className="field">
+                <label className="field-label">Status</label>
+                <select className="input" {...field("deviceStatus")}>
                   {DEVICE_STATUSES.map((s) => <option key={s}>{s}</option>)}
                 </select>
               </div>
+            </div>
 
-              <div className="nc-filter-group">
-                <div className="nc-filter-header">
-                  <span>Rotation</span>
-                  <span className="nc-filter-count">{rotationFilter !== "All" ? 1 : 0}</span>
-                </div>
-                <select
-                  className="nc-filter-select"
-                  value={rotationFilter}
-                  onChange={(e) => setRotationFilter(e.target.value)}
-                >
-                  <option value="All">All</option>
-                  <option value="healthy">Healthy</option>
-                  <option value="due">Due Soon</option>
-                  <option value="overdue">Overdue</option>
+            <FormSection icon={<Network size={12} />} label="Location & Network" />
+            <div className="form-grid">
+              <div className="field">
+                <label className="field-label">Location</label>
+                <select className="input" {...field("location")}>
+                  <option value="">Select Location</option>
+                  {LOCATIONS.map((loc) => <option key={loc} value={loc}>{loc}</option>)}
                 </select>
               </div>
+              <div className="field">
+                <label className="field-label">VLAN</label>
+                <input className="input" {...field("vlan")} placeholder="e.g. VLAN 10" />
+              </div>
+              <div className="field">
+                <label className="field-label">ISP</label>
+                <input className="input" {...field("isp")} placeholder="e.g. Airtel Business" />
+              </div>
+              <div className="field" style={{ gridColumn: "span 3" }}>
+                <label className="field-label">Notes</label>
+                <input className="input" {...field("notes")} placeholder="Any additional notes" />
+              </div>
+            </div>
 
+            <div style={{
+              display: "flex", gap: 10, marginTop: 26, paddingTop: 20,
+              borderTop: "1px solid #e0eeff",
+            }}>
               <button
-                className="nc-filter-reset"
-                onClick={clearAllFilters}
-                disabled={activeFilterCount === 0 && !searchText}
+                className="btn btn-primary"
+                onClick={saveCredential}
+                disabled={saving}
+                style={{ display: "flex", alignItems: "center", gap: 7, borderRadius: 9, padding: "8px 18px" }}
               >
-                <RefreshCw size={12} /> Reset Filters
+                {saving ? (
+                  <><RefreshCw size={14} style={{ animation: "spin 0.8s linear infinite" }} /> Saving…</>
+                ) : editingId ? (
+                  <><Check size={14} /> Save Changes</>
+                ) : (
+                  <><Plus size={14} /> Add Credential</>
+                )}
+              </button>
+              <button className="btn btn-secondary" onClick={closeForm} style={{ borderRadius: 9 }}>
+                Cancel
               </button>
             </div>
-          </aside>
-
-          {/* Main Content */}
-          <main className="nc-main">
-            <div className="nc-main-toolbar">
-              <div className="nc-search">
-                <Search size={16} className="nc-search-icon" />
-                <input
-                  className="nc-search-input"
-                  placeholder="Search devices, IPs, hosts…"
-                  value={searchText}
-                  onChange={(e) => setSearchText(e.target.value)}
-                />
-                {searchText && (
-                  <button className="nc-search-clear" onClick={() => setSearchText("")}>
-                    <X size={14} />
-                  </button>
-                )}
-              </div>
-              <div className="nc-view-options">
-                <span className="nc-result-count">{sorted.length} devices</span>
-                <button
-                  className="nc-sort-btn"
-                  onClick={() => toggleSort("device")}
-                  title="Sort by device name"
-                >
-                  <ArrowUpDown size={14} />
-                </button>
-                <button
-                  className="nc-select-all"
-                  onClick={toggleSelectAll}
-                  title={allVisibleSelected ? "Deselect all" : "Select all visible"}
-                >
-                  {allVisibleSelected ? <CheckSquare size={16} /> : <Square size={16} />}
-                </button>
-              </div>
-            </div>
-
-            {error && (
-              <div className="nc-error-banner">
-                <AlertTriangle size={16} /> {error}
-              </div>
-            )}
-
-            {unlocked && (
-              <div className="nc-unlock-banner">
-                <Unlock size={14} />
-                <span>Credentials unlocked — auto‑locks in {unlockSecondsLeft}s</span>
-                <button
-                  className="nc-unlock-lock"
-                  onClick={() => { setUnlocked(false); setRevealed({}); axios.post(`${API}/api/network/credential-access/lock`).catch(() => {}); }}
-                >
-                  <TimerReset size={12} /> Lock now
-                </button>
-              </div>
-            )}
-
-            <div className="nc-master-detail">
-              <div className="nc-card-list">
-                {loading ? (
-                  Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)
-                ) : paged.length === 0 ? (
-                  <div className="nc-empty-state">
-                    <div className="nc-empty-icon"><Network size={40} /></div>
-                    <h3>{searchText || activeFilterCount > 0 ? "No matching devices" : "No devices yet"}</h3>
-                    <p>
-                      {searchText || activeFilterCount > 0
-                        ? "Try adjusting your search or clearing your filters"
-                        : "Click 'Add Device' to register your first credential"}
-                    </p>
-                    {(searchText || activeFilterCount > 0) && (
-                      <button className="btn btn-secondary" onClick={clearAllFilters}>Clear Filters</button>
-                    )}
-                  </div>
-                ) : (
-                  paged.map((cred) => (
-                    <DeviceCard
-                      key={cred.id}
-                      cred={cred}
-                      isSelected={selectedIds.has(cred.id)}
-                      onSelect={toggleSelectOne}
-                      onViewDetail={setViewingCred}
-                      onOpenMenu={handleOpenMenu}
-                      isMenuOpen={openMenuId === cred.id}
-                      menuPos={menuPos}
-                      onCloseMenu={() => { setOpenMenuId(null); setMenuPos(null); }}
-                      onEdit={openEditForm}
-                      onDelete={deleteCredential}
-                      onCopyIp={copyIp}
-                      onRotatePassword={rotatePassword}
-                      onDownload={downloadCredential}
-                    />
-                  ))
-                )}
-
-                {totalPages > 1 && (
-                  <div className="nc-pagination">
-                    <span>Page {currentPage} of {totalPages}</span>
-                    <div>
-                      <button
-                        className="nc-page-btn"
-                        onClick={() => setPage((p) => Math.max(1, p - 1))}
-                        disabled={currentPage === 1}
-                      >
-                        <ChevronLeft size={16} />
-                      </button>
-                      <button
-                        className="nc-page-btn"
-                        onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                        disabled={currentPage === totalPages}
-                      >
-                        <ChevronRight size={16} />
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Detail Panel */}
-              <div className={`nc-detail-panel-wrapper ${viewingCred ? "is-open" : ""}`}>
-                {viewingCred ? (
-                  <DetailPanel
-                    cred={viewingCred}
-                    onClose={() => setViewingCred(null)}
-                    onEdit={(cred) => { setViewingCred(null); openEditForm(cred); }}
-                    onDelete={(cred) => { setViewingCred(null); deleteCredential(cred); }}
-                    unlocked={unlocked}
-                    revealed={revealed}
-                    revealingId={revealingId}
-                    copiedKey={copiedKey}
-                    onTogglePassword={togglePasswordVisible}
-                    onCopyUsername={copyUsername}
-                    onCopyPassword={copyPassword}
-                  />
-                ) : (
-                  <div className="nc-detail-empty">
-                    <ShieldCheck size={48} strokeWidth={1.5} />
-                    <h3>Select a device</h3>
-                    <p>Click on any device card to view its details and credentials.</p>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {selectedIds.size > 0 && (
-              <div className="nc-bulk-bar">
-                <span><CheckSquare size={16} /> {selectedIds.size} selected</span>
-                <div>
-                  <button className="btn btn-secondary btn-sm" onClick={clearSelection}>Clear</button>
-                  <button className="btn btn-danger btn-sm" onClick={bulkDeleteSelected} disabled={bulkDeleting}>
-                    <Trash2 size={14} /> {bulkDeleting ? "Deleting…" : "Delete Selected"}
-                  </button>
-                </div>
-              </div>
-            )}
-          </main>
+          </div>
         </div>
-      </Layout>
+      )}
+
+      {/* ── Table card ── */}
+      <div className="netcred-table-card">
+        {/* Table card header */}
+        <div className="netcred-table-header">
+          <div>
+            <div className="netcred-table-title">Device Credentials</div>
+            <div className="netcred-table-subtitle">
+              {loading ? "Loading…" : `${filtered.length} of ${credentials.length} devices`}
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+            {/* Search */}
+            <div style={{ position: "relative" }}>
+              <Search size={13} style={{
+                position: "absolute", left: 11, top: "50%", transform: "translateY(-50%)",
+                color: "#94a3b8", pointerEvents: "none",
+              }} />
+              <input
+                className="input"
+                style={{
+                  paddingLeft: 32, width: 220, height: 36,
+                  border: "1.5px solid #dbeafe", borderRadius: 9,
+                  background: "#f8fbff", fontSize: 13,
+                  transition: "border-color 0.15s, box-shadow 0.15s, width 0.2s",
+                }}
+                placeholder="Search devices, IPs, hosts…"
+                value={searchText}
+                onChange={(e) => setSearchText(e.target.value)}
+                onFocus={(e) => {
+                  e.target.style.width = "260px";
+                  e.target.style.borderColor = "#3b82f6";
+                  e.target.style.boxShadow = "0 0 0 3px rgba(59,130,246,0.12)";
+                  e.target.style.background = "#ffffff";
+                }}
+                onBlur={(e) => {
+                  e.target.style.width = "220px";
+                  e.target.style.borderColor = "#dbeafe";
+                  e.target.style.boxShadow = "none";
+                  e.target.style.background = "#f8fbff";
+                }}
+              />
+              {searchText && (
+                <button className="netcred-search-clear" onClick={() => setSearchText("")} title="Clear search">
+                  <X size={12} />
+                </button>
+              )}
+            </div>
+
+            {/* Filters button */}
+            <button
+              className="btn btn-secondary"
+              onClick={() => setShowFilters((v) => !v)}
+              style={{
+                display: "flex", alignItems: "center", gap: 6,
+                position: "relative", height: 36, borderRadius: 9,
+                border: showFilters ? "1.5px solid #3b82f6" : "1.5px solid #dbeafe",
+                background: showFilters ? "#eff6ff" : "#f8fbff",
+                color: showFilters ? "#1d4ed8" : undefined,
+              }}
+            >
+              <SlidersHorizontal size={13} />
+              Filters {showFilters ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+              {activeFilterCount > 0 && (
+                <span className="netcred-filter-badge">{activeFilterCount}</span>
+              )}
+            </button>
+
+            {/* Refresh */}
+            <button
+              className="btn btn-secondary btn-icon"
+              onClick={loadData}
+              disabled={loading}
+              title="Refresh"
+              style={{
+                height: 36, width: 36, borderRadius: 9,
+                border: "1.5px solid #dbeafe", background: "#f8fbff",
+                display: "flex", alignItems: "center", justifyContent: "center",
+              }}
+            >
+              <RefreshCw size={13} style={loading ? { animation: "spin 0.8s linear infinite" } : undefined} />
+            </button>
+          </div>
+        </div>
+
+        {/* Filters panel */}
+        {showFilters && (
+          <div className="netcred-filter-bar">
+            <div className="field" style={{ minWidth: 150 }}>
+              <label className="field-label">Device Type</label>
+              <select className="input" value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
+                <option value="All">All types</option>
+                {DEVICE_TYPES.map((t) => <option key={t}>{t}</option>)}
+              </select>
+            </div>
+            <div className="field" style={{ minWidth: 150 }}>
+              <label className="field-label">Brand</label>
+              <select className="input" value={brandFilter} onChange={(e) => setBrandFilter(e.target.value)}>
+                {uniqueBrands.map((b) => <option key={b} value={b}>{b === "All" ? "All brands" : b}</option>)}
+              </select>
+            </div>
+            <div className="field" style={{ minWidth: 150 }}>
+              <label className="field-label">Location</label>
+              <select className="input" value={locationFilter} onChange={(e) => setLocationFilter(e.target.value)}>
+                {uniqueLocations.map((l) => <option key={l} value={l}>{l === "All" ? "All locations" : l}</option>)}
+              </select>
+            </div>
+            <div className="field" style={{ minWidth: 150 }}>
+              <label className="field-label">Status</label>
+              <select className="input" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+                <option value="All">All statuses</option>
+                {DEVICE_STATUSES.map((s) => <option key={s}>{s}</option>)}
+              </select>
+            </div>
+            {activeFilterCount > 0 && (
+              <button className="btn btn-ghost btn-sm" onClick={clearAllFilters} style={{ marginTop: 18, borderRadius: 8 }}>
+                Clear filters
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Table or states */}
+        {loading ? (
+          <div className="table-wrap">
+            <table className="data-table netcred-table">
+              <thead>
+                <tr>
+                  <th style={{ width: 36 }}>#</th>
+                  <th>Device</th>
+                  <th>IP Address</th>
+                  <th>Location</th>
+                  <th>Last Updated</th>
+                  <th style={{ width: 90 }}>Actions</th>
+                  <th style={{ width: 50 }}></th>
+                </tr>
+              </thead>
+              <tbody>{Array.from({ length: 6 }).map((_, i) => <SkeletonRow key={i} />)}</tbody>
+            </table>
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="netcred-empty">
+            <div className="netcred-empty-icon">
+              {searchText || activeFilterCount > 0 ? <Search size={28} /> : <Network size={28} />}
+            </div>
+            <div className="netcred-empty-title">
+              {searchText || activeFilterCount > 0 ? "No matching devices" : "No network devices yet"}
+            </div>
+            <div className="netcred-empty-sub">
+              {searchText || activeFilterCount > 0
+                ? "Try adjusting your search or clearing your filters"
+                : "Click 'Add Credential' to register your first device"}
+            </div>
+            {(searchText || activeFilterCount > 0) && (
+              <button className="btn btn-secondary" style={{ borderRadius: 9 }} onClick={clearAllFilters}>
+                Clear Filters
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className="table-wrap">
+            <table className="data-table netcred-table">
+              <thead>
+                <tr>
+                  <th style={{ width: 36, textAlign: "center" }}>#</th>
+                  <th>Device</th>
+                  <th>IP Address</th>
+                  <th>Location</th>
+                  <th>Last Updated</th>
+                  <th style={{ width: 100 }}>Actions</th>
+                  <th style={{ width: 50 }}></th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((cred, index) => {
+                  const isDeleting  = deletingId === cred.id;
+                  return (
+                    <tr
+                      key={cred.id}
+                      className={`netcred-row ${openMenuId === cred.id ? "is-active" : ""}`}
+                      style={{ animationDelay: `${Math.min(index * 0.03, 0.25)}s` }}
+                    >
+                      {/* # */}
+                      <td style={{ textAlign: "center", fontWeight: 700, color: "#cbd5e1", fontSize: 11.5 }}>
+                        {index + 1}
+                      </td>
+
+                      {/* Device */}
+                      <td>
+                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                          <div style={{
+                            width: 34, height: 34, borderRadius: 9, flexShrink: 0,
+                            background: DEVICE_TYPE_GRADIENT[cred.deviceType] || DEVICE_TYPE_GRADIENT.Other,
+                            display: "flex", alignItems: "center", justifyContent: "center", color: "#fff",
+                          }}>
+                            <DeviceTypeIcon type={cred.deviceType} size={15} />
+                          </div>
+                          <div style={{ minWidth: 0 }}>
+                            <div
+                              className="netcred-device-name"
+                              style={{ cursor: "pointer" }}
+                              onClick={() => setViewingCred(cred)}
+                              title="Click to view full details"
+                            >
+                              {cred.deviceName}
+                            </div>
+                            <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginTop: 2 }}>
+                              <span className="netcred-type-tag">{cred.deviceType}</span>
+                              {cred.brand && <span style={{ fontSize: 11.5, color: "#64748b" }}>{cred.brand}{cred.model ? ` · ${cred.model}` : ""}</span>}
+                              <DeviceStatusPill status={cred.deviceStatus} />
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* IP */}
+                      <td>{cred.ipAddress ? <span className="netcred-mono">{cred.ipAddress}</span> : <span style={{ color: "#cbd5e1" }}>—</span>}</td>
+
+                      {/* Location */}
+                      <td style={{ color: "#475569", fontSize: 12.5 }}>{cred.location || "—"}</td>
+
+                      {/* Last updated */}
+                      <td
+                        title={`Created ${formatDateTime(cred.createdAt)} by ${cred.createdBy || "—"}`}
+                        style={{ fontSize: 12, color: "#94a3b8", whiteSpace: "nowrap" }}
+                      >
+                        {formatDate(cred.updatedAt)}
+                      </td>
+
+                      {/* View */}
+                      <td>
+                        <button
+                          className="netcred-view-btn"
+                          onClick={() => setViewingCred(cred)}
+                          title="View device details"
+                        >
+                          <Eye size={12} /> View
+                        </button>
+                      </td>
+
+                      {/* Actions */}
+                      <td style={{ position: "relative" }}>
+                        <button
+                          className="icon-btn"
+                          title="More actions"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (openMenuId === cred.id) {
+                              setOpenMenuId(null);
+                              setMenuPos(null);
+                            } else {
+                              const rect = e.currentTarget.getBoundingClientRect();
+
+                              const menuWidth = 196;
+                              const menuHeight = 170;
+
+                              const spaceBelow = window.innerHeight - rect.bottom;
+                              const spaceAbove = rect.top;
+
+                              const openUp = spaceBelow < menuHeight && spaceAbove > menuHeight;
+
+                              setMenuPos({
+                                top: openUp
+                                  ? rect.top - menuHeight - 8
+                                  : rect.bottom + 8,
+
+                                left: Math.max(
+                                  8,
+                                  Math.min(
+                                    rect.right - menuWidth,
+                                    window.innerWidth - menuWidth - 8
+                                  )
+                                ),
+                              });
+
+                              setOpenMenuId(cred.id);
+                            }
+                          }}
+                          disabled={isDeleting}
+                          style={openMenuId === cred.id ? { background: "#dbeafe", color: "#2563eb" } : undefined}
+                        >
+                          <MoreVertical size={14} />
+                        </button>
+                        {openMenuId === cred.id && menuPos && createPortal(
+                          <div
+                            className="netcred-menu"
+                            style={{
+                              position: "fixed",
+                              top: menuPos.top,
+                              left: menuPos.left,
+                              zIndex: 99999,
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <button className="netcred-menu-item" onClick={() => { setViewingCred(cred); setOpenMenuId(null); setMenuPos(null); }}>
+                              <Eye size={13} /> View Details
+                            </button>
+                            <button className="netcred-menu-item" onClick={() => { openEditForm(cred); setOpenMenuId(null); setMenuPos(null); }}>
+                              <Pencil size={13} /> Edit
+                            </button>
+                            <div className="netcred-menu-divider" />
+                            <button className="netcred-menu-item danger" onClick={() => { deleteCredential(cred); setOpenMenuId(null); setMenuPos(null); }}>
+                              <Trash2 size={13} /> Delete
+                            </button>
+                          </div>,
+                          document.body
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+      </div>
+    </Layout>
 
       {showUnlockDialog && (
         <CredentialUnlockDialog onUnlocked={handleUnlocked} onClose={closeUnlockDialog} />
       )}
 
-      <CredentialFormModal
-        isOpen={showForm}
-        onClose={closeForm}
-        editingId={editingId}
-        form={form}
-        setForm={setForm}
-        formErrors={formErrors}
-        setFormErrors={setFormErrors}
-        saving={saving}
-        onSave={saveCredential}
+      <NetworkDetailDrawer
+        cred={viewingCred}
+        onClose={() => setViewingCred(null)}
+        onEdit={(cred) => { setViewingCred(null); openEditForm(cred); }}
+        onDelete={(cred) => { setViewingCred(null); deleteCredential(cred); }}
+        unlocked={unlocked}
+        revealed={revealed}
+        revealingId={revealingId}
+        copiedKey={copiedKey}
+        onTogglePassword={togglePasswordVisible}
+        onCopyUsername={copyUsername}
+        onCopyPassword={copyPassword}
       />
     </>
   );
