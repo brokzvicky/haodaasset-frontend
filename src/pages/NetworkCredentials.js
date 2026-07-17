@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState, useCallback, useRef } from "react";
+import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { createPortal } from "react-dom";
 import axios from "axios";
 import {
@@ -6,11 +6,10 @@ import {
   Plus, X, Search, RefreshCw, Eye, EyeOff, Copy, Pencil, Trash2,
   Check, AlertTriangle, MoreVertical,
   ShieldCheck, Unlock, TimerReset, Download,
-  ArrowUpDown, ArrowUp, ArrowDown, CheckSquare, Square,
+  ArrowUpDown, CheckSquare, Square,
   ShieldAlert, KeyRound, RotateCw, Activity,
   Cable, FileClock, Paperclip, ChevronLeft, ChevronRight,
-  Settings, Filter, LayoutGrid, List, Menu, ChevronDown, ChevronRight as ChevronRightIcon,
-  AlertCircle, Info, CheckCircle, Clock
+  AlertCircle, CheckCircle
 } from "lucide-react";
 import Layout from "../components/Layout";
 import { useToast } from "../utils/Toast";
@@ -148,7 +147,6 @@ const DeviceCard = ({
   cred,
   isSelected,
   onSelect,
-  onOpenDetail,
   onOpenMenu,
   isMenuOpen,
   menuPos,
@@ -161,7 +159,6 @@ const DeviceCard = ({
   onViewDetail,
 }) => {
   const gradient = DEVICE_TYPE_GRADIENT[cred.deviceType] || DEVICE_TYPE_GRADIENT.Other;
-  const rot = rotationStatus(cred);
 
   return (
     <div
@@ -440,7 +437,7 @@ const DetailDrawer = ({
   );
 };
 
-// ── Add/Edit Modal (FIXED) ─────────────────────────────────────────
+// ── Add/Edit Modal ──────────────────────────────────────────────
 const CredentialFormModal = ({
   isOpen,
   onClose,
@@ -448,7 +445,7 @@ const CredentialFormModal = ({
   form,
   setForm,
   formErrors,
-  setFormErrors,   // ← now correctly received
+  setFormErrors,
   saving,
   onSave,
 }) => {
@@ -584,7 +581,6 @@ export default function NetworkCredentials() {
   const [credentials, setCredentials] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [lastSyncAt, setLastSyncAt] = useState(null);
 
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -608,7 +604,6 @@ export default function NetworkCredentials() {
 
   const [revealed, setRevealed] = useState({});
   const [revealingId, setRevealingId] = useState(null);
-  const [deletingId, setDeletingId] = useState(null);
   const [viewingCred, setViewingCred] = useState(null);
   const [openMenuId, setOpenMenuId] = useState(null);
   const [menuPos, setMenuPos] = useState(null);
@@ -678,7 +673,7 @@ export default function NetworkCredentials() {
   const loadData = useCallback(() => {
     setLoading(true);
     axios.get(`${API}/api/network`)
-      .then((r) => { setCredentials(r.data); setError(""); setLastSyncAt(new Date()); })
+      .then((r) => { setCredentials(r.data); setError(""); })
       .catch(() => { setCredentials([]); setError("Couldn't load network credentials. Is the Spring Boot API running?"); })
       .finally(() => setLoading(false));
   }, []);
@@ -759,15 +754,13 @@ export default function NetworkCredentials() {
   const deleteCredential = (cred) => {
     setOpenMenuId(null);
     if (!window.confirm(`Permanently delete "${cred.deviceName}"? This cannot be undone.`)) return;
-    setDeletingId(cred.id);
     axios.delete(`${API}/api/network/${cred.id}`)
       .then(() => {
         toast("Credential deleted.", "success");
         setRevealed((r) => { const n = { ...r }; delete n[cred.id]; return n; });
         loadData();
       })
-      .catch(() => toast("Couldn't delete credential.", "error"))
-      .finally(() => setDeletingId(null));
+      .catch(() => toast("Couldn't delete credential.", "error"));
   };
 
   // ── Reveal password ──
@@ -859,7 +852,7 @@ export default function NetworkCredentials() {
     });
     if (sortDir === "desc") arr.reverse();
     return arr;
-  }, [filtered, sortKey, sortDir]);
+  }, [filtered, sortKey, sortDir, SORT_ACCESSORS]);
 
   const toggleSort = (key) => {
     if (sortKey !== key) { setSortKey(key); setSortDir("asc"); return; }
@@ -1282,7 +1275,7 @@ export default function NetworkCredentials() {
         form={form}
         setForm={setForm}
         formErrors={formErrors}
-        setFormErrors={setFormErrors}   // ← this was missing, now added
+        setFormErrors={setFormErrors}
         saving={saving}
         onSave={saveCredential}
       />
