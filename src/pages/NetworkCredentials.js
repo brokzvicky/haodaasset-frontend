@@ -832,9 +832,8 @@ export default function NetworkCredentials() {
     [credentials, searchText, typeFilter, brandFilter, locationFilter, statusFilter, rotationFilter]
   );
 
-  // ── Sorting – SORT_ACCESSORS is now defined inside the useMemo ──
+  // ── Sorting – SORT_ACCESSORS defined inside useMemo ──────────
   const sorted = useMemo(() => {
-    // Define the accessors inside the callback so they don't become a dependency
     const SORT_ACCESSORS = {
       device:   (c) => (c.deviceName || "").toLowerCase(),
       vendor:   (c) => (c.brand || "").toLowerCase(),
@@ -854,7 +853,7 @@ export default function NetworkCredentials() {
     });
     if (sortDir === "desc") arr.reverse();
     return arr;
-  }, [filtered, sortKey, sortDir]); // No SORT_ACCESSORS dependency
+  }, [filtered, sortKey, sortDir]);
 
   const toggleSort = (key) => {
     if (sortKey !== key) { setSortKey(key); setSortDir("asc"); return; }
