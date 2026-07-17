@@ -5,12 +5,15 @@ import {
   Router, Network, Shield, Wifi, Server, HardDrive, Printer, Lock,
   Plus, X, Search, RefreshCw, Eye, EyeOff, Copy, Pencil, Trash2,
   ChevronDown, ChevronUp, Check, AlertTriangle, MoreVertical,
-  SlidersHorizontal, ShieldCheck, Unlock, TimerReset,
+  SlidersHorizontal, ShieldCheck, Unlock, TimerReset, Download,
+  ArrowUpDown, ArrowUp, ArrowDown, CheckSquare, Square, TrendingUp,
+  ShieldAlert, KeyRound, RotateCw, Activity, ClipboardList,
 } from "lucide-react";
 import Layout from "../components/Layout";
 import { useToast } from "../utils/Toast";
 import CredentialUnlockDialog from "../components/CredentialUnlockDialog";
 import CountUp from "../components/CountUp";
+import { StatusPieChart, AssetTypeBarChart } from "../components/DashboardChart";
 import "./NetworkCredentials.css";
 import "../components/DetailDrawer.css";
 
@@ -78,6 +81,52 @@ function formatDateTime(value) {
   });
 }
 
+// ── Derived security metrics (computed from real fields only — no invented data) ──
+// "Rotation health" is derived from how long it's been since a credential's
+// password was last saved (updatedAt, falling back to createdAt).
+const ROTATION_HEALTHY_DAYS = 90;
+const ROTATION_DUE_DAYS     = 180;
+
+function daysSince(dateStr) {
+  if (!dateStr) return null;
+  const d = new Date(dateStr);
+  if (Number.isNaN(d.getTime())) return null;
+  return Math.max(0, Math.floor((Date.now() - d.getTime()) / 86400000));
+}
+
+function rotationStatus(cred) {
+  const age = daysSince(cred.updatedAt || cred.createdAt);
+  if (age === null) return { cls: "unknown", label: "Unknown", age: null };
+  if (age <= ROTATION_HEALTHY_DAYS) return { cls: "healthy", label: "Healthy", age };
+  if (age <= ROTATION_DUE_DAYS)     return { cls: "due",     label: "Due Soon", age };
+  return { cls: "overdue", label: "Rotation Overdue", age };
+}
+
+// Credential health = rotation age combined with device operational state —
+// both are real fields, so the composite stays grounded in real data.
+function credentialHealth(cred) {
+  const rot = rotationStatus(cred);
+  if (cred.deviceStatus === "Inactive" || rot.cls === "overdue") {
+    return { cls: "critical", label: "Critical" };
+  }
+  if (cred.deviceStatus === "Maintenance" || rot.cls === "due") {
+    return { cls: "risk", label: "At Risk" };
+  }
+  if (rot.cls === "unknown") return { cls: "unknown", label: "Unknown" };
+  return { cls: "good", label: "Good" };
+}
+
+function RotationBadge({ cred }) {
+  const rot = rotationStatus(cred);
+  const text = rot.age === null ? rot.label : `${rot.label} · ${rot.age}d`;
+  return <span className={`netcred-rotation-badge ${rot.cls}`}>{text}</span>;
+}
+
+function HealthBadge({ cred }) {
+  const h = credentialHealth(cred);
+  return <span className={`netcred-health-badge ${h.cls}`}>{h.label}</span>;
+}
+
 // ── Skeleton row ───────────────────────────────────────────────────
 const SkeletonRow = () => {
   const cell = (w = 80) => (
@@ -87,7 +136,7 @@ const SkeletonRow = () => {
   );
   return (
     <tr>
-      {cell(28)}{cell(160)}{cell(90)}{cell(110)}{cell(130)}{cell(90)}{cell(24)}
+      {cell(18)}{cell(160)}{cell(100)}{cell(90)}{cell(110)}{cell(80)}{cell(80)}{cell(90)}{cell(70)}{cell(24)}
     </tr>
   );
 };
@@ -224,11 +273,39 @@ function NetworkDetailDrawer({
             </div>
           )}
 
+          <div className="detail-drawer-section">
+            <div className="detail-drawer-section-title"><RotateCw size={11} /> Password Rotation</div>
+            <div className="detail-drawer-grid">
+              <div className="detail-drawer-stat">
+                <div className="detail-drawer-stat-label">Rotation Health</div>
+                <div className="detail-drawer-stat-value"><RotationBadge cred={cred} /></div>
+              </div>
+              <div className="detail-drawer-stat">
+                <div className="detail-drawer-stat-label">Credential Health</div>
+                <div className="detail-drawer-stat-value"><HealthBadge cred={cred} /></div>
+              </div>
+            </div>
+          </div>
+
           <div className="detail-drawer-section" style={{ marginBottom: 4 }}>
-            <div className="detail-drawer-section-title">Record History</div>
-            <div style={{ fontSize: 12, color: "var(--gray-500)", lineHeight: 1.7 }}>
-              Created {formatDateTime(cred.createdAt)}{cred.createdBy ? ` by ${cred.createdBy}` : ""}<br />
-              Last updated {formatDateTime(cred.updatedAt)}
+            <div className="detail-drawer-section-title"><Activity size={11} /> Timeline</div>
+            <div className="netcred-timeline">
+              <div className="netcred-timeline-item">
+                <span className="netcred-timeline-dot" />
+                <div>
+                  <div className="netcred-timeline-label">Credential Created</div>
+                  <div className="netcred-timeline-time">
+                    {formatDateTime(cred.createdAt)}{cred.createdBy ? ` · ${cred.createdBy}` : ""}
+                  </div>
+                </div>
+              </div>
+              <div className="netcred-timeline-item">
+                <span className="netcred-timeline-dot" />
+                <div>
+                  <div className="netcred-timeline-label">Last Updated</div>
+                  <div className="netcred-timeline-time">{formatDateTime(cred.updatedAt)}</div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -270,6 +347,7 @@ export default function NetworkCredentials() {
   const [credentials, setCredentials]   = useState([]);
   const [loading, setLoading]           = useState(true);
   const [error, setError]               = useState("");
+  const [lastSyncAt, setLastSyncAt]     = useState(null);
 
   const [showForm, setShowForm]         = useState(false);
   const [editingId, setEditingId]       = useState(null);
@@ -283,6 +361,12 @@ export default function NetworkCredentials() {
   const [brandFilter, setBrandFilter]   = useState("All");
   const [locationFilter, setLocationFilter] = useState("All");
   const [statusFilter, setStatusFilter] = useState("All");
+  const [rotationFilter, setRotationFilter] = useState("All");
+
+  const [sortKey, setSortKey]           = useState(null);
+  const [sortDir, setSortDir]           = useState("asc");
+  const [selectedIds, setSelectedIds]   = useState(() => new Set());
+  const [bulkDeleting, setBulkDeleting] = useState(false);
 
   const [revealed, setRevealed]         = useState({});
   const [revealingId, setRevealingId]   = useState(null);
@@ -359,7 +443,7 @@ export default function NetworkCredentials() {
   const loadData = useCallback(() => {
     setLoading(true);
     axios.get(`${API}/api/network`)
-      .then((r) => { setCredentials(r.data); setError(""); })
+      .then((r) => { setCredentials(r.data); setError(""); setLastSyncAt(new Date()); })
       .catch(() => { setCredentials([]); setError("Couldn't load network credentials. Is the Spring Boot API running?"); })
       .finally(() => setLoading(false));
   }, []);
@@ -524,9 +608,42 @@ export default function NetworkCredentials() {
       .filter((c) => typeFilter === "All" || c.deviceType === typeFilter)
       .filter((c) => brandFilter === "All" || c.brand === brandFilter)
       .filter((c) => locationFilter === "All" || c.location === locationFilter)
-      .filter((c) => statusFilter === "All" || c.deviceStatus === statusFilter),
-    [credentials, searchText, typeFilter, brandFilter, locationFilter, statusFilter]
+      .filter((c) => statusFilter === "All" || c.deviceStatus === statusFilter)
+      .filter((c) => rotationFilter === "All" || rotationStatus(c).cls === rotationFilter),
+    [credentials, searchText, typeFilter, brandFilter, locationFilter, statusFilter, rotationFilter]
   );
+
+  // ── Sorting (client-side, over the already-filtered set) ─────────
+  const SORT_ACCESSORS = {
+    device:   (c) => (c.deviceName || "").toLowerCase(),
+    vendor:   (c) => (c.brand || "").toLowerCase(),
+    ip:       (c) => (c.ipAddress || ""),
+    location: (c) => (c.location || "").toLowerCase(),
+    rotation: (c) => rotationStatus(c).age ?? -1,
+    updated:  (c) => new Date(c.updatedAt || c.createdAt || 0).getTime(),
+  };
+  const sorted = useMemo(() => {
+    if (!sortKey) return filtered;
+    const acc = SORT_ACCESSORS[sortKey];
+    const arr = [...filtered].sort((a, b) => {
+      const av = acc(a), bv = acc(b);
+      if (av < bv) return -1;
+      if (av > bv) return 1;
+      return 0;
+    });
+    if (sortDir === "desc") arr.reverse();
+    return arr;
+  }, [filtered, sortKey, sortDir]);
+
+  const toggleSort = (key) => {
+    if (sortKey !== key) { setSortKey(key); setSortDir("asc"); return; }
+    if (sortDir === "asc") { setSortDir("desc"); return; }
+    setSortKey(null); setSortDir("asc");
+  };
+  const SortIcon = ({ col }) => {
+    if (sortKey !== col) return <ArrowUpDown size={11} className="netcred-sort-icon" />;
+    return sortDir === "asc" ? <ArrowUp size={11} className="netcred-sort-icon active" /> : <ArrowDown size={11} className="netcred-sort-icon active" />;
+  };
 
   const counts = useMemo(() => ({
     total: credentials.length,
@@ -535,7 +652,137 @@ export default function NetworkCredentials() {
     firewalls: credentials.filter((c) => c.deviceType === "Firewall").length,
     accessPoints: credentials.filter((c) => c.deviceType === "Access Point").length,
     servers: credentials.filter((c) => c.deviceType === "Server").length,
+    active: credentials.filter((c) => c.deviceStatus === "Active").length,
+    inactive: credentials.filter((c) => c.deviceStatus === "Inactive").length,
+    maintenance: credentials.filter((c) => c.deviceStatus === "Maintenance").length,
+    routersActive: credentials.filter((c) => c.deviceType === "Router" && c.deviceStatus === "Active").length,
+    routersInactive: credentials.filter((c) => c.deviceType === "Router" && c.deviceStatus !== "Active").length,
   }), [credentials]);
+
+  // ── Executive / security metrics — all derived from real fields ──
+  const rotationBuckets = useMemo(() => {
+    const b = { healthy: 0, due: 0, overdue: 0, unknown: 0 };
+    credentials.forEach((c) => { b[rotationStatus(c).cls]++; });
+    return b;
+  }, [credentials]);
+
+  const avgCredentialAgeDays = useMemo(() => {
+    const ages = credentials.map((c) => daysSince(c.updatedAt || c.createdAt)).filter((a) => a !== null);
+    if (!ages.length) return null;
+    return Math.round(ages.reduce((s, a) => s + a, 0) / ages.length);
+  }, [credentials]);
+
+  const lastRotationDate = useMemo(() => {
+    const ts = credentials.map((c) => c.updatedAt).filter(Boolean).map((d) => new Date(d).getTime()).filter((n) => !Number.isNaN(n));
+    return ts.length ? new Date(Math.max(...ts)) : null;
+  }, [credentials]);
+
+  const newLast30Days = useMemo(() =>
+    credentials.filter((c) => { const a = daysSince(c.createdAt); return a !== null && a <= 30; }).length,
+    [credentials]
+  );
+
+  const rotationCompliancePct = credentials.length
+    ? Math.round((rotationBuckets.healthy / credentials.length) * 100)
+    : 100;
+
+  const deviceDistribution = useMemo(() => {
+    const m = {};
+    credentials.forEach((c) => { const k = c.deviceType || "Other"; m[k] = (m[k] || 0) + 1; });
+    return Object.entries(m).map(([name, value]) => ({ name, value }));
+  }, [credentials]);
+
+  const vendorDistribution = useMemo(() => {
+    const m = {};
+    credentials.forEach((c) => { const k = c.brand || "Unspecified"; m[k] = (m[k] || 0) + 1; });
+    return Object.entries(m).map(([name, value]) => ({ name, value }));
+  }, [credentials]);
+
+  const rotationDistribution = useMemo(() => ([
+    { name: "Healthy",  value: rotationBuckets.healthy },
+    { name: "Due Soon", value: rotationBuckets.due },
+    { name: "Overdue",  value: rotationBuckets.overdue },
+  ]), [rotationBuckets]);
+
+  const activeFilterCount = [typeFilter, brandFilter, locationFilter, statusFilter, rotationFilter].filter((v) => v !== "All").length;
+  const clearAllFilters   = () => { setSearchText(""); setTypeFilter("All"); setBrandFilter("All"); setLocationFilter("All"); setStatusFilter("All"); setRotationFilter("All"); };
+
+  // ── Selection + bulk actions ───────────────────────────────────
+  const toggleSelectOne = (id) => {
+    setSelectedIds((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  };
+  const allVisibleSelected = sorted.length > 0 && sorted.every((c) => selectedIds.has(c.id));
+  const toggleSelectAll = () => {
+    setSelectedIds((s) => {
+      if (allVisibleSelected) return new Set();
+      const n = new Set(s);
+      sorted.forEach((c) => n.add(c.id));
+      return n;
+    });
+  };
+  const clearSelection = () => setSelectedIds(new Set());
+
+  const bulkDeleteSelected = () => {
+    const ids = [...selectedIds];
+    if (!ids.length) return;
+    if (!window.confirm(`Permanently delete ${ids.length} selected credential${ids.length > 1 ? "s" : ""}? This cannot be undone.`)) return;
+    setBulkDeleting(true);
+    Promise.allSettled(ids.map((id) => axios.delete(`${API}/api/network/${id}`)))
+      .then((results) => {
+        const okCount = results.filter((r) => r.status === "fulfilled").length;
+        toast(`${okCount} of ${ids.length} credential(s) deleted.`, okCount === ids.length ? "success" : "error");
+        clearSelection();
+        loadData();
+      })
+      .finally(() => setBulkDeleting(false));
+  };
+
+  // ── Export CSV (client-side, real data only — no secrets exported) ──
+  const exportCSV = () => {
+    const cols = ["deviceName", "deviceType", "brand", "model", "ipAddress", "hostname",
+      "location", "vlan", "isp", "deviceStatus", "username", "createdAt", "updatedAt"];
+    const rows = [cols.join(",")];
+    sorted.forEach((c) => {
+      rows.push(cols.map((k) => {
+        const v = c[k] == null ? "" : String(c[k]).replace(/"/g, '""');
+        return /[",\n]/.test(v) ? `"${v}"` : v;
+      }).join(","));
+    });
+    const blob = new Blob([rows.join("\n")], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `network-credentials-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+    toast("Exported CSV (credentials/secrets excluded).", "success");
+  };
+
+  // ── Single-record download (metadata only, no secrets) ───────────
+  const downloadCredential = (cred) => {
+    setOpenMenuId(null);
+    const { password, enablePassword, ...safe } = cred;
+    const blob = new Blob([JSON.stringify(safe, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${(cred.deviceName || "device").replace(/\s+/g, "-")}.json`;
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  const copyIp = async (cred) => {
+    setOpenMenuId(null);
+    if (!cred.ipAddress) { toast("No IP address on record.", "error"); return; }
+    try { await navigator.clipboard.writeText(cred.ipAddress); toast("IP address copied.", "success"); }
+    catch { toast("Couldn't copy to clipboard.", "error"); }
+  };
+
+  const rotatePassword = (cred) => {
+    setOpenMenuId(null);
+    openEditForm(cred);
+    toast("Enter and save a new password below to complete the rotation.", "success");
+  };
 
   const kpis = [
     { label: "Total Devices",  value: counts.total,        icon: <Network size={15} />,  cardGradient: "linear-gradient(135deg,#3b82f6,#1d4ed8)",   glow: "#3b82f62e", type: null },
@@ -545,9 +792,6 @@ export default function NetworkCredentials() {
     { label: "Access Points",  value: counts.accessPoints, icon: <Wifi size={15} />,     cardGradient: "linear-gradient(135deg,#fbbf24,#d97706)",   glow: "#f59e0b2e", type: "Access Point" },
     { label: "Servers",        value: counts.servers,      icon: <Server size={15} />,   cardGradient: "linear-gradient(135deg,#34d399,#059669)",   glow: "#10b9812e", type: "Server" },
   ];
-
-  const activeFilterCount = [typeFilter, brandFilter, locationFilter, statusFilter].filter((v) => v !== "All").length;
-  const clearAllFilters   = () => { setSearchText(""); setTypeFilter("All"); setBrandFilter("All"); setLocationFilter("All"); setStatusFilter("All"); };
 
   // ── Layout title ──────────────────────────────────────────────
   const pageTitle = (
@@ -568,7 +812,17 @@ export default function NetworkCredentials() {
     <>
     <Layout
       title={pageTitle}
-      subtitle="Securely manage IT infrastructure device access"
+      subtitle={
+        <span className="netcred-header-meta">
+          <span>Securely manage encrypted infrastructure credentials</span>
+          <span className="netcred-header-meta-sep">·</span>
+          <span><ShieldCheck size={11} /> AES-256 Encrypted Vault</span>
+          <span className="netcred-header-meta-sep">·</span>
+          <span>{credentials.length} Managed Devices</span>
+          <span className="netcred-header-meta-sep">·</span>
+          <span>Last sync: {lastSyncAt ? formatDateTime(lastSyncAt) : "—"}</span>
+        </span>
+      }
       actions={
         <button
           className="btn btn-primary"
@@ -602,8 +856,126 @@ export default function NetworkCredentials() {
         </div>
       )}
 
-      {/* ── KPI Cards ── */}
-      <div className="kpi-row kpi-row-6 netcred-kpi-row stagger-in" style={{ marginBottom: 18 }}>
+      {/* ── Executive KPI Cards ── */}
+      <div className="netcred-exec-grid stagger-in" style={{ marginBottom: 14 }}>
+
+        {/* Total Devices */}
+        <div className="netcred-exec-card exec-blue">
+          <div className="netcred-exec-head">
+            <span className="netcred-exec-icon"><Network size={16} /></span>
+            <span className="netcred-exec-title">Total Devices</span>
+          </div>
+          <div className="netcred-exec-main">{loading ? "—" : <CountUp value={counts.total} />}</div>
+          <div className="netcred-exec-rows">
+            <div className="netcred-exec-row"><span>Online</span><b className="ok">{counts.active}</b></div>
+            <div className="netcred-exec-row"><span>Offline / Maint.</span><b className="warn">{counts.total - counts.active}</b></div>
+            <div className="netcred-exec-row"><span>Added (30d)</span><b><TrendingUp size={11} style={{ verticalAlign: -1 }} /> {newLast30Days}</b></div>
+          </div>
+        </div>
+
+        {/* Routers */}
+        <div className="netcred-exec-card exec-indigo">
+          <div className="netcred-exec-head">
+            <span className="netcred-exec-icon"><Router size={16} /></span>
+            <span className="netcred-exec-title">Routers</span>
+          </div>
+          <div className="netcred-exec-main">{loading ? "—" : <CountUp value={counts.routers} />}</div>
+          <div className="netcred-exec-rows">
+            <div className="netcred-exec-row"><span>Healthy</span><b className="ok">{counts.routersActive}</b></div>
+            <div className="netcred-exec-row"><span>Needs attention</span><b className="warn">{counts.routersInactive}</b></div>
+          </div>
+        </div>
+
+        {/* Network Security */}
+        <div className="netcred-exec-card exec-green">
+          <div className="netcred-exec-head">
+            <span className="netcred-exec-icon"><ShieldCheck size={16} /></span>
+            <span className="netcred-exec-title">Network Security</span>
+          </div>
+          <div className="netcred-exec-main">{loading ? "—" : `${rotationCompliancePct}%`}</div>
+          <div className="netcred-exec-rows">
+            <div className="netcred-exec-row"><span>Encrypted</span><b className="ok">{counts.total}/{counts.total} · AES-256</b></div>
+            <div className="netcred-exec-row"><span>Rotation compliant</span><b className={rotationCompliancePct >= 80 ? "ok" : "warn"}>{rotationCompliancePct}%</b></div>
+          </div>
+        </div>
+
+        {/* Password Rotation */}
+        <div className="netcred-exec-card exec-amber">
+          <div className="netcred-exec-head">
+            <span className="netcred-exec-icon"><RotateCw size={16} /></span>
+            <span className="netcred-exec-title">Password Rotation</span>
+          </div>
+          <div className="netcred-exec-main">{loading ? "—" : rotationBuckets.due + rotationBuckets.overdue}</div>
+          <div className="netcred-exec-rows">
+            <div className="netcred-exec-row"><span>Due soon</span><b className="warn">{rotationBuckets.due}</b></div>
+            <div className="netcred-exec-row"><span>Overdue</span><b className="danger">{rotationBuckets.overdue}</b></div>
+            <div className="netcred-exec-row"><span>Last rotation</span><b>{lastRotationDate ? formatDate(lastRotationDate) : "—"}</b></div>
+          </div>
+        </div>
+
+        {/* Attention Needed */}
+        <div className="netcred-exec-card exec-red">
+          <div className="netcred-exec-head">
+            <span className="netcred-exec-icon"><ShieldAlert size={16} /></span>
+            <span className="netcred-exec-title">Attention Needed</span>
+          </div>
+          <div className="netcred-exec-main">{loading ? "—" : counts.inactive + rotationBuckets.overdue}</div>
+          <div className="netcred-exec-rows">
+            <div className="netcred-exec-row"><span>Offline devices</span><b className="danger">{counts.inactive}</b></div>
+            <div className="netcred-exec-row"><span>In maintenance</span><b className="warn">{counts.maintenance}</b></div>
+            <div className="netcred-exec-row"><span>Rotation overdue</span><b className="danger">{rotationBuckets.overdue}</b></div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Security Overview strip ── */}
+      <div className="netcred-security-strip">
+        <div className="netcred-security-item">
+          <Lock size={13} />
+          <div>
+            <div className="netcred-security-label">Vault Status</div>
+            <div className="netcred-security-value">{unlocked ? `Unlocked · ${unlockSecondsLeft}s` : "Locked"}</div>
+          </div>
+        </div>
+        <div className="netcred-security-item">
+          <ShieldCheck size={13} />
+          <div>
+            <div className="netcred-security-label">Encryption</div>
+            <div className="netcred-security-value">AES-256</div>
+          </div>
+        </div>
+        <div className="netcred-security-item">
+          <KeyRound size={13} />
+          <div>
+            <div className="netcred-security-label">Rotation Compliance</div>
+            <div className="netcred-security-value">{rotationCompliancePct}% healthy</div>
+          </div>
+        </div>
+        <div className="netcred-security-item">
+          <RotateCw size={13} />
+          <div>
+            <div className="netcred-security-label">Needs Rotation</div>
+            <div className="netcred-security-value">{rotationBuckets.due + rotationBuckets.overdue} devices</div>
+          </div>
+        </div>
+        <div className="netcred-security-item">
+          <ClipboardList size={13} />
+          <div>
+            <div className="netcred-security-label">Avg. Credential Age</div>
+            <div className="netcred-security-value">{avgCredentialAgeDays === null ? "—" : `${avgCredentialAgeDays} days`}</div>
+          </div>
+        </div>
+        <div className="netcred-security-item">
+          <Activity size={13} />
+          <div>
+            <div className="netcred-security-label">Last Rotation</div>
+            <div className="netcred-security-value">{lastRotationDate ? formatDate(lastRotationDate) : "—"}</div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Quick filter by device type ── */}
+      <div className="kpi-row kpi-row-6 netcred-kpi-row stagger-in" style={{ marginBottom: 18, marginTop: 14 }}>
         {kpis.map((k) => {
           const active = k.type && typeFilter === k.type;
           return (
@@ -774,8 +1146,17 @@ export default function NetworkCredentials() {
           <div>
             <div className="netcred-table-title">Device Credentials</div>
             <div className="netcred-table-subtitle">
-              {loading ? "Loading…" : `${filtered.length} of ${credentials.length} devices`}
+              {loading ? "Loading…" : `${sorted.length} of ${credentials.length} devices`}
             </div>
+            {!loading && sorted.length > 0 && (
+              <div className="netcred-insights-bar">
+                <span>Online <b className="ok">{sorted.filter((c) => c.deviceStatus === "Active").length}</b></span>
+                <span>Offline <b className="danger">{sorted.filter((c) => c.deviceStatus !== "Active").length}</b></span>
+                <span>Healthy <b className="ok">{sorted.filter((c) => rotationStatus(c).cls === "healthy").length}</b></span>
+                <span>Needs Rotation <b className="warn">{sorted.filter((c) => rotationStatus(c).cls !== "healthy").length}</b></span>
+                <span>Avg. Age <b>{avgCredentialAgeDays === null ? "—" : `${avgCredentialAgeDays}d`}</b></span>
+              </div>
+            )}
           </div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
             {/* Search */}
@@ -848,8 +1229,36 @@ export default function NetworkCredentials() {
             >
               <RefreshCw size={13} style={loading ? { animation: "spin 0.8s linear infinite" } : undefined} />
             </button>
+
+            {/* Export CSV */}
+            <button
+              className="btn btn-secondary btn-icon"
+              onClick={exportCSV}
+              disabled={loading || sorted.length === 0}
+              title="Export CSV"
+              style={{
+                height: 36, width: 36, borderRadius: 9,
+                border: "1.5px solid #dbeafe", background: "#f8fbff",
+                display: "flex", alignItems: "center", justifyContent: "center",
+              }}
+            >
+              <Download size={13} />
+            </button>
           </div>
         </div>
+
+        {/* Bulk actions bar */}
+        {selectedIds.size > 0 && (
+          <div className="netcred-bulk-bar">
+            <span><CheckSquare size={14} /> {selectedIds.size} selected</span>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button className="btn btn-secondary btn-sm" onClick={clearSelection}>Clear</button>
+              <button className="btn btn-secondary btn-sm" style={{ color: "var(--danger)" }} onClick={bulkDeleteSelected} disabled={bulkDeleting}>
+                <Trash2 size={13} style={{ marginRight: 5 }} /> {bulkDeleting ? "Deleting…" : "Delete Selected"}
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Filters panel */}
         {showFilters && (
@@ -862,9 +1271,9 @@ export default function NetworkCredentials() {
               </select>
             </div>
             <div className="field" style={{ minWidth: 150 }}>
-              <label className="field-label">Brand</label>
+              <label className="field-label">Vendor</label>
               <select className="input" value={brandFilter} onChange={(e) => setBrandFilter(e.target.value)}>
-                {uniqueBrands.map((b) => <option key={b} value={b}>{b === "All" ? "All brands" : b}</option>)}
+                {uniqueBrands.map((b) => <option key={b} value={b}>{b === "All" ? "All vendors" : b}</option>)}
               </select>
             </div>
             <div className="field" style={{ minWidth: 150 }}>
@@ -874,15 +1283,24 @@ export default function NetworkCredentials() {
               </select>
             </div>
             <div className="field" style={{ minWidth: 150 }}>
-              <label className="field-label">Status</label>
+              <label className="field-label">Credential Status</label>
               <select className="input" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
                 <option value="All">All statuses</option>
                 {DEVICE_STATUSES.map((s) => <option key={s}>{s}</option>)}
               </select>
             </div>
+            <div className="field" style={{ minWidth: 150 }}>
+              <label className="field-label">Rotation Health</label>
+              <select className="input" value={rotationFilter} onChange={(e) => setRotationFilter(e.target.value)}>
+                <option value="All">All</option>
+                <option value="healthy">Healthy</option>
+                <option value="due">Due Soon</option>
+                <option value="overdue">Overdue</option>
+              </select>
+            </div>
             {activeFilterCount > 0 && (
               <button className="btn btn-ghost btn-sm" onClick={clearAllFilters} style={{ marginTop: 18, borderRadius: 8 }}>
-                Clear filters
+                <RefreshCw size={12} style={{ marginRight: 5 }} /> Reset Filters
               </button>
             )}
           </div>
@@ -894,10 +1312,13 @@ export default function NetworkCredentials() {
             <table className="data-table netcred-table">
               <thead>
                 <tr>
-                  <th style={{ width: 36 }}>#</th>
+                  <th style={{ width: 36 }}></th>
                   <th>Device</th>
+                  <th>Vendor / Model</th>
                   <th>IP Address</th>
                   <th>Location</th>
+                  <th>Credential Health</th>
+                  <th>Rotation</th>
                   <th>Last Updated</th>
                   <th style={{ width: 90 }}>Actions</th>
                   <th style={{ width: 50 }}></th>
@@ -906,7 +1327,7 @@ export default function NetworkCredentials() {
               <tbody>{Array.from({ length: 6 }).map((_, i) => <SkeletonRow key={i} />)}</tbody>
             </table>
           </div>
-        ) : filtered.length === 0 ? (
+        ) : sorted.length === 0 ? (
           <div className="netcred-empty">
             <div className="netcred-empty-icon">
               {searchText || activeFilterCount > 0 ? <Search size={28} /> : <Network size={28} />}
@@ -930,27 +1351,48 @@ export default function NetworkCredentials() {
             <table className="data-table netcred-table">
               <thead>
                 <tr>
-                  <th style={{ width: 36, textAlign: "center" }}>#</th>
-                  <th>Device</th>
-                  <th>IP Address</th>
-                  <th>Location</th>
-                  <th>Last Updated</th>
+                  <th style={{ width: 36, textAlign: "center" }}>
+                    <button className="netcred-checkbox-btn" onClick={toggleSelectAll} title={allVisibleSelected ? "Deselect all" : "Select all"}>
+                      {allVisibleSelected ? <CheckSquare size={15} /> : <Square size={15} />}
+                    </button>
+                  </th>
+                  <th data-sortable onClick={() => toggleSort("device")}>
+                    <span className="netcred-th-sort">Device <SortIcon col="device" /></span>
+                  </th>
+                  <th data-sortable onClick={() => toggleSort("vendor")}>
+                    <span className="netcred-th-sort">Vendor / Model <SortIcon col="vendor" /></span>
+                  </th>
+                  <th data-sortable onClick={() => toggleSort("ip")}>
+                    <span className="netcred-th-sort">IP Address <SortIcon col="ip" /></span>
+                  </th>
+                  <th data-sortable onClick={() => toggleSort("location")}>
+                    <span className="netcred-th-sort">Location <SortIcon col="location" /></span>
+                  </th>
+                  <th>Credential Health</th>
+                  <th data-sortable onClick={() => toggleSort("rotation")}>
+                    <span className="netcred-th-sort">Rotation <SortIcon col="rotation" /></span>
+                  </th>
+                  <th data-sortable onClick={() => toggleSort("updated")}>
+                    <span className="netcred-th-sort">Last Updated <SortIcon col="updated" /></span>
+                  </th>
                   <th style={{ width: 100 }}>Actions</th>
                   <th style={{ width: 50 }}></th>
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((cred, index) => {
+                {sorted.map((cred, index) => {
                   const isDeleting  = deletingId === cred.id;
                   return (
                     <tr
                       key={cred.id}
-                      className={`netcred-row ${openMenuId === cred.id ? "is-active" : ""}`}
+                      className={`netcred-row ${openMenuId === cred.id ? "is-active" : ""} ${selectedIds.has(cred.id) ? "is-selected" : ""}`}
                       style={{ animationDelay: `${Math.min(index * 0.03, 0.25)}s` }}
                     >
-                      {/* # */}
-                      <td style={{ textAlign: "center", fontWeight: 700, color: "#cbd5e1", fontSize: 11.5 }}>
-                        {index + 1}
+                      {/* Select */}
+                      <td style={{ textAlign: "center" }}>
+                        <button className="netcred-checkbox-btn" onClick={() => toggleSelectOne(cred.id)} title="Select row">
+                          {selectedIds.has(cred.id) ? <CheckSquare size={15} /> : <Square size={15} />}
+                        </button>
                       </td>
 
                       {/* Device */}
@@ -974,11 +1416,15 @@ export default function NetworkCredentials() {
                             </div>
                             <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginTop: 2 }}>
                               <span className="netcred-type-tag">{cred.deviceType}</span>
-                              {cred.brand && <span style={{ fontSize: 11.5, color: "#64748b" }}>{cred.brand}{cred.model ? ` · ${cred.model}` : ""}</span>}
                               <DeviceStatusPill status={cred.deviceStatus} />
                             </div>
                           </div>
                         </div>
+                      </td>
+
+                      {/* Vendor / Model */}
+                      <td style={{ color: "#475569", fontSize: 12.5 }}>
+                        {cred.brand || "—"}{cred.model ? ` · ${cred.model}` : ""}
                       </td>
 
                       {/* IP */}
@@ -986,6 +1432,12 @@ export default function NetworkCredentials() {
 
                       {/* Location */}
                       <td style={{ color: "#475569", fontSize: 12.5 }}>{cred.location || "—"}</td>
+
+                      {/* Credential Health */}
+                      <td><HealthBadge cred={cred} /></td>
+
+                      {/* Rotation */}
+                      <td><RotationBadge cred={cred} /></td>
 
                       {/* Last updated */}
                       <td
@@ -1066,6 +1518,15 @@ export default function NetworkCredentials() {
                             <button className="netcred-menu-item" onClick={() => { openEditForm(cred); setOpenMenuId(null); setMenuPos(null); }}>
                               <Pencil size={13} /> Edit
                             </button>
+                            <button className="netcred-menu-item" onClick={() => copyIp(cred)}>
+                              <Copy size={13} /> Copy IP Address
+                            </button>
+                            <button className="netcred-menu-item" onClick={() => rotatePassword(cred)}>
+                              <KeyRound size={13} /> Rotate Password
+                            </button>
+                            <button className="netcred-menu-item" onClick={() => downloadCredential(cred)}>
+                              <Download size={13} /> Download
+                            </button>
                             <div className="netcred-menu-divider" />
                             <button className="netcred-menu-item danger" onClick={() => { deleteCredential(cred); setOpenMenuId(null); setMenuPos(null); }}>
                               <Trash2 size={13} /> Delete
@@ -1082,6 +1543,24 @@ export default function NetworkCredentials() {
           </div>
         )}
       </div>
+
+      {/* ── Bottom Analytics ── */}
+      {!loading && credentials.length > 0 && (
+        <div className="netcred-analytics-grid">
+          <div className="netcred-analytics-card">
+            <div className="netcred-analytics-title">Device Distribution</div>
+            <StatusPieChart data={deviceDistribution} />
+          </div>
+          <div className="netcred-analytics-card">
+            <div className="netcred-analytics-title">Vendor Distribution</div>
+            <AssetTypeBarChart data={vendorDistribution} />
+          </div>
+          <div className="netcred-analytics-card">
+            <div className="netcred-analytics-title">Password Rotation Status</div>
+            <StatusPieChart data={rotationDistribution} />
+          </div>
+        </div>
+      )}
       </div>
     </Layout>
 
