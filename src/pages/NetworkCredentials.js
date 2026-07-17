@@ -189,7 +189,7 @@ function NetworkDetailDrawer({
   const rev = revealed[cred.id];
   const isRevealing = revealingId === cred.id;
   const rot = rotationStatus(cred);
-  const health = credentialHealth(cred);
+  
 
   return (
     <div className="detail-drawer-overlay" onClick={onClose}>
