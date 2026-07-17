@@ -116,6 +116,16 @@ function credentialHealth(cred) {
   return { cls: "good", label: "Good" };
 }
 
+// Pure, module-level so it's stable across renders (no hook dependency needed).
+const SORT_ACCESSORS = {
+  device:   (c) => (c.deviceName || "").toLowerCase(),
+  vendor:   (c) => (c.brand || "").toLowerCase(),
+  ip:       (c) => (c.ipAddress || ""),
+  location: (c) => (c.location || "").toLowerCase(),
+  rotation: (c) => rotationStatus(c).age ?? -1,
+  updated:  (c) => new Date(c.updatedAt || c.createdAt || 0).getTime(),
+};
+
 function RotationBadge({ cred }) {
   const rot = rotationStatus(cred);
   const text = rot.age === null ? rot.label : `${rot.label} · ${rot.age}d`;
@@ -614,14 +624,6 @@ export default function NetworkCredentials() {
   );
 
   // ── Sorting (client-side, over the already-filtered set) ─────────
-  const SORT_ACCESSORS = {
-    device:   (c) => (c.deviceName || "").toLowerCase(),
-    vendor:   (c) => (c.brand || "").toLowerCase(),
-    ip:       (c) => (c.ipAddress || ""),
-    location: (c) => (c.location || "").toLowerCase(),
-    rotation: (c) => rotationStatus(c).age ?? -1,
-    updated:  (c) => new Date(c.updatedAt || c.createdAt || 0).getTime(),
-  };
   const sorted = useMemo(() => {
     if (!sortKey) return filtered;
     const acc = SORT_ACCESSORS[sortKey];
