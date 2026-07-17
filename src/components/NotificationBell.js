@@ -73,10 +73,10 @@ export default function NotificationBell() {
   const prevPulseCountRef = useRef(0);
 
   const {
-    pulseNotifications = [], pulseUnread = 0, pulseConnected,
+    pulseNotifications = [], pulseConnected,
     markPulseRead, markAllPulseRead, snoozePulse, completePulse, clearCompletedPulse, completeTask,
-    notifications = [], unread = 0,
-    systemNotifications = [], systemUnread = 0, markSystemRead, markAllSystemRead,
+    notifications = [],
+    systemNotifications = [], markSystemRead, markAllSystemRead,
     totalUnread = 0,
   } = ctx || {};
 
