@@ -1268,10 +1268,7 @@ export default function NetworkCredentials() {
         </div>
       </Layout>
 
-      {showUnlockDialog && (
-        <CredentialUnlockDialog onUnlocked={handleUnlocked} onClose={closeUnlockDialog} />
-      )}
-
+      {/* ── Detail Modal ── */}
       {viewingCred && (
         <DetailModal
           cred={viewingCred}
@@ -1288,6 +1285,7 @@ export default function NetworkCredentials() {
         />
       )}
 
+      {/* ── Add/Edit Modal ── */}
       <CredentialFormModal
         isOpen={showForm}
         onClose={closeForm}
@@ -1299,6 +1297,25 @@ export default function NetworkCredentials() {
         saving={saving}
         onSave={saveCredential}
       />
+
+      {/* ── OTP Unlock Dialog – MUST be LAST for highest z-index ── */}
+      {showUnlockDialog && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 999999,
+            pointerEvents: 'none',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <div style={{ pointerEvents: 'auto', zIndex: 999999, position: 'relative' }}>
+            <CredentialUnlockDialog onUnlocked={handleUnlocked} onClose={closeUnlockDialog} />
+          </div>
+        </div>
+      )}
     </>
   );
 }
