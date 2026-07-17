@@ -935,58 +935,56 @@ export default function NetworkCredentials() {
     </span>
   );
 
+  // ── Unified header actions (search, refresh, export, add) — rendered
+  // inside Layout's own title/subtitle header so there is exactly one
+  // header container instead of a duplicated title block. ──
+  const headerActions = (
+    <div className="nc-hero-actions">
+      <div className="nc-hero-search">
+        <Search size={14} className="nc-hero-search-icon" />
+        <input
+          className="nc-hero-search-input"
+          placeholder="Search devices, IPs, hosts…"
+          value={searchText}
+          onChange={(e) => setSearchText(e.target.value)}
+        />
+        {searchText && (
+          <button className="netcred-search-clear" onClick={() => setSearchText("")} title="Clear search">
+            <X size={12} />
+          </button>
+        )}
+      </div>
+
+      <button
+        className="nc-hero-icon-btn"
+        onClick={loadData}
+        disabled={loading}
+        title={lastSyncAt ? `Refresh (last synced ${formatDateTime(lastSyncAt)})` : "Refresh"}
+      >
+        <RefreshCw size={14} style={loading ? { animation: "spin 0.8s linear infinite" } : undefined} />
+      </button>
+      <button className="nc-hero-icon-btn" onClick={exportCSV} disabled={loading || sorted.length === 0} title="Export CSV">
+        <Download size={14} />
+      </button>
+
+      <button
+        className="btn btn-primary nc-hero-add-btn"
+        onClick={showForm && !editingId ? closeForm : openCreateForm}
+      >
+        {showForm && !editingId ? <X size={15} /> : <Plus size={15} />}
+        {showForm && !editingId ? "Cancel" : "Add Credential"}
+      </button>
+    </div>
+  );
+
   return (
     <>
     <Layout
       title={pageTitle}
       subtitle="Securely manage encrypted infrastructure credentials"
+      actions={headerActions}
     >
       <div className="netcred-page">
-
-      {/* ── 1. Elegant workspace header ── */}
-      <div className="nc-hero">
-        <div className="nc-hero-text">
-          <h1 className="nc-hero-title">Network Credentials</h1>
-          <p className="nc-hero-desc">Find a device, check its credential health, and act — all in one place.</p>
-        </div>
-
-        <div className="nc-hero-actions">
-          <div className="nc-hero-search">
-            <Search size={14} className="nc-hero-search-icon" />
-            <input
-              className="nc-hero-search-input"
-              placeholder="Search devices, IPs, hosts…"
-              value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
-            />
-            {searchText && (
-              <button className="netcred-search-clear" onClick={() => setSearchText("")} title="Clear search">
-                <X size={12} />
-              </button>
-            )}
-          </div>
-
-          <button
-            className="nc-hero-icon-btn"
-            onClick={loadData}
-            disabled={loading}
-            title={lastSyncAt ? `Refresh (last synced ${formatDateTime(lastSyncAt)})` : "Refresh"}
-          >
-            <RefreshCw size={14} style={loading ? { animation: "spin 0.8s linear infinite" } : undefined} />
-          </button>
-          <button className="nc-hero-icon-btn" onClick={exportCSV} disabled={loading || sorted.length === 0} title="Export CSV">
-            <Download size={14} />
-          </button>
-
-          <button
-            className="btn btn-primary nc-hero-add-btn"
-            onClick={showForm && !editingId ? closeForm : openCreateForm}
-          >
-            {showForm && !editingId ? <X size={15} /> : <Plus size={15} />}
-            {showForm && !editingId ? "Cancel" : "Add Credential"}
-          </button>
-        </div>
-      </div>
 
       {/* ── Error banner ── */}
       {error && (
@@ -1009,7 +1007,7 @@ export default function NetworkCredentials() {
         </div>
       )}
 
-      {/* ── 2. KPI section — four premium statistic cards ── */}
+      {/* ── 1. KPI section — four premium statistic cards, directly below the header ── */}
       <div className="nc-kpi-grid">
         {kpis.map((k) => (
           <div
@@ -1166,17 +1164,12 @@ export default function NetworkCredentials() {
         </div>
       )}
 
-      {/* ── 3. Sticky filter toolbar + 4. Device table (the main focus) ── */}
+      {/* ── 2. Filter toolbar + 3. Device table — one unified card, no
+             separate title row or floating device card above it. The
+             table starts immediately below the toolbar. ── */}
       <div className="netcred-table-card">
 
-        <div className="netcred-table-header">
-          <div>
-            <div className="netcred-table-title">Devices</div>
-            <div className="netcred-table-subtitle">All registered network infrastructure</div>
-          </div>
-        </div>
-
-        {/* Sticky filter toolbar — compact, single row, filters only */}
+        {/* Compact horizontal filter toolbar */}
         <div className="nc-toolbar">
           <span className="nc-toolbar-label">Filter</span>
 
@@ -1205,11 +1198,13 @@ export default function NetworkCredentials() {
             <option value="overdue">Overdue</option>
           </select>
 
-          {activeFilterCount > 0 && (
-            <button className="btn btn-ghost btn-sm nc-toolbar-reset" onClick={clearAllFilters}>
-              <RefreshCw size={12} style={{ marginRight: 5 }} /> Reset
-            </button>
-          )}
+          <button
+            className="btn btn-ghost btn-sm nc-toolbar-reset"
+            onClick={clearAllFilters}
+            disabled={activeFilterCount === 0 && !searchText}
+          >
+            <RefreshCw size={12} style={{ marginRight: 5 }} /> Reset Filters
+          </button>
 
           <div className="nc-toolbar-spacer" />
 
