@@ -134,7 +134,12 @@ function RotationBadge({ cred }) {
 
 function HealthBadge({ cred }) {
   const h = credentialHealth(cred);
-  return <span className={`netcred-health-badge ${h.cls}`}>{h.label}</span>;
+  return (
+    <span className={`netcred-health-badge ${h.cls}`}>
+      {h.cls === "critical" && <AlertTriangle size={10} />}
+      {h.label}
+    </span>
+  );
 }
 
 // ── Skeleton row ───────────────────────────────────────────────────
@@ -146,7 +151,7 @@ const SkeletonRow = () => {
   );
   return (
     <tr>
-      {cell(18)}{cell(160)}{cell(100)}{cell(90)}{cell(110)}{cell(80)}{cell(80)}{cell(90)}{cell(70)}{cell(24)}
+      {cell(18)}{cell(160)}{cell(100)}{cell(90)}{cell(110)}{cell(80)}{cell(80)}{cell(90)}{cell(24)}
     </tr>
   );
 };
@@ -961,7 +966,12 @@ export default function NetworkCredentials() {
             )}
           </div>
 
-          <button className="nc-hero-icon-btn" onClick={loadData} disabled={loading} title="Refresh">
+          <button
+            className="nc-hero-icon-btn"
+            onClick={loadData}
+            disabled={loading}
+            title={lastSyncAt ? `Refresh (last synced ${formatDateTime(lastSyncAt)})` : "Refresh"}
+          >
             <RefreshCw size={14} style={loading ? { animation: "spin 0.8s linear infinite" } : undefined} />
           </button>
           <button className="nc-hero-icon-btn" onClick={exportCSV} disabled={loading || sorted.length === 0} title="Export CSV">
@@ -999,28 +1009,22 @@ export default function NetworkCredentials() {
         </div>
       )}
 
-      {/* ── 2. Compact operational summary — essential metrics only, one row ── */}
-      <div className="nc-summary-bar">
-        {kpis.map((k, i) => (
-          <React.Fragment key={k.key}>
-            {i > 0 && <span className="nc-summary-divider" aria-hidden="true" />}
-            <div className="nc-summary-stat">
-              <span className="nc-summary-icon">{k.icon}</span>
-              <div className="nc-summary-text">
-                <div className="nc-summary-value">
-                  {loading ? "—" : typeof k.value === "number" ? <CountUp value={k.value} /> : k.value}
-                </div>
-                <div className="nc-summary-label">{k.label}</div>
-              </div>
+      {/* ── 2. KPI section — four premium statistic cards ── */}
+      <div className="nc-kpi-grid">
+        {kpis.map((k) => (
+          <div
+            key={k.key}
+            className={`nc-kpi-card nc-kpi-${k.key}`}
+            title={k.key === "health" && avgCredentialAgeDays !== null ? `Avg. credential age: ${avgCredentialAgeDays} days` : undefined}
+          >
+            <span className="nc-kpi-icon">{k.icon}</span>
+            <div className="nc-kpi-value">
+              {loading ? "—" : typeof k.value === "number" ? <CountUp value={k.value} /> : k.value}
             </div>
-          </React.Fragment>
+            <div className="nc-kpi-label">{k.label}</div>
+            <div className="nc-kpi-sub">{loading ? "\u00A0" : k.sub}</div>
+          </div>
         ))}
-        <div className="nc-summary-spacer" />
-        <div className="nc-summary-caption">
-          {unlocked && <span className="nc-summary-caption-item nc-summary-caption-live"><Unlock size={11} /> Vault unlocked · {unlockSecondsLeft}s</span>}
-          {avgCredentialAgeDays !== null && <span className="nc-summary-caption-item">Avg. age {avgCredentialAgeDays}d</span>}
-          {lastSyncAt && <span className="nc-summary-caption-item">Synced {formatDateTime(lastSyncAt)}</span>}
-        </div>
       </div>
 
       {/* ── Add / Edit Form ── */}
@@ -1165,6 +1169,13 @@ export default function NetworkCredentials() {
       {/* ── 3. Sticky filter toolbar + 4. Device table (the main focus) ── */}
       <div className="netcred-table-card">
 
+        <div className="netcred-table-header">
+          <div>
+            <div className="netcred-table-title">Devices</div>
+            <div className="netcred-table-subtitle">All registered network infrastructure</div>
+          </div>
+        </div>
+
         {/* Sticky filter toolbar — compact, single row, filters only */}
         <div className="nc-toolbar">
           <span className="nc-toolbar-label">Filter</span>
@@ -1232,7 +1243,6 @@ export default function NetworkCredentials() {
                   <th>Credential Health</th>
                   <th>Rotation</th>
                   <th>Last Updated</th>
-                  <th style={{ width: 90 }}>Actions</th>
                   <th style={{ width: 50 }}></th>
                 </tr>
               </thead>
@@ -1288,7 +1298,6 @@ export default function NetworkCredentials() {
                   <th data-sortable onClick={() => toggleSort("updated")}>
                     <span className="netcred-th-sort">Last Updated <SortIcon col="updated" /></span>
                   </th>
-                  <th style={{ width: 100 }}>Actions</th>
                   <th style={{ width: 50 }}></th>
                 </tr>
               </thead>
@@ -1336,8 +1345,15 @@ export default function NetworkCredentials() {
                       </td>
 
                       {/* Vendor / Model */}
-                      <td style={{ color: "#475569", fontSize: 12.5 }}>
-                        {cred.brand || "—"}{cred.model ? ` · ${cred.model}` : ""}
+                      <td>
+                        {cred.brand || cred.model ? (
+                          <div className="netcred-vendor-cell">
+                            <div className="netcred-vendor-name">{cred.brand || "—"}</div>
+                            {cred.model && <div className="netcred-vendor-model">{cred.model}</div>}
+                          </div>
+                        ) : (
+                          <span style={{ color: "#cbd5e1" }}>—</span>
+                        )}
                       </td>
 
                       {/* IP */}
@@ -1358,17 +1374,6 @@ export default function NetworkCredentials() {
                         style={{ fontSize: 12, color: "#94a3b8", whiteSpace: "nowrap" }}
                       >
                         {formatDate(cred.updatedAt)}
-                      </td>
-
-                      {/* View */}
-                      <td>
-                        <button
-                          className="netcred-view-btn"
-                          onClick={() => setViewingCred(cred)}
-                          title="View device details"
-                        >
-                          <Eye size={12} /> View
-                        </button>
                       </td>
 
                       {/* Actions */}
