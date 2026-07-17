@@ -6,9 +6,9 @@ import {
   Plus, X, Search, RefreshCw, Eye, EyeOff, Copy, Pencil, Trash2,
   Check, AlertTriangle, MoreVertical,
   ShieldCheck, Unlock, TimerReset, Download,
-  ArrowUpDown, ArrowUp, ArrowDown, CheckSquare, Square, TrendingUp,
-  ShieldAlert, KeyRound, RotateCw, Activity, ClipboardList,
-  Cable, FileClock, Paperclip, ChevronLeft, ChevronRight, DatabaseBackup,
+  ArrowUpDown, ArrowUp, ArrowDown, CheckSquare, Square,
+  ShieldAlert, KeyRound, RotateCw, Activity,
+  Cable, FileClock, Paperclip, ChevronLeft, ChevronRight,
 } from "lucide-react";
 import Layout from "../components/Layout";
 import { useToast } from "../utils/Toast";
@@ -167,7 +167,7 @@ const DEVICE_TYPE_GRADIENT = {
 // ── Network Credential Detail Drawer ────────────────────────────────
 const DRAWER_TABS = [
   { key: "overview",    label: "Overview",    icon: ShieldCheck },
-  { key: "credential",  label: "Credential",  icon: Lock },
+  { key: "credential",  label: "Credentials", icon: Lock },
   { key: "connection",  label: "Connection",  icon: Cable },
   { key: "security",    label: "Security",    icon: ShieldAlert },
   { key: "timeline",    label: "Timeline",    icon: Activity },
@@ -935,18 +935,48 @@ export default function NetworkCredentials() {
     <Layout
       title={pageTitle}
       subtitle="Securely manage encrypted infrastructure credentials"
-      actions={
-        <button
-          className="btn btn-primary"
-          onClick={showForm && !editingId ? closeForm : openCreateForm}
-          style={{ display: "flex", alignItems: "center", gap: 7, borderRadius: 10, padding: "8px 16px", fontWeight: 600 }}
-        >
-          {showForm && !editingId ? <X size={15} /> : <Plus size={15} />}
-          {showForm && !editingId ? "Cancel" : "Add Credential"}
-        </button>
-      }
     >
       <div className="netcred-page">
+
+      {/* ── 1. Elegant workspace header ── */}
+      <div className="nc-hero">
+        <div className="nc-hero-text">
+          <h1 className="nc-hero-title">Network Credentials</h1>
+          <p className="nc-hero-desc">Find a device, check its credential health, and act — all in one place.</p>
+        </div>
+
+        <div className="nc-hero-actions">
+          <div className="nc-hero-search">
+            <Search size={14} className="nc-hero-search-icon" />
+            <input
+              className="nc-hero-search-input"
+              placeholder="Search devices, IPs, hosts…"
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+            />
+            {searchText && (
+              <button className="netcred-search-clear" onClick={() => setSearchText("")} title="Clear search">
+                <X size={12} />
+              </button>
+            )}
+          </div>
+
+          <button className="nc-hero-icon-btn" onClick={loadData} disabled={loading} title="Refresh">
+            <RefreshCw size={14} style={loading ? { animation: "spin 0.8s linear infinite" } : undefined} />
+          </button>
+          <button className="nc-hero-icon-btn" onClick={exportCSV} disabled={loading || sorted.length === 0} title="Export CSV">
+            <Download size={14} />
+          </button>
+
+          <button
+            className="btn btn-primary nc-hero-add-btn"
+            onClick={showForm && !editingId ? closeForm : openCreateForm}
+          >
+            {showForm && !editingId ? <X size={15} /> : <Plus size={15} />}
+            {showForm && !editingId ? "Cancel" : "Add Credential"}
+          </button>
+        </div>
+      </div>
 
       {/* ── Error banner ── */}
       {error && (
@@ -969,78 +999,27 @@ export default function NetworkCredentials() {
         </div>
       )}
 
-      {/* ── 1. Executive KPI row — exactly four cards ── */}
-      <div className="nc-kpi-row">
-        {kpis.map((k) => (
-          <div key={k.key} className="nc-kpi-card">
-            <div className="nc-kpi-top">
-              <span className="nc-kpi-icon">{k.icon}</span>
-              {k.trend && (
-                <span className={`nc-kpi-trend ${k.trend.dir}`}>
-                  <TrendingUp size={11} style={k.trend.dir === "down" ? { transform: "rotate(90deg)" } : undefined} />
-                  {k.trend.text}
-                </span>
-              )}
+      {/* ── 2. Compact operational summary — essential metrics only, one row ── */}
+      <div className="nc-summary-bar">
+        {kpis.map((k, i) => (
+          <React.Fragment key={k.key}>
+            {i > 0 && <span className="nc-summary-divider" aria-hidden="true" />}
+            <div className="nc-summary-stat">
+              <span className="nc-summary-icon">{k.icon}</span>
+              <div className="nc-summary-text">
+                <div className="nc-summary-value">
+                  {loading ? "—" : typeof k.value === "number" ? <CountUp value={k.value} /> : k.value}
+                </div>
+                <div className="nc-summary-label">{k.label}</div>
+              </div>
             </div>
-            <div className="nc-kpi-value">
-              {loading ? "—" : typeof k.value === "number" ? <CountUp value={k.value} /> : k.value}
-            </div>
-            <div className="nc-kpi-label">{k.label}</div>
-            <div className="nc-kpi-sub">{loading ? "\u00A0" : k.sub}</div>
-          </div>
+          </React.Fragment>
         ))}
-      </div>
-
-      {/* ── 2. Security overview strip ── */}
-      <div className="nc-security-strip">
-        <div className="nc-security-item">
-          <Lock size={13} />
-          <div>
-            <div className="nc-security-label">Vault Status</div>
-            <div className="nc-security-value">{unlocked ? `Unlocked · ${unlockSecondsLeft}s` : "Locked"}</div>
-          </div>
-        </div>
-        <div className="nc-security-item">
-          <ShieldCheck size={13} />
-          <div>
-            <div className="nc-security-label">AES Encryption</div>
-            <div className="nc-security-value">AES-256</div>
-          </div>
-        </div>
-        <div className="nc-security-item">
-          <ClipboardList size={13} />
-          <div>
-            <div className="nc-security-label">Avg. Credential Age</div>
-            <div className="nc-security-value">{avgCredentialAgeDays === null ? "—" : `${avgCredentialAgeDays}d`}</div>
-          </div>
-        </div>
-        <div className="nc-security-item">
-          <RotateCw size={13} />
-          <div>
-            <div className="nc-security-label">Last Rotation</div>
-            <div className="nc-security-value">{lastRotationDate ? formatDate(lastRotationDate) : "—"}</div>
-          </div>
-        </div>
-        <div className="nc-security-item">
-          <DatabaseBackup size={13} />
-          <div>
-            <div className="nc-security-label">Last Backup</div>
-            <div className="nc-security-value">Not configured</div>
-          </div>
-        </div>
-        <div className="nc-security-item">
-          <RefreshCw size={13} />
-          <div>
-            <div className="nc-security-label">Last Sync</div>
-            <div className="nc-security-value">{lastSyncAt ? formatDateTime(lastSyncAt) : "—"}</div>
-          </div>
-        </div>
-        <div className="nc-security-item">
-          <KeyRound size={13} />
-          <div>
-            <div className="nc-security-label">Rotation Compliance</div>
-            <div className="nc-security-value">{rotationCompliancePct}%</div>
-          </div>
+        <div className="nc-summary-spacer" />
+        <div className="nc-summary-caption">
+          {unlocked && <span className="nc-summary-caption-item nc-summary-caption-live"><Unlock size={11} /> Vault unlocked · {unlockSecondsLeft}s</span>}
+          {avgCredentialAgeDays !== null && <span className="nc-summary-caption-item">Avg. age {avgCredentialAgeDays}d</span>}
+          {lastSyncAt && <span className="nc-summary-caption-item">Synced {formatDateTime(lastSyncAt)}</span>}
         </div>
       </div>
 
@@ -1186,22 +1165,9 @@ export default function NetworkCredentials() {
       {/* ── 3. Sticky filter toolbar + 4. Device table (the main focus) ── */}
       <div className="netcred-table-card">
 
-        {/* Sticky toolbar */}
+        {/* Sticky filter toolbar — compact, single row, filters only */}
         <div className="nc-toolbar">
-          <div className="nc-toolbar-search">
-            <Search size={13} className="nc-toolbar-search-icon" />
-            <input
-              className="input nc-toolbar-search-input"
-              placeholder="Search devices, IPs, hosts…"
-              value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
-            />
-            {searchText && (
-              <button className="netcred-search-clear" onClick={() => setSearchText("")} title="Clear search">
-                <X size={12} />
-              </button>
-            )}
-          </div>
+          <span className="nc-toolbar-label">Filter</span>
 
           <select className="input nc-toolbar-select" value={brandFilter} onChange={(e) => setBrandFilter(e.target.value)} title="Vendor">
             {uniqueBrands.map((b) => <option key={b} value={b}>{b === "All" ? "All vendors" : b}</option>)}
@@ -1236,12 +1202,7 @@ export default function NetworkCredentials() {
 
           <div className="nc-toolbar-spacer" />
 
-          <button className="btn btn-secondary btn-icon nc-toolbar-icon-btn" onClick={loadData} disabled={loading} title="Refresh">
-            <RefreshCw size={13} style={loading ? { animation: "spin 0.8s linear infinite" } : undefined} />
-          </button>
-          <button className="btn btn-secondary btn-icon nc-toolbar-icon-btn" onClick={exportCSV} disabled={loading || sorted.length === 0} title="Export CSV">
-            <Download size={13} />
-          </button>
+          {!loading && <span className="nc-toolbar-count">{sorted.length} of {credentials.length} devices</span>}
         </div>
 
         {/* Bulk actions bar */}
@@ -1254,13 +1215,6 @@ export default function NetworkCredentials() {
                 <Trash2 size={13} style={{ marginRight: 5 }} /> {bulkDeleting ? "Deleting…" : "Delete Selected"}
               </button>
             </div>
-          </div>
-        )}
-
-        {/* Table subtitle row */}
-        {!loading && (
-          <div className="nc-table-meta">
-            <span>{sorted.length} of {credentials.length} devices</span>
           </div>
         )}
 
