@@ -8,10 +8,8 @@ import {
   ShieldCheck, Unlock, TimerReset, Download,
   ArrowUpDown, CheckSquare, Square,
   ShieldAlert, KeyRound, RotateCw, Activity,
-  Cable, FileClock, Paperclip, ChevronLeft, ChevronRight,
-  AlertCircle, CheckCircle,
-  ChevronDown, Filter, LayoutGrid, List,
-  Menu, Settings
+  Cable, ChevronLeft, ChevronRight,
+  AlertCircle, CheckCircle
 } from "lucide-react";
 import Layout from "../components/Layout";
 import { useToast } from "../utils/Toast";
@@ -44,7 +42,7 @@ const EMPTY_FORM = {
   deviceStatus: "Active",
 };
 
-// ── Status helpers (same logic as before) ──────────────────────
+// ── Status helpers ───────────────────────────────────────────────
 const ROTATION_HEALTHY_DAYS = 90;
 const ROTATION_DUE_DAYS = 180;
 
@@ -144,7 +142,7 @@ const SkeletonCard = () => (
   </div>
 );
 
-// ── Compact Device Card (used in the list) ──────────────────────
+// ── Compact Device Card ─────────────────────────────────────────
 const DeviceCard = ({
   cred,
   isSelected,
@@ -161,7 +159,6 @@ const DeviceCard = ({
   onDownload,
 }) => {
   const gradient = DEVICE_TYPE_GRADIENT[cred.deviceType] || DEVICE_TYPE_GRADIENT.Other;
-  const health = credentialHealth(cred);
 
   return (
     <div
@@ -603,7 +600,7 @@ export default function NetworkCredentials() {
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const [page, setPage] = useState(1);
-  const PAGE_SIZE = 8; // slightly smaller for master-detail
+  const PAGE_SIZE = 8;
 
   const [revealed, setRevealed] = useState({});
   const [revealingId, setRevealingId] = useState(null);
@@ -761,7 +758,6 @@ export default function NetworkCredentials() {
       .then(() => {
         toast("Credential deleted.", "success");
         setRevealed((r) => { const n = { ...r }; delete n[cred.id]; return n; });
-        // If viewing this credential, close panel
         if (viewingCred?.id === cred.id) setViewingCred(null);
         loadData();
       })
@@ -895,7 +891,6 @@ export default function NetworkCredentials() {
     setRotationFilter("All");
   };
 
-  // Selection
   const toggleSelectOne = (id) => {
     setSelectedIds((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
   };
@@ -920,7 +915,6 @@ export default function NetworkCredentials() {
         const okCount = results.filter((r) => r.status === "fulfilled").length;
         toast(`${okCount} of ${ids.length} credential(s) deleted.`, okCount === ids.length ? "success" : "error");
         clearSelection();
-        // If the currently viewed credential was deleted, close panel
         if (viewingCred && ids.includes(viewingCred.id)) setViewingCred(null);
         loadData();
       })
@@ -1018,7 +1012,7 @@ export default function NetworkCredentials() {
         }
       >
         <div className="nc-workspace">
-          {/* ── Left Sidebar ── */}
+          {/* Sidebar */}
           <aside className="nc-sidebar">
             <div className="nc-sidebar-stats">
               <div className="nc-stat">
@@ -1125,7 +1119,7 @@ export default function NetworkCredentials() {
             </div>
           </aside>
 
-          {/* ── Main Content ── */}
+          {/* Main Content */}
           <main className="nc-main">
             <div className="nc-main-toolbar">
               <div className="nc-search">
@@ -1241,7 +1235,7 @@ export default function NetworkCredentials() {
                 )}
               </div>
 
-              {/* ── Detail Panel ── */}
+              {/* Detail Panel */}
               <div className={`nc-detail-panel-wrapper ${viewingCred ? "is-open" : ""}`}>
                 {viewingCred ? (
                   <DetailPanel
