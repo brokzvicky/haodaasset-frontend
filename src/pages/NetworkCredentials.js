@@ -71,12 +71,7 @@ function credentialHealth(cred) {
   return { cls: "good", label: "Good" };
 }
 
-function formatDate(value) {
-  if (!value) return "—";
-  const d = new Date(value);
-  if (isNaN(d)) return "—";
-  return d.toLocaleDateString(undefined, { day: "2-digit", month: "short", year: "numeric" });
-}
+// formatDate is not used; only formatDateTime is used
 function formatDateTime(value) {
   if (!value) return "—";
   const d = new Date(value);
@@ -225,7 +220,7 @@ const DeviceCard = ({
   );
 };
 
-// ── Detail Panel (replaces the old drawer) ──────────────────────
+// ── Detail Panel ──────────────────────────────────────────────────
 const DetailPanel = ({
   cred,
   onClose,
