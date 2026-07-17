@@ -9,7 +9,7 @@ import {
   ArrowUpDown, CheckSquare, Square,
   ShieldAlert, KeyRound, RotateCw, Activity,
   Cable, ChevronLeft, ChevronRight,
-  AlertCircle, CheckCircle, ChevronDown,
+  AlertCircle, CheckCircle,
   Filter
 } from "lucide-react";
 import Layout from "../components/Layout";
