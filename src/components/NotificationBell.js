@@ -72,14 +72,13 @@ export default function NotificationBell() {
   const [ring, setRing] = useState(false);
   const prevPulseCountRef = useRef(0);
 
-  if (!ctx) return null;
   const {
     pulseNotifications = [], pulseUnread = 0, pulseConnected,
     markPulseRead, markAllPulseRead, snoozePulse, completePulse, clearCompletedPulse, completeTask,
     notifications = [], unread = 0,
     systemNotifications = [], systemUnread = 0, markSystemRead, markAllSystemRead,
     totalUnread = 0,
-  } = ctx;
+  } = ctx || {};
 
   // Ring the bell when a brand-new pulse notification streams in.
   useEffect(() => {
@@ -179,14 +178,14 @@ export default function NotificationBell() {
   const closeDrawer = () => setDrawerOpen(false);
 
   const handleMarkRead = (item) => {
-    if (item.source === "pulse") markPulseRead(item.raw.notificationId);
-    else if (item.source === "system") markSystemRead(item.raw.id);
+    if (item.source === "pulse") markPulseRead?.(item.raw.notificationId);
+    else if (item.source === "system") markSystemRead?.(item.raw.id);
     // asset-request read state is local-only (handled by ctx.toggleOpen elsewhere)
   };
 
   const handleMarkAllRead = () => {
-    markAllPulseRead();
-    markAllSystemRead();
+    markAllPulseRead?.();
+    markAllSystemRead?.();
   };
 
   const handleView = (item) => {
@@ -200,12 +199,14 @@ export default function NotificationBell() {
   };
 
   const handleComplete = (item) => {
-    if (item.category === "Task" && item.relatedRecordId) completeTask(item.relatedRecordId);
-    else completePulse(item.raw.notificationId);
+    if (item.category === "Task" && item.relatedRecordId) completeTask?.(item.relatedRecordId);
+    else completePulse?.(item.raw.notificationId);
   };
 
   const totalCount = totalUnread;
   const badgeText = totalCount > 99 ? "99+" : String(totalCount);
+
+  if (!ctx) return null;
 
   return (
     <div className="hz-notif-root" ref={rootRef}>
