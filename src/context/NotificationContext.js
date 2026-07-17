@@ -14,6 +14,7 @@ const NotificationContext = createContext(null);
 const API = "https://haodaasset-backend-1.onrender.com";
 const POLL_MS = 15_000; // poll every 15 s
 const SEEN_KEY = "iam_seen_requests"; // localStorage key for read IDs
+const TOKEN_KEY = "iam_token";
 
 function loadSeen() {
   try { return new Set(JSON.parse(localStorage.getItem(SEEN_KEY)) || []); }
@@ -29,11 +30,19 @@ export function NotificationProvider({ children }) {
 
   const [notifications, setNotifications] = useState([]); // all requests as notifications
   const [unread, setUnread]               = useState(0);
-  const [systemNotifications, setSystemNotifications] = useState([]); // warranty/maintenance alerts
+  const [systemNotifications, setSystemNotifications] = useState([]); // legacy warranty/maintenance alerts
   const [systemUnread, setSystemUnread]   = useState(0);
+
+  // ── Enterprise Notification Center (Haoda Pulse) ────────────────────────
+  const [pulseNotifications, setPulseNotifications] = useState([]);
+  const [pulseUnread, setPulseUnread] = useState(0);
+  const [pulseConnected, setPulseConnected] = useState(false);
+
   const [open, setOpen]                   = useState(false);
   const seenRef                           = useRef(loadSeen());
   const timerRef                          = useRef(null);
+  const pulseTimerRef                     = useRef(null);
+  const eventSourceRef                    = useRef(null);
 
   const buildNotifications = useCallback((requests) => {
     return requests
@@ -63,9 +72,7 @@ export function NotificationProvider({ children }) {
     }
   }, [isAdmin, buildNotifications]);
 
-  // System notifications: warranty expiring, maintenance due, etc. — generated
-  // server-side (NotificationGeneratorService) and already carry their own
-  // persisted read/unread state, so no localStorage bookkeeping needed here.
+  // Legacy system notifications: warranty expiring, maintenance due, etc.
   const fetchSystemNotifications = useCallback(async () => {
     if (!isAdmin) return;
     try {
@@ -93,14 +100,109 @@ export function NotificationProvider({ children }) {
     } catch { /* ignore */ }
   }, []);
 
+  // ── Pulse (new Enterprise Notification Center) ──────────────────────────
+
+  const fetchPulseNotifications = useCallback(async () => {
+    if (!isAdmin) return;
+    try {
+      const { data } = await axios.get(`${API}/api/admin/pulse/notifications`);
+      setPulseNotifications(data);
+      setPulseUnread(data.filter((n) => !n.read && n.status !== "Dismissed").length);
+    } catch {
+      // silent
+    }
+  }, [isAdmin]);
+
+  const markPulseRead = useCallback(async (id) => {
+    try {
+      await axios.put(`${API}/api/admin/pulse/notifications/${id}/read`);
+      setPulseNotifications((ns) => ns.map((n) => (n.notificationId === id ? { ...n, read: true } : n)));
+      setPulseUnread((u) => Math.max(0, u - 1));
+    } catch { /* ignore */ }
+  }, []);
+
+  const markAllPulseRead = useCallback(async () => {
+    try {
+      await axios.put(`${API}/api/admin/pulse/notifications/mark-all-read`);
+      setPulseNotifications((ns) => ns.map((n) => ({ ...n, read: true })));
+      setPulseUnread(0);
+    } catch { /* ignore */ }
+  }, []);
+
+  const snoozePulse = useCallback(async (id, minutes = 60) => {
+    try {
+      const { data } = await axios.put(`${API}/api/admin/pulse/notifications/${id}/snooze`, { minutes });
+      setPulseNotifications((ns) => ns.map((n) => (n.notificationId === id ? data : n)));
+      setPulseUnread((u) => Math.max(0, u - 1));
+    } catch { /* ignore */ }
+  }, []);
+
+  const completePulse = useCallback(async (id) => {
+    try {
+      const { data } = await axios.put(`${API}/api/admin/pulse/notifications/${id}/complete`);
+      setPulseNotifications((ns) => ns.map((n) => (n.notificationId === id ? data : n)));
+      setPulseUnread((u) => Math.max(0, u - 1));
+    } catch { /* ignore */ }
+  }, []);
+
+  const clearCompletedPulse = useCallback(async () => {
+    try {
+      await axios.delete(`${API}/api/admin/pulse/notifications/clear-completed`);
+      setPulseNotifications((ns) => ns.filter((n) => n.status !== "Actioned"));
+    } catch { /* ignore */ }
+  }, []);
+
+  const completeTask = useCallback(async (taskId) => {
+    try {
+      await axios.put(`${API}/api/admin/pulse/tasks/${taskId}/complete`);
+      fetchPulseNotifications();
+    } catch { /* ignore */ }
+  }, [fetchPulseNotifications]);
+
+  const snoozeTask = useCallback(async () => { /* placeholder — tasks don't snooze directly, their notifications do */ }, []);
+
+  // Real-time stream, falls back to polling automatically if it can't connect.
+  useEffect(() => {
+    if (!isAdmin) return;
+    const token = sessionStorage.getItem(TOKEN_KEY);
+    if (!token || typeof window === "undefined" || typeof window.EventSource === "undefined") return;
+
+    try {
+      const es = new window.EventSource(`${API}/api/admin/pulse/notifications/stream?token=${encodeURIComponent(token)}`);
+      eventSourceRef.current = es;
+
+      es.addEventListener("connected", () => setPulseConnected(true));
+      es.addEventListener("notification", (evt) => {
+        try {
+          const notif = JSON.parse(evt.data);
+          setPulseNotifications((ns) => [notif, ...ns.filter((n) => n.notificationId !== notif.notificationId)]);
+          setPulseUnread((u) => u + 1);
+        } catch { /* ignore malformed payload */ }
+      });
+      es.onerror = () => { setPulseConnected(false); };
+
+      return () => { es.close(); eventSourceRef.current = null; };
+    } catch {
+      setPulseConnected(false);
+    }
+  }, [isAdmin]);
+
   // Start polling when admin is logged in
   useEffect(() => {
-    if (!isAdmin) { setNotifications([]); setUnread(0); setSystemNotifications([]); setSystemUnread(0); return; }
+    if (!isAdmin) {
+      setNotifications([]); setUnread(0);
+      setSystemNotifications([]); setSystemUnread(0);
+      setPulseNotifications([]); setPulseUnread(0);
+      return;
+    }
     fetchRequests();
     fetchSystemNotifications();
+    fetchPulseNotifications();
     timerRef.current = setInterval(() => { fetchRequests(); fetchSystemNotifications(); }, POLL_MS);
-    return () => clearInterval(timerRef.current);
-  }, [isAdmin, fetchRequests, fetchSystemNotifications]);
+    // Pulse notifications poll too (in addition to SSE) as a resilience net.
+    pulseTimerRef.current = setInterval(() => { fetchPulseNotifications(); }, POLL_MS);
+    return () => { clearInterval(timerRef.current); clearInterval(pulseTimerRef.current); };
+  }, [isAdmin, fetchRequests, fetchSystemNotifications, fetchPulseNotifications]);
 
   // Open / close the dropdown; mark all as read on open
   const toggleOpen = useCallback(() => {
@@ -124,7 +226,10 @@ export function NotificationProvider({ children }) {
     <NotificationContext.Provider value={{
       notifications, unread, open, toggleOpen, close, refresh,
       systemNotifications, systemUnread, markSystemRead, markAllSystemRead,
-      totalUnread: unread + systemUnread,
+      pulseNotifications, pulseUnread, pulseConnected,
+      fetchPulseNotifications, markPulseRead, markAllPulseRead,
+      snoozePulse, completePulse, clearCompletedPulse, completeTask, snoozeTask,
+      totalUnread: unread + systemUnread + pulseUnread,
     }}>
       {children}
     </NotificationContext.Provider>

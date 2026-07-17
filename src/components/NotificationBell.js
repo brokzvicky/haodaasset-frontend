@@ -1,181 +1,381 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useNotifications } from "../context/NotificationContext";
+import {
+  Bell, X, CheckCheck, Trash2, Settings, Clock, AlertTriangle, AlertCircle,
+  Info, CheckCircle2, Laptop, ShieldAlert, Receipt, UserPlus,
+  ClipboardList, ArrowUpRight, Moon, RotateCcw, Wifi, WifiOff,
+} from "lucide-react";
 import "./NotificationBell.css";
 
-const URGENCY_COLOR = { Critical: "#dc2626", Urgent: "#d97706", Normal: "#16a34a" };
-const URGENCY_BG    = { Critical: "#fef2f2", Urgent: "#fffbeb", Normal: "#f0fdf4" };
+/* ── Category → icon + module route ─────────────────────────────────── */
+const CATEGORY_META = {
+  Task:     { icon: ClipboardList, route: "/pulse" },
+  Asset:    { icon: Laptop,        route: "/assets" },
+  Billing:  { icon: Receipt,       route: "/service-billing" },
+  Security: { icon: ShieldAlert,   route: "/network-credentials" },
+  System:   { icon: Info,          route: null },
+  Request:  { icon: UserPlus,      route: "/asset-requests" },
+};
 
-const BellSvg = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
-    <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
-  </svg>
-);
+const PRIORITY_META = {
+  Critical: { label: "Critical", icon: AlertTriangle, className: "hz-p-critical" },
+  High:     { label: "High",     icon: AlertCircle,   className: "hz-p-high" },
+  Normal:   { label: "Normal",   icon: Info,           className: "hz-p-normal" },
+  Low:      { label: "Low",      icon: CheckCircle2,   className: "hz-p-low" },
+};
 
-const DocSvg = () => (
-  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-    <polyline points="14 2 14 8 20 8"/>
-  </svg>
-);
+const TYPE_LABEL = {
+  UPCOMING_TASK: "Upcoming Task", DUE_TODAY: "Due Today", OVERDUE_TASK: "Overdue Task",
+  HIGH_PRIORITY_TASK: "High Priority", TASK_ASSIGNED: "Task Assigned", TASK_COMPLETED: "Task Completed",
+  ASSET_RETURN_REMINDER: "Asset Return", WARRANTY_EXPIRY: "Warranty Expiry", LICENSE_EXPIRY: "License Expiry",
+  SERVICE_BILLING_DUE: "Billing Due", NETWORK_CREDENTIAL_ROTATION: "Credential Rotation",
+  FIRMWARE_UPDATE_REMINDER: "Firmware Update", SECURITY_ALERT: "Security Alert", BACKUP_REMINDER: "Backup Reminder",
+};
 
 function timeAgo(dateStr) {
   if (!dateStr) return "";
   const diff = (Date.now() - new Date(dateStr)) / 1000;
-  if (diff < 60)    return "Just now";
-  if (diff < 3600)  return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 60) return "Just now";
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
   if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
   return `${Math.floor(diff / 86400)}d ago`;
 }
 
-function NotifItem({ n, onClick }) {
-  const color = URGENCY_COLOR[n.urgency] || "#2563eb";
-  const bg    = URGENCY_BG[n.urgency]    || "#eff6ff";
-
-  return (
-    <div className={`notif-item ${!n.read ? "unread" : ""}`} onClick={onClick}>
-      {!n.read && <div className="notif-indicator" />}
-
-      <div className="notif-icon" style={{ background: bg, border: `1px solid ${color}22` }}>
-        <DocSvg />
-      </div>
-
-      <div className="notif-content">
-        <div className="notif-content-header">
-          <span className="notif-item-title">Asset Request</span>
-          {!n.read && <span className="notif-dot" />}
-          <span className="notif-urgency" style={{ color, background: bg }}>
-            {n.urgency}
-          </span>
-        </div>
-        <div className="notif-desc">
-          <span className="notif-desc-bold">{n.employeeName}</span>
-          {" "}
-          <span style={{ color: "var(--gray-400)", fontSize: 11 }}>({n.employeeId})</span>
-          {" · "}
-          <span className="notif-desc-bold">{n.assetType}</span>
-        </div>
-        <div className="notif-time">{timeAgo(n.requestedAt)}</div>
-      </div>
-    </div>
-  );
+function timeRemaining(dueDate) {
+  if (!dueDate) return null;
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const due = new Date(dueDate + "T00:00:00");
+  const days = Math.round((due - today) / 86400000);
+  if (days < 0) return { text: `Overdue ${Math.abs(days)}d`, tone: "overdue" };
+  if (days === 0) return { text: "Due today", tone: "today" };
+  if (days === 1) return { text: "Due tomorrow", tone: "soon" };
+  return { text: `Due in ${days}d`, tone: days <= 3 ? "soon" : "later" };
 }
 
-const AlertSvg = () => (
-  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
-  </svg>
-);
-
-const SEVERITY_COLOR = { critical: "#dc2626", warning: "#d97706", info: "#2563eb" };
-const SEVERITY_BG    = { critical: "#fef2f2", warning: "#fffbeb", info: "#eff6ff" };
-
-function SystemNotifItem({ n, onClick }) {
-  const color = SEVERITY_COLOR[n.severity] || "#2563eb";
-  const bg    = SEVERITY_BG[n.severity]    || "#eff6ff";
-
-  return (
-    <div className={`notif-item ${!n.read ? "unread" : ""}`} onClick={onClick}>
-      {!n.read && <div className="notif-indicator" />}
-      <div className="notif-icon" style={{ background: bg, border: `1px solid ${color}22` }}>
-        <AlertSvg />
-      </div>
-      <div className="notif-content">
-        <div className="notif-content-header">
-          <span className="notif-item-title">{n.title}</span>
-          {!n.read && <span className="notif-dot" />}
-        </div>
-        <div className="notif-desc">{n.message}</div>
-        <div className="notif-time">{timeAgo(n.createdAt)}</div>
-      </div>
-    </div>
-  );
+function dayBucket(dateStr) {
+  const d = new Date(dateStr);
+  const now = new Date();
+  const startOf = (x) => { const c = new Date(x); c.setHours(0, 0, 0, 0); return c.getTime(); };
+  const diffDays = Math.round((startOf(now) - startOf(d)) / 86400000);
+  if (diffDays <= 0) return "Today";
+  if (diffDays === 1) return "Yesterday";
+  return "Earlier";
 }
 
 export default function NotificationBell() {
-  const {
-    notifications, unread, open, toggleOpen, close,
-    systemNotifications = [], systemUnread = 0, markSystemRead,
-  } = useNotifications();
+  const ctx = useNotifications();
   const navigate = useNavigate();
-  const ref = useRef(null);
+  const rootRef = useRef(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [filter, setFilter] = useState("all"); // all | unread | task | asset | security | billing
+  const [ring, setRing] = useState(false);
+  const prevPulseCountRef = useRef(0);
 
+  if (!ctx) return null;
+  const {
+    pulseNotifications = [], pulseUnread = 0, pulseConnected,
+    markPulseRead, markAllPulseRead, snoozePulse, completePulse, clearCompletedPulse, completeTask,
+    notifications = [], unread = 0,
+    systemNotifications = [], systemUnread = 0, markSystemRead, markAllSystemRead,
+    totalUnread = 0,
+  } = ctx;
+
+  // Ring the bell when a brand-new pulse notification streams in.
   useEffect(() => {
-    function handler(e) { if (ref.current && !ref.current.contains(e.target)) close(); }
-    function handleKey(e) { if (e.key === "Escape") close(); }
-    if (open) {
-      document.addEventListener("mousedown", handler);
-      document.addEventListener("keydown", handleKey);
+    if (pulseNotifications.length > prevPulseCountRef.current && prevPulseCountRef.current !== 0) {
+      setRing(true);
+      const t = setTimeout(() => setRing(false), 900);
+      return () => clearTimeout(t);
     }
-    return () => {
-      document.removeEventListener("mousedown", handler);
-      document.removeEventListener("keydown", handleKey);
-    };
-  }, [open, close]);
+    prevPulseCountRef.current = pulseNotifications.length;
+  }, [pulseNotifications.length]);
 
-  const goToRequests = () => { close(); navigate("/asset-requests"); };
+  // Close on outside click / Escape
+  useEffect(() => {
+    if (!drawerOpen) return;
+    const onKey = (e) => { if (e.key === "Escape") setDrawerOpen(false); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [drawerOpen]);
+
+  // Normalize every source into one shape the drawer can render uniformly.
+  const merged = useMemo(() => {
+    const fromPulse = pulseNotifications
+      .filter((n) => n.status !== "Dismissed")
+      .map((n) => ({
+        uid: `pulse-${n.notificationId}`,
+        source: "pulse",
+        raw: n,
+        title: n.title,
+        description: n.description,
+        category: n.category || "System",
+        notificationType: n.notificationType,
+        priority: n.priority || "Normal",
+        relatedModule: n.relatedModule,
+        relatedRecordId: n.relatedRecordId,
+        dueDate: n.dueDate,
+        createdAt: n.createdAt,
+        read: n.isRead ?? n.read,
+        status: n.status,
+      }));
+
+    const fromSystem = systemNotifications.map((n) => ({
+      uid: `system-${n.id}`,
+      source: "system",
+      raw: n,
+      title: n.title,
+      description: n.message,
+      category: "System",
+      notificationType: n.type || "SYSTEM",
+      priority: n.severity === "critical" ? "Critical" : n.severity === "warning" ? "High" : "Normal",
+      relatedModule: null,
+      relatedRecordId: null,
+      dueDate: null,
+      createdAt: n.createdAt,
+      read: n.read,
+      status: n.read ? "Actioned" : "Pending",
+    }));
+
+    const fromRequests = notifications.map((n) => ({
+      uid: `request-${n.id}`,
+      source: "request",
+      raw: n,
+      title: "New asset request",
+      description: `${n.employeeName || n.employeeId} requested ${n.assetType || "an asset"}`,
+      category: "Request",
+      notificationType: "ASSET_REQUEST",
+      priority: n.urgency === "Critical" ? "Critical" : n.urgency === "Urgent" ? "High" : "Normal",
+      relatedModule: "ASSET_REQUEST",
+      relatedRecordId: n.id,
+      dueDate: null,
+      createdAt: n.requestedAt,
+      read: n.read,
+      status: n.read ? "Actioned" : "Pending",
+    }));
+
+    return [...fromPulse, ...fromSystem, ...fromRequests]
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  }, [pulseNotifications, systemNotifications, notifications]);
+
+  const filtered = useMemo(() => {
+    switch (filter) {
+      case "unread":   return merged.filter((n) => !n.read);
+      case "task":     return merged.filter((n) => n.category === "Task");
+      case "asset":    return merged.filter((n) => n.category === "Asset");
+      case "security": return merged.filter((n) => n.category === "Security");
+      case "billing":  return merged.filter((n) => n.category === "Billing");
+      default:         return merged;
+    }
+  }, [merged, filter]);
+
+  const grouped = useMemo(() => {
+    const groups = { Today: [], Yesterday: [], Earlier: [] };
+    filtered.forEach((n) => groups[dayBucket(n.createdAt)].push(n));
+    return groups;
+  }, [filtered]);
+
+  const openDrawer = () => setDrawerOpen(true);
+  const closeDrawer = () => setDrawerOpen(false);
+
+  const handleMarkRead = (item) => {
+    if (item.source === "pulse") markPulseRead(item.raw.notificationId);
+    else if (item.source === "system") markSystemRead(item.raw.id);
+    // asset-request read state is local-only (handled by ctx.toggleOpen elsewhere)
+  };
+
+  const handleMarkAllRead = () => {
+    markAllPulseRead();
+    markAllSystemRead();
+  };
+
+  const handleView = (item) => {
+    const meta = CATEGORY_META[item.category];
+    if (item.category === "Task" && item.relatedRecordId) {
+      navigate(`/pulse?task=${item.relatedRecordId}`);
+    } else if (meta?.route) {
+      navigate(meta.route);
+    }
+    closeDrawer();
+  };
+
+  const handleComplete = (item) => {
+    if (item.category === "Task" && item.relatedRecordId) completeTask(item.relatedRecordId);
+    else completePulse(item.raw.notificationId);
+  };
+
+  const totalCount = totalUnread;
+  const badgeText = totalCount > 99 ? "99+" : String(totalCount);
 
   return (
-    <div ref={ref} className="notif-bell-wrapper">
+    <div className="hz-notif-root" ref={rootRef}>
       <button
-        className={`topbar-btn notif-btn ${open ? "is-open" : ""}`}
-        onClick={toggleOpen}
-        title="Notifications"
-        aria-label={`Notifications${unread > 0 ? `, ${unread} unread` : ""}`}
-        aria-expanded={open}
-        aria-haspopup="true"
+        className={`hz-bell-btn ${ring ? "hz-bell-ring" : ""}`}
+        onClick={openDrawer}
+        aria-label="Notifications"
+        aria-haspopup="dialog"
+        aria-expanded={drawerOpen}
       >
-        <BellSvg />
-        {(unread + systemUnread) > 0 && (
-          <span className="notif-badge-icon">{(unread + systemUnread) > 9 ? "9+" : (unread + systemUnread)}</span>
-        )}
+        <Bell size={19} strokeWidth={2} />
+        {totalCount > 0 && <span className="hz-bell-badge">{badgeText}</span>}
       </button>
 
-      {open && (
-        <div className="notif-panel" role="dialog" aria-label="Notifications">
-          <div className="notif-header">
-            <div>
-              <div className="notif-title">
-                Notifications
-                {(unread + systemUnread) > 0 && <span className="notif-count-badge">{unread + systemUnread} new</span>}
+      {drawerOpen && (
+        <>
+          <div className="hz-drawer-overlay" onClick={closeDrawer} />
+          <aside className="hz-drawer" role="dialog" aria-label="Notification Center">
+            <header className="hz-drawer-header">
+              <div className="hz-drawer-heading">
+                <div className="hz-drawer-title-row">
+                  <h2>Notification Center</h2>
+                  <span className={`hz-live-dot ${pulseConnected ? "hz-live-on" : "hz-live-off"}`} title={pulseConnected ? "Live" : "Polling"}>
+                    {pulseConnected ? <Wifi size={12} /> : <WifiOff size={12} />}
+                    {pulseConnected ? "Live" : "Polling"}
+                  </span>
+                </div>
+                <p className="hz-drawer-subtitle">
+                  {totalCount === 0 ? "You're all caught up" : `${totalCount} unread across ${merged.length} notifications`}
+                </p>
               </div>
-              <div className="notif-subtitle">
-                {notifications.length} pending request{notifications.length !== 1 ? "s" : ""}
-                {systemNotifications.length > 0 && ` · ${systemNotifications.length} system alert${systemNotifications.length !== 1 ? "s" : ""}`}
+              <button className="hz-icon-btn" onClick={closeDrawer} aria-label="Close">
+                <X size={18} />
+              </button>
+            </header>
+
+            <div className="hz-drawer-toolbar">
+              <div className="hz-filter-pills">
+                {[
+                  ["all", "All"], ["unread", "Unread"], ["task", "Tasks"],
+                  ["asset", "Assets"], ["security", "Security"], ["billing", "Billing"],
+                ].map(([key, label]) => (
+                  <button
+                    key={key}
+                    className={`hz-pill ${filter === key ? "hz-pill-active" : ""}`}
+                    onClick={() => setFilter(key)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <div className="hz-toolbar-actions">
+                <button className="hz-text-btn" onClick={handleMarkAllRead} title="Mark all as read">
+                  <CheckCheck size={14} /> Mark all read
+                </button>
+                <button className="hz-text-btn" onClick={clearCompletedPulse} title="Clear completed notifications">
+                  <Trash2 size={14} /> Clear completed
+                </button>
+                <button className="hz-icon-btn hz-icon-btn-sm" onClick={() => { navigate("/settings"); closeDrawer(); }} title="Notification settings">
+                  <Settings size={15} />
+                </button>
               </div>
             </div>
-            <button onClick={goToRequests} className="notif-view-all">View all →</button>
-          </div>
 
-          <div className="notif-list">
-            {notifications.length === 0 && systemNotifications.length === 0 ? (
-              <div className="notif-empty">
-                <div style={{ fontSize: 30, marginBottom: 10 }}>🎉</div>
-                <div style={{ fontSize: 13.5, fontWeight: 600, color: "var(--gray-700)", marginBottom: 4 }}>All caught up!</div>
-                <div style={{ fontSize: 12.5 }}>No pending requests or alerts.</div>
-              </div>
-            ) : (
-              <>
-                {systemNotifications.slice(0, 10).map((n) => (
-                  <SystemNotifItem key={`sys-${n.id}`} n={n} onClick={() => markSystemRead?.(n.id)} />
-                ))}
-                {notifications.map((n) => (
-                  <NotifItem key={n.id} n={n} onClick={goToRequests} />
-                ))}
-              </>
+            <div className="hz-drawer-body">
+              {filtered.length === 0 ? (
+                <div className="hz-empty-state">
+                  <div className="hz-empty-icon"><Bell size={26} /></div>
+                  <p>No notifications here.</p>
+                  <span>New reminders will appear the moment they're triggered.</span>
+                </div>
+              ) : (
+                ["Today", "Yesterday", "Earlier"].map((bucket) =>
+                  grouped[bucket].length === 0 ? null : (
+                    <section className="hz-group" key={bucket}>
+                      <h3 className="hz-group-label">{bucket}</h3>
+                      <div className="hz-card-list">
+                        {grouped[bucket].map((item) => (
+                          <NotificationCard
+                            key={item.uid}
+                            item={item}
+                            onView={() => handleView(item)}
+                            onComplete={() => handleComplete(item)}
+                            onSnooze={() => item.source === "pulse" && snoozePulse(item.raw.notificationId, 60)}
+                            onMarkRead={() => handleMarkRead(item)}
+                          />
+                        ))}
+                      </div>
+                    </section>
+                  )
+                )
+              )}
+            </div>
+          </aside>
+        </>
+      )}
+    </div>
+  );
+}
+
+function NotificationCard({ item, onView, onComplete, onSnooze, onMarkRead }) {
+  const catMeta = CATEGORY_META[item.category] || CATEGORY_META.System;
+  const CatIcon = catMeta.icon;
+  const prio = PRIORITY_META[item.priority] || PRIORITY_META.Normal;
+  const PrioIcon = prio.icon;
+  const remaining = timeRemaining(item.dueDate);
+  const isTask = item.category === "Task";
+  const isActionable = item.source === "pulse" && item.status !== "Actioned" && item.status !== "Snoozed";
+
+  return (
+    <article className={`hz-card ${!item.read ? "hz-card-unread" : ""}`}>
+      <div className={`hz-card-rail ${prio.className}`} />
+      <div className="hz-card-main">
+        <div className="hz-card-top">
+          <span className={`hz-cat-icon ${prio.className}`}><CatIcon size={14} /></span>
+          <div className="hz-card-title-block">
+            <div className="hz-card-title-row">
+              <h4 className="hz-card-title">{item.title}</h4>
+              {!item.read && <span className="hz-unread-dot" aria-label="Unread" />}
+            </div>
+            <div className="hz-card-meta-row">
+              <span className={`hz-prio-chip ${prio.className}`}><PrioIcon size={11} /> {prio.label}</span>
+              <span className="hz-type-chip">{TYPE_LABEL[item.notificationType] || item.category}</span>
+              {item.status === "Snoozed" && <span className="hz-type-chip hz-snoozed"><Moon size={11} /> Snoozed</span>}
+            </div>
+          </div>
+          <span className="hz-time-ago">{timeAgo(item.createdAt)}</span>
+        </div>
+
+        {item.description && <p className="hz-card-desc">{item.description}</p>}
+
+        <div className="hz-card-footer">
+          <div className="hz-card-tags">
+            {item.dueDate && (
+              <span className="hz-tag">
+                <Clock size={11} /> {item.dueDate}
+              </span>
+            )}
+            {remaining && (
+              <span className={`hz-tag hz-remaining-${remaining.tone}`}>{remaining.text}</span>
+            )}
+            {item.relatedModule && (
+              <span className="hz-tag hz-tag-module">{item.relatedModule.replace(/_/g, " ")}</span>
             )}
           </div>
 
-          {notifications.length > 0 && (
-            <div className="notif-footer">
-              <button onClick={goToRequests} className="notif-footer-btn">
-                Open Asset Requests →
+          <div className="hz-card-actions">
+            {(isTask || catMeta.route) && (
+              <button className="hz-action-btn" onClick={onView}>
+                <ArrowUpRight size={13} /> {isTask ? "View Task" : "View"}
               </button>
-            </div>
-          )}
+            )}
+            {isActionable && (
+              <button className="hz-action-btn" onClick={onComplete}>
+                <CheckCircle2 size={13} /> Mark Complete
+              </button>
+            )}
+            {isActionable && (
+              <button className="hz-action-btn" onClick={onSnooze}>
+                <RotateCcw size={13} /> Snooze
+              </button>
+            )}
+            {!item.read && (
+              <button className="hz-action-btn hz-action-btn-quiet" onClick={onMarkRead}>
+                <CheckCheck size={13} /> Mark as Read
+              </button>
+            )}
+          </div>
         </div>
-      )}
-    </div>
+      </div>
+    </article>
   );
 }

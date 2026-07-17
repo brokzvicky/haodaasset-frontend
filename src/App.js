@@ -21,6 +21,7 @@ import AssetEmailLogs from "./pages/AssetEmailLogs";
 import EmployeeDashboard from "./pages/EmployeeDashboard";
 import { EmployeeAssets, EmployeeProfile, EmployeeRequest, EmployeePassword } from "./pages/EmployeePages";
 import Maintenance from "./pages/Maintenance";
+import HaodaPulse from "./pages/HaodaPulse";
 
 function App() {
   return (
@@ -40,6 +41,7 @@ function App() {
               <Route path="/network-credentials" element={<AdminRoute><NetworkCredentials /></AdminRoute>} />
               <Route path="/service-billing" element={<AdminRoute><ServiceBilling /></AdminRoute>} />
               <Route path="/maintenance"    element={<AdminRoute><Maintenance /></AdminRoute>} />
+              <Route path="/pulse"         element={<AdminRoute><HaodaPulse /></AdminRoute>} />
               <Route path="/reports"       element={<AdminRoute><Reports /></AdminRoute>} />
               <Route path="/settings"      element={<AdminRoute><Settings /></AdminRoute>} />
               <Route path="/activity-log"  element={<AdminRoute><ActivityLog /></AdminRoute>} />

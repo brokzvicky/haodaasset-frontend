@@ -6,6 +6,8 @@ import { StatusPieChart, AssetTypeBarChart } from "../components/DashboardChart"
 import StatusPill from "../components/StatusPill";
 import CountUp from "../components/CountUp";
 import { useAuth } from "../context/AuthContext";
+import { useNotifications } from "../context/NotificationContext";
+import { ClipboardList, Laptop, Receipt, ShieldAlert, Info, ArrowUpRight, CheckCircle2 } from "lucide-react";
 import "./Dashboard.css";
 
 const API = "https://haodaasset-backend-1.onrender.com";
@@ -105,6 +107,85 @@ function QuickAction({ label, icon, color, bg, link }) {
 function activityIcon(type) {
   if (type === "assign") return { bg: "#eff6ff", el: <IconMonitor /> };
   return { bg: "#f0fdf4", el: <span style={{ fontSize: 14 }}>↩</span> };
+}
+
+/* ── Recent Notifications widget (Haoda Pulse / Enterprise Notification Center) ── */
+const RN_CATEGORY_ICON = { Task: ClipboardList, Asset: Laptop, Billing: Receipt, Security: ShieldAlert, System: Info };
+const RN_PRIORITY_COLOR = { Critical: "#dc2626", High: "#ea580c", Normal: "#2563eb", Low: "#16a34a" };
+
+function RecentNotificationsWidget() {
+  const navigate = useNavigate();
+  const ctx = useNotifications();
+  const items = (ctx?.pulseNotifications || []).filter((n) => n.status !== "Dismissed").slice(0, 6);
+
+  return (
+    <div className="card" style={{ marginBottom: 16 }}>
+      <div className="card-header">
+        <div>
+          <div className="card-title">Recent Notifications</div>
+          <div className="card-subtitle">Latest reminders from the Enterprise Notification Center</div>
+        </div>
+        <button className="btn btn-secondary btn-sm" onClick={() => navigate("/pulse")}>View All</button>
+      </div>
+      <div className="card-body" style={{ padding: 0 }}>
+        {items.length === 0 ? (
+          <div className="empty-state" style={{ padding: "28px 0" }}>
+            <div className="empty-icon">🔔</div>
+            <div className="empty-title">No notifications yet</div>
+            <div className="empty-sub">Task and module reminders will show up here as they're triggered.</div>
+          </div>
+        ) : (
+          <div className="table-wrap">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Priority</th>
+                  <th>Notification</th>
+                  <th>Module</th>
+                  <th>Time</th>
+                  <th>Status</th>
+                  <th>Quick Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {items.map((n) => {
+                  const Icon = RN_CATEGORY_ICON[n.category] || Info;
+                  const color = RN_PRIORITY_COLOR[n.priority] || "#2563eb";
+                  return (
+                    <tr key={n.notificationId}>
+                      <td>
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: 6, color, fontWeight: 700, fontSize: 12 }}>
+                          <Icon size={14} /> {n.priority}
+                        </span>
+                      </td>
+                      <td style={{ maxWidth: 260 }}>
+                        <div style={{ fontWeight: 600, fontSize: 12.5 }}>{n.title}</div>
+                      </td>
+                      <td className="muted">{n.relatedModule ? n.relatedModule.replace(/_/g, " ") : "—"}</td>
+                      <td className="muted">{new Date(n.createdAt).toLocaleString()}</td>
+                      <td><StatusPill status={n.isRead ? "Read" : "Unread"} /></td>
+                      <td>
+                        <div style={{ display: "flex", gap: 6 }}>
+                          <button className="btn btn-secondary btn-sm" onClick={() => navigate("/pulse")} title="View">
+                            <ArrowUpRight size={13} />
+                          </button>
+                          {!n.isRead && (
+                            <button className="btn btn-secondary btn-sm" onClick={() => ctx?.markPulseRead(n.notificationId)} title="Mark as read">
+                              <CheckCircle2 size={13} />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
 
 /* ── Main ──────────────────────────────────────────────────────── */
@@ -486,6 +567,9 @@ export default function Dashboard() {
           )}
         </div>
       </div>
+
+      {/* Recent Notifications (Haoda Pulse) */}
+      <RecentNotificationsWidget />
 
       {/* Bottom row */}
       <div className="grid-2">
