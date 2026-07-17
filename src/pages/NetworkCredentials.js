@@ -832,16 +832,18 @@ export default function NetworkCredentials() {
     [credentials, searchText, typeFilter, brandFilter, locationFilter, statusFilter, rotationFilter]
   );
 
-  const SORT_ACCESSORS = {
-    device:   (c) => (c.deviceName || "").toLowerCase(),
-    vendor:   (c) => (c.brand || "").toLowerCase(),
-    ip:       (c) => (c.ipAddress || ""),
-    location: (c) => (c.location || "").toLowerCase(),
-    rotation: (c) => rotationStatus(c).age ?? -1,
-    updated:  (c) => new Date(c.updatedAt || c.createdAt || 0).getTime(),
-  };
-
+  // ── Sorting – SORT_ACCESSORS is now defined inside the useMemo ──
   const sorted = useMemo(() => {
+    // Define the accessors inside the callback so they don't become a dependency
+    const SORT_ACCESSORS = {
+      device:   (c) => (c.deviceName || "").toLowerCase(),
+      vendor:   (c) => (c.brand || "").toLowerCase(),
+      ip:       (c) => (c.ipAddress || ""),
+      location: (c) => (c.location || "").toLowerCase(),
+      rotation: (c) => rotationStatus(c).age ?? -1,
+      updated:  (c) => new Date(c.updatedAt || c.createdAt || 0).getTime(),
+    };
+
     if (!sortKey) return filtered;
     const acc = SORT_ACCESSORS[sortKey];
     const arr = [...filtered].sort((a, b) => {
@@ -852,7 +854,7 @@ export default function NetworkCredentials() {
     });
     if (sortDir === "desc") arr.reverse();
     return arr;
-  }, [filtered, sortKey, sortDir, SORT_ACCESSORS]);
+  }, [filtered, sortKey, sortDir]); // No SORT_ACCESSORS dependency
 
   const toggleSort = (key) => {
     if (sortKey !== key) { setSortKey(key); setSortDir("asc"); return; }
