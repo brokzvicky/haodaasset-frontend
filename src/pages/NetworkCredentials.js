@@ -9,7 +9,9 @@ import {
   ArrowUpDown, CheckSquare, Square,
   ShieldAlert, KeyRound, RotateCw, Activity,
   Cable, FileClock, Paperclip, ChevronLeft, ChevronRight,
-  AlertCircle, CheckCircle
+  AlertCircle, CheckCircle,
+  ChevronDown, Filter, LayoutGrid, List,
+  Menu, Settings
 } from "lucide-react";
 import Layout from "../components/Layout";
 import { useToast } from "../utils/Toast";
@@ -42,7 +44,7 @@ const EMPTY_FORM = {
   deviceStatus: "Active",
 };
 
-// ── Status helpers ───────────────────────────────────────────────
+// ── Status helpers (same logic as before) ──────────────────────
 const ROTATION_HEALTHY_DAYS = 90;
 const ROTATION_DUE_DAYS = 180;
 
@@ -142,11 +144,12 @@ const SkeletonCard = () => (
   </div>
 );
 
-// ── Device Card ───────────────────────────────────────────────────
+// ── Compact Device Card (used in the list) ──────────────────────
 const DeviceCard = ({
   cred,
   isSelected,
   onSelect,
+  onViewDetail,
   onOpenMenu,
   isMenuOpen,
   menuPos,
@@ -156,33 +159,46 @@ const DeviceCard = ({
   onCopyIp,
   onRotatePassword,
   onDownload,
-  onViewDetail,
 }) => {
   const gradient = DEVICE_TYPE_GRADIENT[cred.deviceType] || DEVICE_TYPE_GRADIENT.Other;
+  const health = credentialHealth(cred);
 
   return (
     <div
-      className={`nc-card ${isSelected ? "is-selected" : ""}`}
+      className={`nc-compact-card ${isSelected ? "is-selected" : ""}`}
       onClick={() => onViewDetail(cred)}
     >
-      <div className="nc-card-header">
-        <div className="nc-card-icon" style={{ background: gradient }}>
-          <DeviceTypeIcon type={cred.deviceType} size={18} />
+      <div className="nc-compact-card-left">
+        <div className="nc-compact-card-icon" style={{ background: gradient }}>
+          <DeviceTypeIcon type={cred.deviceType} size={16} />
         </div>
-        <div className="nc-card-select">
+        <div className="nc-compact-card-info">
+          <div className="nc-compact-card-name">{cred.deviceName || "Unnamed"}</div>
+          <div className="nc-compact-card-meta">
+            <span className="nc-compact-card-type">{cred.deviceType}</span>
+            <DeviceStatusPill status={cred.deviceStatus} />
+          </div>
+        </div>
+      </div>
+      <div className="nc-compact-card-right">
+        <div className="nc-compact-card-badges">
+          <HealthBadge cred={cred} />
+          <RotationBadge cred={cred} />
+        </div>
+        <div className="nc-compact-card-actions">
           <button
             className="nc-checkbox-btn"
             onClick={(e) => { e.stopPropagation(); onSelect(cred.id); }}
           >
             {isSelected ? <CheckSquare size={16} /> : <Square size={16} />}
           </button>
+          <button
+            className="nc-card-menu-btn"
+            onClick={(e) => { e.stopPropagation(); onOpenMenu(e, cred.id); }}
+          >
+            <MoreVertical size={16} />
+          </button>
         </div>
-        <button
-          className="nc-card-menu-btn"
-          onClick={(e) => { e.stopPropagation(); onOpenMenu(e, cred.id); }}
-        >
-          <MoreVertical size={16} />
-        </button>
         {isMenuOpen && menuPos && createPortal(
           <div className="nc-card-menu" style={{ top: menuPos.top, left: menuPos.left }}>
             <button className="nc-menu-item" onClick={() => { onViewDetail(cred); onCloseMenu(); }}>
@@ -208,44 +224,23 @@ const DeviceCard = ({
           document.body
         )}
       </div>
-      <div className="nc-card-body">
-        <div className="nc-card-name">{cred.deviceName || "Unnamed"}</div>
-        <div className="nc-card-type">
-          <DeviceTypeIcon type={cred.deviceType} size={11} />
-          <span>{cred.deviceType || "Unknown"}</span>
-          <DeviceStatusPill status={cred.deviceStatus} />
-        </div>
-        <div className="nc-card-meta">
-          {cred.ipAddress && <span className="nc-card-ip">{cred.ipAddress}</span>}
-          {cred.location && <span className="nc-card-location">{cred.location}</span>}
-        </div>
-        <div className="nc-card-badges">
-          <HealthBadge cred={cred} />
-          <RotationBadge cred={cred} />
-        </div>
-        <div className="nc-card-updated">
-          Updated {formatDate(cred.updatedAt)}
-        </div>
-      </div>
     </div>
   );
 };
 
-// ── Detail Drawer ──────────────────────────────────────────────────
-const DRAWER_TABS = [
-  { key: "overview", label: "Overview", icon: ShieldCheck },
-  { key: "credential", label: "Credentials", icon: Lock },
-  { key: "connection", label: "Connection", icon: Cable },
-  { key: "security", label: "Security", icon: ShieldAlert },
-  { key: "timeline", label: "Timeline", icon: Activity },
-  { key: "audit", label: "Audit", icon: FileClock },
-  { key: "attachments", label: "Files", icon: Paperclip },
-];
-
-const DetailDrawer = ({
-  cred, onClose, onEdit, onDelete,
-  unlocked, revealed, revealingId, copiedKey,
-  onTogglePassword, onCopyUsername, onCopyPassword,
+// ── Detail Panel (replaces the old drawer) ──────────────────────
+const DetailPanel = ({
+  cred,
+  onClose,
+  onEdit,
+  onDelete,
+  unlocked,
+  revealed,
+  revealingId,
+  copiedKey,
+  onTogglePassword,
+  onCopyUsername,
+  onCopyPassword,
 }) => {
   const [tab, setTab] = useState("overview");
   useEffect(() => { setTab("overview"); }, [cred]);
@@ -256,182 +251,190 @@ const DetailDrawer = ({
   const isRevealing = revealingId === cred.id;
   const rot = rotationStatus(cred);
 
+  const tabs = [
+    { key: "overview", label: "Overview", icon: ShieldCheck },
+    { key: "credentials", label: "Credentials", icon: Lock },
+    { key: "connection", label: "Connection", icon: Cable },
+    { key: "security", label: "Security", icon: ShieldAlert },
+    { key: "timeline", label: "Timeline", icon: Activity },
+  ];
+
   return (
-    <div className="nc-drawer-overlay" onClick={onClose}>
-      <div className="nc-drawer" onClick={(e) => e.stopPropagation()}>
-        <div className="nc-drawer-hero" style={{ background: gradient }}>
-          <button className="nc-drawer-close" onClick={onClose}><X size={18} /></button>
-          <div className="nc-drawer-icon"><DeviceTypeIcon type={cred.deviceType} size={28} /></div>
-          <h3 className="nc-drawer-name">{cred.deviceName}</h3>
-          <div className="nc-drawer-sub">
-            {cred.deviceType}{cred.brand ? ` · ${cred.brand}` : ""}{cred.model ? ` ${cred.model}` : ""}
+    <div className="nc-detail-panel">
+      <div className="nc-detail-panel-header" style={{ background: gradient }}>
+        <div className="nc-detail-panel-identity">
+          <div className="nc-detail-panel-icon">
+            <DeviceTypeIcon type={cred.deviceType} size={24} />
           </div>
+          <div>
+            <div className="nc-detail-panel-name">{cred.deviceName}</div>
+            <div className="nc-detail-panel-sub">
+              {cred.deviceType}{cred.brand ? ` · ${cred.brand}` : ""}{cred.model ? ` ${cred.model}` : ""}
+            </div>
+          </div>
+        </div>
+        <button className="nc-detail-panel-close" onClick={onClose}>
+          <X size={20} />
+        </button>
+        <div className="nc-detail-panel-status">
           <DeviceStatusPill status={cred.deviceStatus} />
         </div>
+      </div>
 
-        <div className="nc-drawer-tabs">
-          {DRAWER_TABS.map((t) => (
-            <button
-              key={t.key}
-              className={`nc-drawer-tab ${tab === t.key ? "is-active" : ""}`}
-              onClick={() => setTab(t.key)}
-            >
-              <t.icon size={14} />
-              <span>{t.label}</span>
-            </button>
-          ))}
-        </div>
+      <div className="nc-detail-panel-tabs">
+        {tabs.map((t) => (
+          <button
+            key={t.key}
+            className={`nc-detail-tab ${tab === t.key ? "is-active" : ""}`}
+            onClick={() => setTab(t.key)}
+          >
+            <t.icon size={14} />
+            <span>{t.label}</span>
+          </button>
+        ))}
+      </div>
 
-        <div className="nc-drawer-body">
-          {tab === "overview" && (
-            <>
-              <div className="nc-drawer-section">
-                <h4>Device Summary</h4>
-                <div className="nc-drawer-grid">
-                  <div><label>Type</label><div>{cred.deviceType || "—"}</div></div>
-                  <div><label>Vendor</label><div>{cred.brand || "—"}{cred.model ? ` · ${cred.model}` : ""}</div></div>
-                  <div><label>Location</label><div>{cred.location || "—"}</div></div>
-                  <div><label>Status</label><div><DeviceStatusPill status={cred.deviceStatus} /></div></div>
-                </div>
-              </div>
-              <div className="nc-drawer-section">
-                <h4>Credential Health</h4>
-                <div className="nc-drawer-grid">
-                  <div><label>Overall</label><div><HealthBadge cred={cred} /></div></div>
-                  <div><label>Rotation</label><div><RotationBadge cred={cred} /></div></div>
-                </div>
-              </div>
-              {cred.notes && (
-                <div className="nc-drawer-section">
-                  <h4>Notes</h4>
-                  <div className="nc-drawer-notes">{cred.notes}</div>
-                </div>
-              )}
-            </>
-          )}
-          {tab === "credential" && (
-            <div className="nc-drawer-section">
-              <h4><Lock size={14} /> Access Credentials</h4>
-              <div className="nc-drawer-secret">
-                <span className="nc-drawer-secret-label">Username</span>
-                <span className="nc-drawer-secret-value">
-                  {unlocked ? cred.username : "••••••••"}
-                </span>
-                <div className="nc-drawer-secret-actions">
-                  <button
-                    className={`nc-icon-btn ${copiedKey === `user-${cred.id}` ? "is-copied" : ""}`}
-                    onClick={() => onCopyUsername(cred)}
-                  >
-                    {copiedKey === `user-${cred.id}` ? <Check size={14} /> : <Copy size={14} />}
-                  </button>
-                </div>
-              </div>
-              <div className="nc-drawer-secret">
-                <span className="nc-drawer-secret-label">Password</span>
-                <span className="nc-drawer-secret-value">
-                  {isRevealing ? "Decrypting…" : rev.visible ? rev.password : "••••••••"}
-                </span>
-                <div className="nc-drawer-secret-actions">
-                  <button
-                    className="nc-icon-btn"
-                    onClick={() => onTogglePassword(cred)}
-                    disabled={isRevealing}
-                  >
-                    {rev.visible ? <EyeOff size={14} /> : <Eye size={14} />}
-                  </button>
-                  <button
-                    className={`nc-icon-btn ${copiedKey === `pwd-${cred.id}` ? "is-copied" : ""}`}
-                    onClick={() => onCopyPassword(cred)}
-                    disabled={isRevealing}
-                  >
-                    {copiedKey === `pwd-${cred.id}` ? <Check size={14} /> : <Copy size={14} />}
-                  </button>
-                </div>
-              </div>
-              {!unlocked && (
-                <div className="nc-drawer-lock-hint">
-                  <Lock size={12} /> Verify identity to reveal or copy credentials
-                </div>
-              )}
-            </div>
-          )}
-          {tab === "connection" && (
-            <div className="nc-drawer-section">
-              <h4>Network</h4>
-              <div className="nc-drawer-grid">
-                <div><label>IP Address</label><div>{cred.ipAddress || "—"}</div></div>
-                <div><label>Hostname</label><div>{cred.hostname || "—"}</div></div>
-                <div><label>VLAN</label><div>{cred.vlan || "—"}</div></div>
-                <div><label>ISP</label><div>{cred.isp || "—"}</div></div>
-                <div><label>SSH Port</label><div>{cred.sshPort || "—"}</div></div>
-                <div><label>Web Port</label><div>{cred.webPort || "—"}</div></div>
+      <div className="nc-detail-panel-body">
+        {tab === "overview" && (
+          <>
+            <div className="nc-detail-section">
+              <h4>Device Summary</h4>
+              <div className="nc-detail-grid">
+                <div><label>Type</label><div>{cred.deviceType || "—"}</div></div>
+                <div><label>Vendor</label><div>{cred.brand || "—"}{cred.model ? ` · ${cred.model}` : ""}</div></div>
+                <div><label>Location</label><div>{cred.location || "—"}</div></div>
+                <div><label>Status</label><div><DeviceStatusPill status={cred.deviceStatus} /></div></div>
               </div>
             </div>
-          )}
-          {tab === "security" && (
-            <>
-              <div className="nc-drawer-section">
-                <h4><RotateCw size={14} /> Password Rotation</h4>
-                <div className="nc-drawer-grid">
-                  <div><label>Health</label><div><RotationBadge cred={cred} /></div></div>
-                  <div><label>Age</label><div>{rot.age === null ? "—" : `${rot.age} days`}</div></div>
-                </div>
+            <div className="nc-detail-section">
+              <h4>Credential Health</h4>
+              <div className="nc-detail-grid">
+                <div><label>Overall</label><div><HealthBadge cred={cred} /></div></div>
+                <div><label>Rotation</label><div><RotationBadge cred={cred} /></div></div>
               </div>
-              <div className="nc-drawer-section">
-                <h4><ShieldCheck size={14} /> Vault</h4>
-                <div className="nc-drawer-grid">
-                  <div><label>Encryption</label><div>AES-256</div></div>
-                  <div><label>Access</label><div>{unlocked ? "Unlocked" : "Locked"}</div></div>
-                </div>
+            </div>
+            {cred.notes && (
+              <div className="nc-detail-section">
+                <h4>Notes</h4>
+                <div className="nc-detail-notes">{cred.notes}</div>
               </div>
-            </>
-          )}
-          {tab === "timeline" && (
-            <div className="nc-drawer-section">
-              <h4><Activity size={14} /> Timeline</h4>
-              <div className="nc-timeline">
-                <div className="nc-timeline-item">
-                  <span className="nc-timeline-dot" />
-                  <div>
-                    <div className="nc-timeline-label">Credential Created</div>
-                    <div className="nc-timeline-time">
-                      {formatDateTime(cred.createdAt)}{cred.createdBy ? ` · ${cred.createdBy}` : ""}
-                    </div>
-                  </div>
-                </div>
-                <div className="nc-timeline-item">
-                  <span className="nc-timeline-dot" />
-                  <div>
-                    <div className="nc-timeline-label">Last Updated</div>
-                    <div className="nc-timeline-time">{formatDateTime(cred.updatedAt)}</div>
+            )}
+          </>
+        )}
+
+        {tab === "credentials" && (
+          <div className="nc-detail-section">
+            <h4><Lock size={14} /> Access Credentials</h4>
+            <div className="nc-detail-secret">
+              <span className="nc-detail-secret-label">Username</span>
+              <span className="nc-detail-secret-value">
+                {unlocked ? cred.username : "••••••••"}
+              </span>
+              <div className="nc-detail-secret-actions">
+                <button
+                  className={`nc-icon-btn ${copiedKey === `user-${cred.id}` ? "is-copied" : ""}`}
+                  onClick={() => onCopyUsername(cred)}
+                >
+                  {copiedKey === `user-${cred.id}` ? <Check size={14} /> : <Copy size={14} />}
+                </button>
+              </div>
+            </div>
+            <div className="nc-detail-secret">
+              <span className="nc-detail-secret-label">Password</span>
+              <span className="nc-detail-secret-value">
+                {isRevealing ? "Decrypting…" : rev.visible ? rev.password : "••••••••"}
+              </span>
+              <div className="nc-detail-secret-actions">
+                <button
+                  className="nc-icon-btn"
+                  onClick={() => onTogglePassword(cred)}
+                  disabled={isRevealing}
+                >
+                  {rev.visible ? <EyeOff size={14} /> : <Eye size={14} />}
+                </button>
+                <button
+                  className={`nc-icon-btn ${copiedKey === `pwd-${cred.id}` ? "is-copied" : ""}`}
+                  onClick={() => onCopyPassword(cred)}
+                  disabled={isRevealing}
+                >
+                  {copiedKey === `pwd-${cred.id}` ? <Check size={14} /> : <Copy size={14} />}
+                </button>
+              </div>
+            </div>
+            {!unlocked && (
+              <div className="nc-detail-lock-hint">
+                <Lock size={12} /> Verify identity to reveal or copy credentials
+              </div>
+            )}
+          </div>
+        )}
+
+        {tab === "connection" && (
+          <div className="nc-detail-section">
+            <h4>Network Details</h4>
+            <div className="nc-detail-grid">
+              <div><label>IP Address</label><div>{cred.ipAddress || "—"}</div></div>
+              <div><label>Hostname</label><div>{cred.hostname || "—"}</div></div>
+              <div><label>VLAN</label><div>{cred.vlan || "—"}</div></div>
+              <div><label>ISP</label><div>{cred.isp || "—"}</div></div>
+              <div><label>SSH Port</label><div>{cred.sshPort || "—"}</div></div>
+              <div><label>Web Port</label><div>{cred.webPort || "—"}</div></div>
+            </div>
+          </div>
+        )}
+
+        {tab === "security" && (
+          <>
+            <div className="nc-detail-section">
+              <h4><RotateCw size={14} /> Password Rotation</h4>
+              <div className="nc-detail-grid">
+                <div><label>Health</label><div><RotationBadge cred={cred} /></div></div>
+                <div><label>Age</label><div>{rot.age === null ? "—" : `${rot.age} days`}</div></div>
+              </div>
+            </div>
+            <div className="nc-detail-section">
+              <h4><ShieldCheck size={14} /> Vault</h4>
+              <div className="nc-detail-grid">
+                <div><label>Encryption</label><div>AES-256</div></div>
+                <div><label>Access</label><div>{unlocked ? "Unlocked" : "Locked"}</div></div>
+              </div>
+            </div>
+          </>
+        )}
+
+        {tab === "timeline" && (
+          <div className="nc-detail-section">
+            <h4><Activity size={14} /> Timeline</h4>
+            <div className="nc-timeline">
+              <div className="nc-timeline-item">
+                <span className="nc-timeline-dot" />
+                <div>
+                  <div className="nc-timeline-label">Credential Created</div>
+                  <div className="nc-timeline-time">
+                    {formatDateTime(cred.createdAt)}{cred.createdBy ? ` · ${cred.createdBy}` : ""}
                   </div>
                 </div>
               </div>
+              <div className="nc-timeline-item">
+                <span className="nc-timeline-dot" />
+                <div>
+                  <div className="nc-timeline-label">Last Updated</div>
+                  <div className="nc-timeline-time">{formatDateTime(cred.updatedAt)}</div>
+                </div>
+              </div>
             </div>
-          )}
-          {tab === "audit" && (
-            <div className="nc-drawer-empty">
-              <FileClock size={20} />
-              <span>Audit log integration isn't connected for this device yet.</span>
-            </div>
-          )}
-          {tab === "attachments" && (
-            <div className="nc-drawer-empty">
-              <Paperclip size={20} />
-              <span>No files attached to this credential yet.</span>
-            </div>
-          )}
-        </div>
+          </div>
+        )}
+      </div>
 
-        <div className="nc-drawer-footer">
-          <button className="btn btn-secondary" onClick={onClose}>Close</button>
-          <button className="btn btn-primary" onClick={() => onEdit(cred)}>
-            <Pencil size={14} style={{ marginRight: 6 }} /> Edit
-          </button>
-          <button className="btn btn-danger" onClick={() => onDelete(cred)}>
-            <Trash2 size={14} />
-          </button>
-        </div>
+      <div className="nc-detail-panel-footer">
+        <button className="btn btn-secondary" onClick={onClose}>Close</button>
+        <button className="btn btn-primary" onClick={() => onEdit(cred)}>
+          <Pencil size={14} style={{ marginRight: 6 }} /> Edit
+        </button>
+        <button className="btn btn-danger" onClick={() => onDelete(cred)}>
+          <Trash2 size={14} />
+        </button>
       </div>
     </div>
   );
@@ -600,7 +603,7 @@ export default function NetworkCredentials() {
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const [page, setPage] = useState(1);
-  const PAGE_SIZE = 12;
+  const PAGE_SIZE = 8; // slightly smaller for master-detail
 
   const [revealed, setRevealed] = useState({});
   const [revealingId, setRevealingId] = useState(null);
@@ -758,6 +761,8 @@ export default function NetworkCredentials() {
       .then(() => {
         toast("Credential deleted.", "success");
         setRevealed((r) => { const n = { ...r }; delete n[cred.id]; return n; });
+        // If viewing this credential, close panel
+        if (viewingCred?.id === cred.id) setViewingCred(null);
         loadData();
       })
       .catch(() => toast("Couldn't delete credential.", "error"));
@@ -832,7 +837,6 @@ export default function NetworkCredentials() {
     [credentials, searchText, typeFilter, brandFilter, locationFilter, statusFilter, rotationFilter]
   );
 
-  // ── Sorting – SORT_ACCESSORS defined inside useMemo ──────────
   const sorted = useMemo(() => {
     const SORT_ACCESSORS = {
       device:   (c) => (c.deviceName || "").toLowerCase(),
@@ -842,7 +846,6 @@ export default function NetworkCredentials() {
       rotation: (c) => rotationStatus(c).age ?? -1,
       updated:  (c) => new Date(c.updatedAt || c.createdAt || 0).getTime(),
     };
-
     if (!sortKey) return filtered;
     const acc = SORT_ACCESSORS[sortKey];
     const arr = [...filtered].sort((a, b) => {
@@ -892,6 +895,7 @@ export default function NetworkCredentials() {
     setRotationFilter("All");
   };
 
+  // Selection
   const toggleSelectOne = (id) => {
     setSelectedIds((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
   };
@@ -916,6 +920,8 @@ export default function NetworkCredentials() {
         const okCount = results.filter((r) => r.status === "fulfilled").length;
         toast(`${okCount} of ${ids.length} credential(s) deleted.`, okCount === ids.length ? "success" : "error");
         clearSelection();
+        // If the currently viewed credential was deleted, close panel
+        if (viewingCred && ids.includes(viewingCred.id)) setViewingCred(null);
         loadData();
       })
       .finally(() => setBulkDeleting(false));
@@ -1012,7 +1018,7 @@ export default function NetworkCredentials() {
         }
       >
         <div className="nc-workspace">
-          {/* Sidebar */}
+          {/* ── Left Sidebar ── */}
           <aside className="nc-sidebar">
             <div className="nc-sidebar-stats">
               <div className="nc-stat">
@@ -1036,7 +1042,7 @@ export default function NetworkCredentials() {
             <div className="nc-sidebar-filters">
               <div className="nc-filter-group">
                 <div className="nc-filter-header">
-                  <span>Device Type</span>
+                  <span>Type</span>
                   <span className="nc-filter-count">{typeFilter !== "All" ? 1 : 0}</span>
                 </div>
                 <select
@@ -1119,7 +1125,7 @@ export default function NetworkCredentials() {
             </div>
           </aside>
 
-          {/* Main Content */}
+          {/* ── Main Content ── */}
           <main className="nc-main">
             <div className="nc-main-toolbar">
               <div className="nc-search">
@@ -1174,42 +1180,91 @@ export default function NetworkCredentials() {
               </div>
             )}
 
-            <div className="nc-card-grid">
-              {loading ? (
-                Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)
-              ) : paged.length === 0 ? (
-                <div className="nc-empty-state">
-                  <div className="nc-empty-icon"><Network size={40} /></div>
-                  <h3>{searchText || activeFilterCount > 0 ? "No matching devices" : "No devices yet"}</h3>
-                  <p>
-                    {searchText || activeFilterCount > 0
-                      ? "Try adjusting your search or clearing your filters"
-                      : "Click 'Add Device' to register your first credential"}
-                  </p>
-                  {(searchText || activeFilterCount > 0) && (
-                    <button className="btn btn-secondary" onClick={clearAllFilters}>Clear Filters</button>
-                  )}
-                </div>
-              ) : (
-                paged.map((cred) => (
-                  <DeviceCard
-                    key={cred.id}
-                    cred={cred}
-                    isSelected={selectedIds.has(cred.id)}
-                    onSelect={toggleSelectOne}
-                    onViewDetail={setViewingCred}
-                    onOpenMenu={handleOpenMenu}
-                    isMenuOpen={openMenuId === cred.id}
-                    menuPos={menuPos}
-                    onCloseMenu={() => { setOpenMenuId(null); setMenuPos(null); }}
-                    onEdit={openEditForm}
-                    onDelete={deleteCredential}
-                    onCopyIp={copyIp}
-                    onRotatePassword={rotatePassword}
-                    onDownload={downloadCredential}
+            <div className="nc-master-detail">
+              <div className="nc-card-list">
+                {loading ? (
+                  Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)
+                ) : paged.length === 0 ? (
+                  <div className="nc-empty-state">
+                    <div className="nc-empty-icon"><Network size={40} /></div>
+                    <h3>{searchText || activeFilterCount > 0 ? "No matching devices" : "No devices yet"}</h3>
+                    <p>
+                      {searchText || activeFilterCount > 0
+                        ? "Try adjusting your search or clearing your filters"
+                        : "Click 'Add Device' to register your first credential"}
+                    </p>
+                    {(searchText || activeFilterCount > 0) && (
+                      <button className="btn btn-secondary" onClick={clearAllFilters}>Clear Filters</button>
+                    )}
+                  </div>
+                ) : (
+                  paged.map((cred) => (
+                    <DeviceCard
+                      key={cred.id}
+                      cred={cred}
+                      isSelected={selectedIds.has(cred.id)}
+                      onSelect={toggleSelectOne}
+                      onViewDetail={setViewingCred}
+                      onOpenMenu={handleOpenMenu}
+                      isMenuOpen={openMenuId === cred.id}
+                      menuPos={menuPos}
+                      onCloseMenu={() => { setOpenMenuId(null); setMenuPos(null); }}
+                      onEdit={openEditForm}
+                      onDelete={deleteCredential}
+                      onCopyIp={copyIp}
+                      onRotatePassword={rotatePassword}
+                      onDownload={downloadCredential}
+                    />
+                  ))
+                )}
+
+                {totalPages > 1 && (
+                  <div className="nc-pagination">
+                    <span>Page {currentPage} of {totalPages}</span>
+                    <div>
+                      <button
+                        className="nc-page-btn"
+                        onClick={() => setPage((p) => Math.max(1, p - 1))}
+                        disabled={currentPage === 1}
+                      >
+                        <ChevronLeft size={16} />
+                      </button>
+                      <button
+                        className="nc-page-btn"
+                        onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                        disabled={currentPage === totalPages}
+                      >
+                        <ChevronRight size={16} />
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* ── Detail Panel ── */}
+              <div className={`nc-detail-panel-wrapper ${viewingCred ? "is-open" : ""}`}>
+                {viewingCred ? (
+                  <DetailPanel
+                    cred={viewingCred}
+                    onClose={() => setViewingCred(null)}
+                    onEdit={(cred) => { setViewingCred(null); openEditForm(cred); }}
+                    onDelete={(cred) => { setViewingCred(null); deleteCredential(cred); }}
+                    unlocked={unlocked}
+                    revealed={revealed}
+                    revealingId={revealingId}
+                    copiedKey={copiedKey}
+                    onTogglePassword={togglePasswordVisible}
+                    onCopyUsername={copyUsername}
+                    onCopyPassword={copyPassword}
                   />
-                ))
-              )}
+                ) : (
+                  <div className="nc-detail-empty">
+                    <ShieldCheck size={48} strokeWidth={1.5} />
+                    <h3>Select a device</h3>
+                    <p>Click on any device card to view its details and credentials.</p>
+                  </div>
+                )}
+              </div>
             </div>
 
             {selectedIds.size > 0 && (
@@ -1223,50 +1278,12 @@ export default function NetworkCredentials() {
                 </div>
               </div>
             )}
-
-            {totalPages > 1 && (
-              <div className="nc-pagination">
-                <span>Page {currentPage} of {totalPages}</span>
-                <div>
-                  <button
-                    className="nc-page-btn"
-                    onClick={() => setPage((p) => Math.max(1, p - 1))}
-                    disabled={currentPage === 1}
-                  >
-                    <ChevronLeft size={16} />
-                  </button>
-                  <button
-                    className="nc-page-btn"
-                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                    disabled={currentPage === totalPages}
-                  >
-                    <ChevronRight size={16} />
-                  </button>
-                </div>
-              </div>
-            )}
           </main>
         </div>
       </Layout>
 
       {showUnlockDialog && (
         <CredentialUnlockDialog onUnlocked={handleUnlocked} onClose={closeUnlockDialog} />
-      )}
-
-      {viewingCred && (
-        <DetailDrawer
-          cred={viewingCred}
-          onClose={() => setViewingCred(null)}
-          onEdit={(cred) => { setViewingCred(null); openEditForm(cred); }}
-          onDelete={(cred) => { setViewingCred(null); deleteCredential(cred); }}
-          unlocked={unlocked}
-          revealed={revealed}
-          revealingId={revealingId}
-          copiedKey={copiedKey}
-          onTogglePassword={togglePasswordVisible}
-          onCopyUsername={copyUsername}
-          onCopyPassword={copyPassword}
-        />
       )}
 
       <CredentialFormModal
