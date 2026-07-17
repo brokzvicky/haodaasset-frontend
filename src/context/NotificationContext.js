@@ -219,12 +219,25 @@ export function NotificationProvider({ children }) {
 
   const close = useCallback(() => setOpen(false), []);
 
+  // Called when the admin visits the Asset Requests page directly (not just
+  // via the bell), so the sidebar/bell badge clears the moment they've
+  // actually seen the requests — not only when they open the dropdown.
+  const markRequestsSeen = useCallback(() => {
+    setNotifications((ns) => {
+      if (ns.length === 0) return ns;
+      ns.forEach((n) => seenRef.current.add(String(n.id)));
+      saveSeen(seenRef.current);
+      return ns.map((n) => ({ ...n, read: true }));
+    });
+    setUnread(0);
+  }, []);
+
   // Called after approve/reject so list stays fresh
   const refresh = useCallback(() => fetchRequests(), [fetchRequests]);
 
   return (
     <NotificationContext.Provider value={{
-      notifications, unread, open, toggleOpen, close, refresh,
+      notifications, unread, open, toggleOpen, close, refresh, markRequestsSeen,
       systemNotifications, systemUnread, markSystemRead, markAllSystemRead,
       pulseNotifications, pulseUnread, pulseConnected,
       fetchPulseNotifications, markPulseRead, markAllPulseRead,

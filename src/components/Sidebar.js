@@ -70,7 +70,7 @@ export default function Sidebar({ open = false, onClose, collapsed = false, onTo
   const location  = useLocation();
   const navigate  = useNavigate();
   const notifCtx  = useNotifications();
-  const unread    = notifCtx?.totalUnread ?? notifCtx?.unread ?? 0;
+  const requestsUnread = notifCtx?.unread ?? 0; // asset-request notifications only, not the combined bell total
 
   const nav = user?.role === "admin" ? ADMIN_NAV : EMP_NAV;
 
@@ -149,8 +149,8 @@ export default function Sidebar({ open = false, onClose, collapsed = false, onTo
                         : Ico[item.icon]}
                     </span>
                     {!collapsed && item.label}
-                    {item.to === "/asset-requests" && unread > 0 && (
-                      <span className="sidebar-item-badge">{collapsed ? "" : (unread > 9 ? "9+" : unread)}</span>
+                    {item.to === "/asset-requests" && requestsUnread > 0 && (
+                      <span className="sidebar-item-badge">{collapsed ? "" : (requestsUnread > 9 ? "9+" : requestsUnread)}</span>
                     )}
                   </Link>
                 );

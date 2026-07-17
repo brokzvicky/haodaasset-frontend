@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { useNotifications } from "../context/NotificationContext";
 import {
@@ -221,7 +222,7 @@ export default function NotificationBell() {
         {totalCount > 0 && <span className="hz-bell-badge">{badgeText}</span>}
       </button>
 
-      {drawerOpen && (
+      {drawerOpen && createPortal(
         <>
           <div className="hz-drawer-overlay" onClick={closeDrawer} />
           <aside className="hz-drawer" role="dialog" aria-label="Notification Center">
@@ -301,7 +302,8 @@ export default function NotificationBell() {
               )}
             </div>
           </aside>
-        </>
+        </>,
+        document.body
       )}
     </div>
   );

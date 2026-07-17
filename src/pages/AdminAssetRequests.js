@@ -303,7 +303,11 @@ function DetailDrawer({ request, onClose, onApprove, onReject, saving }) {
 /* ── Main Page ─────────────────────────────────────────────────────── */
 export default function AdminAssetRequests() {
   const toast = useToast();
-  const { refresh: refreshNotifications } = useNotifications();
+  const { refresh: refreshNotifications, markRequestsSeen } = useNotifications();
+
+  // Visiting this page counts as having seen the pending requests, so the
+  // sidebar/bell badge should clear even if the admin never opens the bell.
+  useEffect(() => { markRequestsSeen?.(); }, [markRequestsSeen]);
 
   const [requests, setRequests] = useState([]);
   const [employeesById, setEmployeesById] = useState({}); // employeeId -> { department, location }
