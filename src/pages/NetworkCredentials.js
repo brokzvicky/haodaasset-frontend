@@ -43,7 +43,7 @@ const EMPTY_FORM = {
   deviceStatus: "Active",
 };
 
-// ── Status helpers (same logic, moved to shared functions) ──
+// ── Status helpers ───────────────────────────────────────────────
 const ROTATION_HEALTHY_DAYS = 90;
 const ROTATION_DUE_DAYS = 180;
 
@@ -234,7 +234,7 @@ const DeviceCard = ({
   );
 };
 
-// ── Detail Drawer (redesigned) ──────────────────────────────────
+// ── Detail Drawer ──────────────────────────────────────────────────
 const DRAWER_TABS = [
   { key: "overview", label: "Overview", icon: ShieldCheck },
   { key: "credential", label: "Credentials", icon: Lock },
@@ -440,9 +440,17 @@ const DetailDrawer = ({
   );
 };
 
-// ── Add/Edit Modal ─────────────────────────────────────────────────
+// ── Add/Edit Modal (FIXED) ─────────────────────────────────────────
 const CredentialFormModal = ({
-  isOpen, onClose, editingId, form, setForm, formErrors, saving, onSave,
+  isOpen,
+  onClose,
+  editingId,
+  form,
+  setForm,
+  formErrors,
+  setFormErrors,   // ← now correctly received
+  saving,
+  onSave,
 }) => {
   if (!isOpen) return null;
 
@@ -572,7 +580,7 @@ const CredentialFormModal = ({
 export default function NetworkCredentials() {
   const toast = useToast();
 
-  // ── State (same as before, keeping all business logic) ──
+  // ── State ──────────────────────────────────────────────────────
   const [credentials, setCredentials] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -596,7 +604,7 @@ export default function NetworkCredentials() {
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const [page, setPage] = useState(1);
-  const PAGE_SIZE = 12; // grid: 3 cols × 4 rows
+  const PAGE_SIZE = 12;
 
   const [revealed, setRevealed] = useState({});
   const [revealingId, setRevealingId] = useState(null);
@@ -831,7 +839,6 @@ export default function NetworkCredentials() {
     [credentials, searchText, typeFilter, brandFilter, locationFilter, statusFilter, rotationFilter]
   );
 
-  // Sorting (same as before)
   const SORT_ACCESSORS = {
     device:   (c) => (c.deviceName || "").toLowerCase(),
     vendor:   (c) => (c.brand || "").toLowerCase(),
@@ -860,7 +867,6 @@ export default function NetworkCredentials() {
     setSortKey(null); setSortDir("asc");
   };
 
-  // Pagination
   useEffect(() => { setPage(1); }, [searchText, typeFilter, brandFilter, locationFilter, statusFilter, rotationFilter, sortKey, sortDir]);
   const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
@@ -869,7 +875,6 @@ export default function NetworkCredentials() {
     [sorted, currentPage]
   );
 
-  // Stats
   const counts = useMemo(() => ({
     total: credentials.length,
     active: credentials.filter((c) => c.deviceStatus === "Active").length,
@@ -893,7 +898,6 @@ export default function NetworkCredentials() {
     setRotationFilter("All");
   };
 
-  // Selection
   const toggleSelectOne = (id) => {
     setSelectedIds((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
   };
@@ -923,7 +927,6 @@ export default function NetworkCredentials() {
       .finally(() => setBulkDeleting(false));
   };
 
-  // Export
   const exportCSV = () => {
     const cols = ["deviceName", "deviceType", "brand", "model", "ipAddress", "hostname",
       "location", "vlan", "isp", "deviceStatus", "username", "createdAt", "updatedAt"];
@@ -1279,6 +1282,7 @@ export default function NetworkCredentials() {
         form={form}
         setForm={setForm}
         formErrors={formErrors}
+        setFormErrors={setFormErrors}   // ← this was missing, now added
         saving={saving}
         onSave={saveCredential}
       />
