@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { useNotifications } from "../context/NotificationContext";
 import {
-  Bell, X, CheckCheck, Trash2, Settings, Clock, AlertTriangle, AlertCircle,
+  Bell, X, CheckCheck, Trash2, Settings, AlertTriangle, AlertCircle,
   Info, CheckCircle2, Laptop, ShieldAlert, Receipt, UserPlus,
   ClipboardList, ArrowUpRight, Moon, RotateCcw, Wifi, WifiOff,
 } from "lucide-react";
@@ -34,13 +34,17 @@ const TYPE_LABEL = {
   FIRMWARE_UPDATE_REMINDER: "Firmware Update", SECURITY_ALERT: "Security Alert", BACKUP_REMINDER: "Backup Reminder",
 };
 
+/* How long the slide-out / fade-out animation runs before we actually
+   unmount the drawer — keep in sync with the CSS transition duration. */
+const CLOSE_ANIM_MS = 260;
+
 function timeAgo(dateStr) {
   if (!dateStr) return "";
   const diff = (Date.now() - new Date(dateStr)) / 1000;
-  if (diff < 60) return "Just now";
-  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-  return `${Math.floor(diff / 86400)}d ago`;
+  if (diff < 60) return "now";
+  if (diff < 3600) return `${Math.floor(diff / 60)}m`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h`;
+  return `${Math.floor(diff / 86400)}d`;
 }
 
 function timeRemaining(dueDate) {
@@ -48,7 +52,7 @@ function timeRemaining(dueDate) {
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const due = new Date(dueDate + "T00:00:00");
   const days = Math.round((due - today) / 86400000);
-  if (days < 0) return { text: `Overdue ${Math.abs(days)}d`, tone: "overdue" };
+  if (days < 0) return { text: `${Math.abs(days)}d overdue`, tone: "overdue" };
   if (days === 0) return { text: "Due today", tone: "today" };
   if (days === 1) return { text: "Due tomorrow", tone: "soon" };
   return { text: `Due in ${days}d`, tone: days <= 3 ? "soon" : "later" };
@@ -68,7 +72,10 @@ export default function NotificationBell() {
   const ctx = useNotifications();
   const navigate = useNavigate();
   const rootRef = useRef(null);
+  const bellBtnRef = useRef(null);
+  const closeBtnRef = useRef(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
   const [filter, setFilter] = useState("all"); // all | unread | task | asset | security | billing
   const [ring, setRing] = useState(false);
   const prevPulseCountRef = useRef(0);
@@ -91,12 +98,26 @@ export default function NotificationBell() {
     prevPulseCountRef.current = pulseNotifications.length;
   }, [pulseNotifications.length]);
 
-  // Close on outside click / Escape
+  const openDrawer = () => { setDrawerOpen(true); setIsClosing(false); };
+
+  // Animate out, then unmount — and return focus to the bell for keyboard users.
+  const closeDrawer = () => {
+    setIsClosing(true);
+    window.setTimeout(() => {
+      setDrawerOpen(false);
+      setIsClosing(false);
+      bellBtnRef.current?.focus();
+    }, CLOSE_ANIM_MS);
+  };
+
+  // Escape closes the drawer; focus the close button when it opens.
   useEffect(() => {
     if (!drawerOpen) return;
-    const onKey = (e) => { if (e.key === "Escape") setDrawerOpen(false); };
+    const t = setTimeout(() => closeBtnRef.current?.focus(), 30);
+    const onKey = (e) => { if (e.key === "Escape") closeDrawer(); };
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    return () => { window.removeEventListener("keydown", onKey); clearTimeout(t); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [drawerOpen]);
 
   // Normalize every source into one shape the drawer can render uniformly.
@@ -175,9 +196,6 @@ export default function NotificationBell() {
     return groups;
   }, [filtered]);
 
-  const openDrawer = () => setDrawerOpen(true);
-  const closeDrawer = () => setDrawerOpen(false);
-
   const handleMarkRead = (item) => {
     if (item.source === "pulse") markPulseRead?.(item.raw.notificationId);
     else if (item.source === "system") markSystemRead?.(item.raw.id);
@@ -212,6 +230,7 @@ export default function NotificationBell() {
   return (
     <div className="hz-notif-root" ref={rootRef}>
       <button
+        ref={bellBtnRef}
         className={`hz-bell-btn ${ring ? "hz-bell-ring" : ""}`}
         onClick={openDrawer}
         aria-label="Notifications"
@@ -223,24 +242,33 @@ export default function NotificationBell() {
       </button>
 
       {drawerOpen && createPortal(
-        <>
+        /* Re-declare the design-token scope here: this subtree is a portal
+           into document.body, so it's no longer a DOM descendant of the
+           .hz-notif-root above — CSS custom properties don't travel with
+           React's virtual tree, only the real DOM tree. */
+        <div className={`hz-notif-root hz-portal-layer ${isClosing ? "hz-portal-closing" : ""}`}>
           <div className="hz-drawer-overlay" onClick={closeDrawer} />
-          <aside className="hz-drawer" role="dialog" aria-label="Notification Center">
+          <aside
+            className="hz-drawer"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Notification Center"
+          >
             <header className="hz-drawer-header">
               <div className="hz-drawer-heading">
                 <div className="hz-drawer-title-row">
-                  <h2>Notification Center</h2>
+                  <h2>Notifications</h2>
                   <span className={`hz-live-dot ${pulseConnected ? "hz-live-on" : "hz-live-off"}`} title={pulseConnected ? "Live" : "Polling"}>
-                    {pulseConnected ? <Wifi size={12} /> : <WifiOff size={12} />}
+                    {pulseConnected ? <Wifi size={11} /> : <WifiOff size={11} />}
                     {pulseConnected ? "Live" : "Polling"}
                   </span>
                 </div>
                 <p className="hz-drawer-subtitle">
-                  {totalCount === 0 ? "You're all caught up" : `${totalCount} unread across ${merged.length} notifications`}
+                  {totalCount === 0 ? "You're all caught up" : `${totalCount} unread · ${merged.length} total`}
                 </p>
               </div>
-              <button className="hz-icon-btn" onClick={closeDrawer} aria-label="Close">
-                <X size={18} />
+              <button ref={closeBtnRef} className="hz-icon-btn" onClick={closeDrawer} aria-label="Close notifications">
+                <X size={17} />
               </button>
             </header>
 
@@ -261,13 +289,13 @@ export default function NotificationBell() {
               </div>
               <div className="hz-toolbar-actions">
                 <button className="hz-text-btn" onClick={handleMarkAllRead} title="Mark all as read">
-                  <CheckCheck size={14} /> Mark all read
+                  <CheckCheck size={13} /> Mark all read
                 </button>
                 <button className="hz-text-btn" onClick={clearCompletedPulse} title="Clear completed notifications">
-                  <Trash2 size={14} /> Clear completed
+                  <Trash2 size={13} /> Clear completed
                 </button>
                 <button className="hz-icon-btn hz-icon-btn-sm" onClick={() => { navigate("/settings"); closeDrawer(); }} title="Notification settings">
-                  <Settings size={15} />
+                  <Settings size={14} />
                 </button>
               </div>
             </div>
@@ -275,7 +303,7 @@ export default function NotificationBell() {
             <div className="hz-drawer-body">
               {filtered.length === 0 ? (
                 <div className="hz-empty-state">
-                  <div className="hz-empty-icon"><Bell size={26} /></div>
+                  <div className="hz-empty-icon"><Bell size={24} /></div>
                   <p>No notifications here.</p>
                   <span>New reminders will appear the moment they're triggered.</span>
                 </div>
@@ -302,7 +330,7 @@ export default function NotificationBell() {
               )}
             </div>
           </aside>
-        </>,
+        </div>,
         document.body
       )}
     </div>
@@ -317,63 +345,49 @@ function NotificationCard({ item, onView, onComplete, onSnooze, onMarkRead }) {
   const remaining = timeRemaining(item.dueDate);
   const isTask = item.category === "Task";
   const isActionable = item.source === "pulse" && item.status !== "Actioned" && item.status !== "Snoozed";
+  const canView = isTask || !!catMeta.route;
 
   return (
     <article className={`hz-card ${!item.read ? "hz-card-unread" : ""}`}>
       <div className={`hz-card-rail ${prio.className}`} />
+      <span className={`hz-cat-icon ${prio.className}`} title={item.category}><CatIcon size={13} /></span>
+
       <div className="hz-card-main">
-        <div className="hz-card-top">
-          <span className={`hz-cat-icon ${prio.className}`}><CatIcon size={14} /></span>
-          <div className="hz-card-title-block">
-            <div className="hz-card-title-row">
-              <h4 className="hz-card-title">{item.title}</h4>
-              {!item.read && <span className="hz-unread-dot" aria-label="Unread" />}
-            </div>
-            <div className="hz-card-meta-row">
-              <span className={`hz-prio-chip ${prio.className}`}><PrioIcon size={11} /> {prio.label}</span>
-              <span className="hz-type-chip">{TYPE_LABEL[item.notificationType] || item.category}</span>
-              {item.status === "Snoozed" && <span className="hz-type-chip hz-snoozed"><Moon size={11} /> Snoozed</span>}
-            </div>
-          </div>
+        <div className="hz-card-row1">
+          <h4 className="hz-card-title">{item.title}</h4>
           <span className="hz-time-ago">{timeAgo(item.createdAt)}</span>
         </div>
 
         {item.description && <p className="hz-card-desc">{item.description}</p>}
 
-        <div className="hz-card-footer">
+        <div className="hz-card-row3">
           <div className="hz-card-tags">
-            {item.dueDate && (
-              <span className="hz-tag">
-                <Clock size={11} /> {item.dueDate}
-              </span>
-            )}
-            {remaining && (
-              <span className={`hz-tag hz-remaining-${remaining.tone}`}>{remaining.text}</span>
-            )}
-            {item.relatedModule && (
-              <span className="hz-tag hz-tag-module">{item.relatedModule.replace(/_/g, " ")}</span>
-            )}
+            <span className={`hz-prio-chip ${prio.className}`} title={prio.label}><PrioIcon size={10} /></span>
+            <span className="hz-type-chip">{TYPE_LABEL[item.notificationType] || item.category}</span>
+            {remaining && <span className={`hz-tag hz-remaining-${remaining.tone}`}>{remaining.text}</span>}
+            {item.status === "Snoozed" && <span className="hz-tag hz-snoozed"><Moon size={10} /> Snoozed</span>}
+            {!item.read && <span className="hz-unread-dot" aria-label="Unread" />}
           </div>
 
           <div className="hz-card-actions">
-            {(isTask || catMeta.route) && (
-              <button className="hz-action-btn" onClick={onView}>
-                <ArrowUpRight size={13} /> {isTask ? "View Task" : "View"}
+            {canView && (
+              <button className="hz-icon-action" onClick={onView} title={isTask ? "View Task" : "View"}>
+                <ArrowUpRight size={13} />
               </button>
             )}
             {isActionable && (
-              <button className="hz-action-btn" onClick={onComplete}>
-                <CheckCircle2 size={13} /> Mark Complete
+              <button className="hz-icon-action" onClick={onComplete} title="Mark Complete">
+                <CheckCircle2 size={13} />
               </button>
             )}
             {isActionable && (
-              <button className="hz-action-btn" onClick={onSnooze}>
-                <RotateCcw size={13} /> Snooze
+              <button className="hz-icon-action" onClick={onSnooze} title="Snooze 1h">
+                <RotateCcw size={13} />
               </button>
             )}
             {!item.read && (
-              <button className="hz-action-btn hz-action-btn-quiet" onClick={onMarkRead}>
-                <CheckCheck size={13} /> Mark as Read
+              <button className="hz-icon-action" onClick={onMarkRead} title="Mark as Read">
+                <CheckCheck size={13} />
               </button>
             )}
           </div>
