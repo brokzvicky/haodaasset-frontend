@@ -1,9 +1,12 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
+import axios from "axios";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { ShieldCheck } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useNotifications } from "../context/NotificationContext";
 import "./Sidebar.css";
+
+const API = "https://haodaasset-backend-1.onrender.com";
 
 /* ── SVG Icon Set ─────────────────────────────────────────────── */
 const Ico = {
@@ -19,6 +22,8 @@ const Ico = {
   serviceBilling: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>,
   maintenance: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>,
   pulse: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>,
+  fileCenter: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>,
+  myFiles: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>,
   profile:   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>,
   request:   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>,
   password:  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>,
@@ -34,6 +39,7 @@ const ADMIN_NAV = [
   { to: "/service-billing", label: "Service Billing", icon: "serviceBilling", section: "MAIN" },
   { to: "/maintenance",    label: "Maintenance",    icon: "maintenance", section: "MAIN" },
   { to: "/pulse",          label: "Haoda Pulse",    icon: "pulse",      section: "MAIN" },
+  { to: "/filecenter",     label: "File Center",    icon: "fileCenter", section: "MAIN" },
   { to: "/reports",        label: "Reports",        icon: "reports",    section: "ANALYTICS" },
   { to: "/email-logs",     label: "Email Logs",     icon: "emailLogs",  section: "ANALYTICS" },
   { to: "/send-asset-email", label: "Send Asset Email", icon: "sendAssetEmail", section: "ENTERPRISE" },
@@ -45,6 +51,7 @@ const ADMIN_NAV = [
 const EMP_NAV = [
   { to: "/emp/dashboard", label: "My Dashboard",    icon: "dashboard", section: "MAIN"    },
   { to: "/emp/assets",    label: "My Assets",       icon: "assets",    section: "MAIN"    },
+  { to: "/emp/files",     label: "My Files",        icon: "myFiles",   section: "MAIN"    },
   { to: "/emp/profile",   label: "My Profile",      icon: "profile",   section: "MAIN"    },
   { to: "/emp/request",   label: "Asset Request",   icon: "request",   section: "MAIN"    },
   { to: "/emp/password",  label: "Change Password", icon: "password",  section: "ACCOUNT" },
@@ -71,6 +78,20 @@ export default function Sidebar({ open = false, onClose, collapsed = false, onTo
   const navigate  = useNavigate();
   const notifCtx  = useNotifications();
   const requestsUnread = notifCtx?.unread ?? 0; // asset-request notifications only, not the combined bell total
+
+  const [myFilesUnread, setMyFilesUnread] = useState(0);
+  useEffect(() => {
+    if (user?.role === "admin") return;
+    let cancelled = false;
+    const load = () => {
+      axios.get(`${API}/api/employee/filecenter/unread-count`)
+        .then((r) => { if (!cancelled) setMyFilesUnread(r.data?.unread || 0); })
+        .catch(() => {});
+    };
+    load();
+    const interval = setInterval(load, 60000);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, [user?.role]);
 
   const nav = user?.role === "admin" ? ADMIN_NAV : EMP_NAV;
 
@@ -151,6 +172,9 @@ export default function Sidebar({ open = false, onClose, collapsed = false, onTo
                     {!collapsed && item.label}
                     {item.to === "/asset-requests" && requestsUnread > 0 && (
                       <span className="sidebar-item-badge">{collapsed ? "" : (requestsUnread > 9 ? "9+" : requestsUnread)}</span>
+                    )}
+                    {item.to === "/emp/files" && myFilesUnread > 0 && (
+                      <span className="sidebar-item-badge">{collapsed ? "" : (myFilesUnread > 9 ? "9+" : myFilesUnread)}</span>
                     )}
                   </Link>
                 );

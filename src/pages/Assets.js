@@ -646,6 +646,23 @@ export default function Assets() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [assets]);
 
+  // Deep-link support: the Asset Details page's "Edit Asset" button links
+  // back here with ?edit=<id>, so once assets are loaded, open that asset
+  // straight into the existing edit form and scroll it into view.
+  useEffect(() => {
+    const editId = searchParams.get("edit");
+    if (editId && assets.length > 0) {
+      const match = assets.find((a) => String(a.assetId) === String(editId));
+      if (match) {
+        openEdit(match);
+        requestAnimationFrame(() => {
+          document.getElementById("asset-edit-form")?.scrollIntoView({ behavior: "smooth", block: "start" });
+        });
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [assets]);
+
   // Employee emails, used to gate/populate the "Send Email" action
   useEffect(() => {
     axios.get(`${API}/api/admin/employees`)
@@ -959,7 +976,7 @@ export default function Assets() {
 
       {/* ── Add Asset Form ── */}
       {showForm && (
-        <div className="card" style={{ marginBottom:28, animation:"fadeIn 0.2s ease" }}>
+        <div id="asset-edit-form" className="card" style={{ marginBottom:28, animation:"fadeIn 0.2s ease" }}>
           <div className="card-header">
             <div>
               <div className="card-title">{editingAsset ? "Edit Asset" : "Register New Asset"}</div>
@@ -1249,7 +1266,7 @@ export default function Assets() {
                   const isEditingCondition = editingConditionId === asset.assetId;
 
                   const menuItems = [
-                    { label: "View Details", icon: <IconEye/>, onClick: () => { setViewingFocusPanel(null); setViewingAsset(asset); } },
+                    { label: "View Details", icon: <IconEye/>, onClick: () => navigate(`/assets/${asset.assetId}`) },
                     { label: "Edit Asset",   icon: <IconEdit/>, onClick: () => openEdit(asset) },
                     asset.assetStatus === "Available" && {
                       label: "Assign Asset", icon: <IconUserPlus/>,
@@ -1262,7 +1279,7 @@ export default function Assets() {
                       label: "Send Email", icon: <IconMail/>,
                       onClick: () => setEmailTarget({ ...asset, employeeEmail }),
                     },
-                    { label: "Asset History", icon: <IconHistory/>, onClick: () => { setViewingFocusPanel("timeline"); setViewingAsset(asset); } },
+                    { label: "Asset History", icon: <IconHistory/>, onClick: () => navigate(`/assets/${asset.assetId}?tab=timeline`) },
                     { divider: true },
                     { label: "Delete Asset", icon: <IconTrash/>, danger: true, onClick: () => deleteAsset(asset.assetId) },
                   ];
@@ -1299,7 +1316,7 @@ export default function Assets() {
                           <div style={{ minWidth:0 }}>
                             <div
                               style={{ fontWeight:600, color:"var(--gray-900)", fontSize:13.5, cursor:"pointer" }}
-                              onClick={() => { setViewingFocusPanel(null); setViewingAsset(asset); }}
+                              onClick={() => navigate(`/assets/${asset.assetId}`)}
                               title="Click to view full details"
                             >
                               {asset.laptopName}

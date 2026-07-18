@@ -15,7 +15,7 @@ const EMPTY_FORM = {
   department: "", designation: "", location: "",
 };
 
-const LOCATIONS = ["Chennai - Kilpauk", "Chennai - Chetpet", "Mumbai"];
+const LOCATIONS = ["Chennai - Kilpauk", "Chennai - Chetpet"];
 
 function avatarBg(name) {
   const colors = ["#1a56db", "#059669", "#7c3aed", "#b45309", "#be185d", "#0284c7"];

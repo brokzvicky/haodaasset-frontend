@@ -9,6 +9,8 @@ import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Assets from "./pages/Assets";
 import AssetDetails from "./pages/AssetDetails";
+import FileCenter from "./pages/FileCenter";
+import MyFiles from "./pages/MyFiles";
 import Employees from "./pages/Employees";
 import AdminAssetRequests from "./pages/AdminAssetRequests";
 import NetworkCredentials from "./pages/NetworkCredentials";
@@ -38,6 +40,7 @@ function App() {
               <Route path="/dashboard"     element={<AdminRoute><Dashboard /></AdminRoute>} />
               <Route path="/assets"        element={<AdminRoute><Assets /></AdminRoute>} />
               <Route path="/assets/:assetId" element={<AdminRoute><AssetDetails /></AdminRoute>} />
+              <Route path="/filecenter"    element={<AdminRoute><FileCenter /></AdminRoute>} />
               <Route path="/employees"     element={<AdminRoute><Employees /></AdminRoute>} />
               <Route path="/asset-requests" element={<AdminRoute><AdminAssetRequests /></AdminRoute>} />
               <Route path="/network-credentials" element={<AdminRoute><NetworkCredentials /></AdminRoute>} />
@@ -54,6 +57,7 @@ function App() {
               {/* Employee Routes */}
               <Route path="/emp/dashboard" element={<EmployeeRoute><EmployeeDashboard /></EmployeeRoute>} />
               <Route path="/emp/assets"    element={<EmployeeRoute><EmployeeAssets /></EmployeeRoute>} />
+              <Route path="/emp/files"     element={<EmployeeRoute><MyFiles /></EmployeeRoute>} />
               <Route path="/emp/profile"   element={<EmployeeRoute><EmployeeProfile /></EmployeeRoute>} />
               <Route path="/emp/request"   element={<EmployeeRoute><EmployeeRequest /></EmployeeRoute>} />
               <Route path="/emp/password"  element={<EmployeeRoute><EmployeePassword /></EmployeeRoute>} />
