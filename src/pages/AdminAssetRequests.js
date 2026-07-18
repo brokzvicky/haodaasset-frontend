@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import axios from "axios";
 import Layout from "../components/Layout";
 import ActionMenu from "../components/ActionMenu";
@@ -9,6 +9,8 @@ import CountUp from "../components/CountUp";
 import "./AdminAssetRequests.css";
 
 const API = "https://haodaasset-backend-1.onrender.com";
+const SAVED_FILTERS_KEY = "arq-saved-filters";
+const RECENT_SEARCH_KEY = "arq-recent-searches";
 
 /* ── Status / priority config ─────────────────────────────────────── */
 const STATUS_CFG = {
@@ -27,27 +29,31 @@ const PAGE_SIZES = [10, 25, 50];
 const Icon = ({ children, size = 14 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">{children}</svg>
 );
-const IconClock       = (p) => <Icon {...p}><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></Icon>;
-const IconCheck        = (p) => <Icon {...p}><path d="M20 6 9 17l-5-5"/></Icon>;
-const IconX             = (p) => <Icon {...p}><path d="M18 6 6 18M6 6l12 12"/></Icon>;
-const IconAlert         = (p) => <Icon {...p}><path d="M12 9v4M12 17h.01"/><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/></Icon>;
-const IconTrendUp       = (p) => <Icon {...p}><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></Icon>;
-const IconTrendDown     = (p) => <Icon {...p}><polyline points="22 17 13.5 8.5 8.5 13.5 2 7"/><polyline points="16 17 22 17 22 11"/></Icon>;
-const IconMinus         = (p) => <Icon {...p}><line x1="5" y1="12" x2="19" y2="12"/></Icon>;
-const IconInbox         = (p) => <Icon {...p}><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11Z"/></Icon>;
-const IconGauge         = (p) => <Icon {...p}><path d="M12 14 15 9"/><circle cx="12" cy="14" r="1"/><path d="M2 12a10 10 0 1 1 4 8"/></Icon>;
-const IconSearch        = (p) => <Icon {...p}><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></Icon>;
-const IconDownload      = (p) => <Icon {...p}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></Icon>;
-const IconRefresh       = (p) => <Icon {...p}><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></Icon>;
-const IconFilterX       = (p) => <Icon {...p}><path d="M2 4h20"/><path d="m18 18-6-7.5V4"/><path d="M4.5 10 8 4"/><path d="m14.5 18 3 3M17.5 18l-3 3"/></Icon>;
-const IconChevronUpDown = (p) => <Icon {...p}><path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/></Icon>;
-const IconEye           = (p) => <Icon {...p}><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z"/><circle cx="12" cy="12" r="3"/></Icon>;
-const IconUserPlus      = (p) => <Icon {...p}><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="16" y1="11" x2="22" y2="11"/></Icon>;
-const IconBuilding      = (p) => <Icon {...p}><rect x="4" y="2" width="16" height="20" rx="1"/><line x1="9" y1="7" x2="9" y2="7.01"/><line x1="15" y1="7" x2="15" y2="7.01"/><line x1="9" y1="12" x2="9" y2="12.01"/><line x1="15" y1="12" x2="15" y2="12.01"/><line x1="9" y1="17" x2="15" y2="17"/></Icon>;
-const IconMapPin        = (p) => <Icon {...p}><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></Icon>;
-const IconBox           = (p) => <Icon {...p}><path d="m21 8-9-5-9 5 9 5 9-5Z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></Icon>;
-const IconCalendar      = (p) => <Icon {...p}><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></Icon>;
-const IconPaperclip     = (p) => <Icon {...p}><path d="M21.44 11.05 12.25 20.24a5.5 5.5 0 0 1-7.78-7.78l9.19-9.19a3.67 3.67 0 0 1 5.19 5.19l-9.2 9.19a1.83 1.83 0 0 1-2.59-2.59l8.49-8.48"/></Icon>;
+const IconClock         = (p) => <Icon {...p}><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></Icon>;
+const IconCheck         = (p) => <Icon {...p}><path d="M20 6 9 17l-5-5"/></Icon>;
+const IconX              = (p) => <Icon {...p}><path d="M18 6 6 18M6 6l12 12"/></Icon>;
+const IconAlert          = (p) => <Icon {...p}><path d="M12 9v4M12 17h.01"/><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/></Icon>;
+const IconTrendUp        = (p) => <Icon {...p}><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></Icon>;
+const IconTrendDown      = (p) => <Icon {...p}><polyline points="22 17 13.5 8.5 8.5 13.5 2 7"/><polyline points="16 17 22 17 22 11"/></Icon>;
+const IconMinus          = (p) => <Icon {...p}><line x1="5" y1="12" x2="19" y2="12"/></Icon>;
+const IconInbox          = (p) => <Icon {...p}><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11Z"/></Icon>;
+const IconGauge          = (p) => <Icon {...p}><path d="M12 14 15 9"/><circle cx="12" cy="14" r="1"/><path d="M2 12a10 10 0 1 1 4 8"/></Icon>;
+const IconSearch         = (p) => <Icon {...p}><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></Icon>;
+const IconDownload       = (p) => <Icon {...p}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></Icon>;
+const IconRefresh        = (p) => <Icon {...p}><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></Icon>;
+const IconFilterX        = (p) => <Icon {...p}><path d="M2 4h20"/><path d="m18 18-6-7.5V4"/><path d="M4.5 10 8 4"/><path d="m14.5 18 3 3M17.5 18l-3 3"/></Icon>;
+const IconChevronUpDown  = (p) => <Icon {...p}><path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/></Icon>;
+const IconChevronDown    = (p) => <Icon {...p}><path d="m6 9 6 6 6-6"/></Icon>;
+const IconEye            = (p) => <Icon {...p}><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z"/><circle cx="12" cy="12" r="3"/></Icon>;
+const IconUserPlus       = (p) => <Icon {...p}><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="16" y1="11" x2="22" y2="11"/></Icon>;
+const IconBuilding       = (p) => <Icon {...p}><rect x="4" y="2" width="16" height="20" rx="1"/><line x1="9" y1="7" x2="9" y2="7.01"/><line x1="15" y1="7" x2="15" y2="7.01"/><line x1="9" y1="12" x2="9" y2="12.01"/><line x1="15" y1="12" x2="15" y2="12.01"/><line x1="9" y1="17" x2="15" y2="17"/></Icon>;
+const IconMapPin         = (p) => <Icon {...p}><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></Icon>;
+const IconBox            = (p) => <Icon {...p}><path d="m21 8-9-5-9 5 9 5 9-5Z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></Icon>;
+const IconCalendar       = (p) => <Icon {...p}><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></Icon>;
+const IconPaperclip      = (p) => <Icon {...p}><path d="M21.44 11.05 12.25 20.24a5.5 5.5 0 0 1-7.78-7.78l9.19-9.19a3.67 3.67 0 0 1 5.19 5.19l-9.2 9.19a1.83 1.83 0 0 1-2.59-2.59l8.49-8.48"/></Icon>;
+const IconSliders        = (p) => <Icon {...p}><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></Icon>;
+const IconBookmark       = (p) => <Icon {...p}><path d="M19 21 12 16l-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2Z"/></Icon>;
+const IconZap            = (p) => <Icon {...p}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></Icon>;
 
 /* ── Helpers ──────────────────────────────────────────────────────── */
 function timeAgo(dateStr) {
@@ -76,22 +82,79 @@ function initials(name) { return (name || "?").split(" ").map((w) => w[0]).join(
 function avatarBg(name) { const c = ["#1a56db", "#059669", "#7c3aed", "#b45309", "#be185d"]; return c[(name || "A").charCodeAt(0) % c.length]; }
 
 // SLA bucket for a single request, based on how long it has been (or was) open.
+// Also returns a 0-100 "elapsed" figure against a 72h SLA window, used to
+// drive the mini progress bar next to the SLA badge.
 function slaBucketFor(req) {
   const start = new Date(req.requestedAt).getTime();
   const end = req.resolvedAt ? new Date(req.resolvedAt).getTime() : Date.now();
   const hours = (end - start) / 3.6e6;
   const resolved = req.status !== "PENDING";
-  if (hours <= 24) return { key: "on-track", label: resolved ? "Resolved on time" : "On track" };
-  if (hours <= 72) return { key: "at-risk", label: resolved ? "Resolved late" : "At risk" };
-  return { key: "breached", label: resolved ? "SLA breached" : "Breached" };
+  const pct = Math.max(4, Math.min(100, Math.round((hours / 72) * 100)));
+  if (hours <= 24) return { key: "on-track", label: resolved ? "Resolved on time" : "On track", pct };
+  if (hours <= 72) return { key: "at-risk", label: resolved ? "Resolved late" : "At risk", pct };
+  return { key: "breached", label: resolved ? "SLA breached" : "Breached", pct: 100 };
+}
+
+// Highlights the portion of `text` matching `query` (case-insensitive) —
+// used by the instant-search experience so matches are easy to scan.
+function highlightMatch(text, query) {
+  const str = text == null ? "" : String(text);
+  const q = (query || "").trim();
+  if (!q) return str;
+  const idx = str.toLowerCase().indexOf(q.toLowerCase());
+  if (idx === -1) return str;
+  return (
+    <>
+      {str.slice(0, idx)}
+      <mark className="arq-mark">{str.slice(idx, idx + q.length)}</mark>
+      {str.slice(idx + q.length)}
+    </>
+  );
+}
+
+// Buckets requests into the last 7 days (oldest → newest) for the KPI
+// sparklines. Purely presentational — no bearing on filtering/sorting.
+function last7DaySeries(requests, pred) {
+  const days = [...Array(7)].map((_, i) => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    d.setDate(d.getDate() - (6 - i));
+    return d;
+  });
+  return days.map((day) => {
+    const next = new Date(day); next.setDate(day.getDate() + 1);
+    return requests.filter((r) => {
+      const t = new Date(r.requestedAt).getTime();
+      return t >= day.getTime() && t < next.getTime() && (!pred || pred(r));
+    }).length;
+  });
 }
 
 /* ── Small presentational pieces ─────────────────────────────────── */
+function Sparkline({ data, color = "var(--primary)" }) {
+  const w = 64, h = 24, pad = 2;
+  const max = Math.max(1, ...data);
+  const step = (w - pad * 2) / Math.max(1, data.length - 1);
+  const pts = data.map((v, i) => {
+    const x = pad + i * step;
+    const y = h - pad - (v / max) * (h - pad * 2);
+    return [x, y];
+  });
+  const line = pts.map((p, i) => `${i === 0 ? "M" : "L"}${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(" ");
+  const area = `${line} L${pts[pts.length - 1][0].toFixed(1)},${h} L${pts[0][0].toFixed(1)},${h} Z`;
+  return (
+    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className="arq-sparkline" aria-hidden="true">
+      <path d={area} fill={color} opacity="0.12" />
+      <path d={line} fill="none" stroke={color} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx={pts[pts.length - 1][0]} cy={pts[pts.length - 1][1]} r="2.2" fill={color} />
+    </svg>
+  );
+}
 function StatusBadge({ status }) {
   const s = STATUS_CFG[status] || STATUS_CFG.PENDING;
   const IconCmp = status === "APPROVED" ? IconCheck : status === "REJECTED" ? IconX : IconClock;
   return (
-    <span style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "4px 11px", borderRadius: 999, background: s.bg, color: s.color, border: `1px solid ${s.border}`, fontSize: 11.5, fontWeight: 700 }}>
+    <span className="arq-badge" style={{ background: s.bg, color: s.color, borderColor: s.border }}>
       <IconCmp size={11} />{s.label}
     </span>
   );
@@ -99,7 +162,7 @@ function StatusBadge({ status }) {
 function UrgencyBadge({ urgency }) {
   const u = URGENCY_CFG[urgency] || URGENCY_CFG.Normal;
   return (
-    <span style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "3px 9px", borderRadius: 999, background: u.bg, color: u.color, border: `1px solid ${u.border}`, fontSize: 11.5, fontWeight: 700 }}>
+    <span className="arq-badge arq-badge-sm" style={{ background: u.bg, color: u.color, borderColor: u.border }}>
       <IconAlert size={10} />{urgency}
     </span>
   );
@@ -107,7 +170,12 @@ function UrgencyBadge({ urgency }) {
 function SlaBadge({ request }) {
   const b = slaBucketFor(request);
   const cls = request.status !== "PENDING" && b.key !== "breached" ? "done" : b.key;
-  return <span className={`sla-badge ${cls}`}>{b.label}</span>;
+  return (
+    <div className="arq-sla-wrap">
+      <span className={`sla-badge ${cls}`}>{b.label}</span>
+      <div className="arq-sla-bar" aria-hidden="true"><div className={`arq-sla-bar-fill ${cls}`} style={{ width: `${b.pct}%` }} /></div>
+    </div>
+  );
 }
 function TrendPill({ pct }) {
   const flat = pct === 0;
@@ -174,6 +242,13 @@ function DetailDrawer({ request, onClose, onApprove, onReject, saving }) {
       .finally(() => setLoadingAssets(false));
   }, [request]);
 
+  useEffect(() => {
+    if (!request) return;
+    const onKey = (e) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [request, onClose]);
+
   if (!request) return null;
 
   const addComment = () => {
@@ -184,25 +259,25 @@ function DetailDrawer({ request, onClose, onApprove, onReject, saving }) {
 
   return (
     <>
-      <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.35)", zIndex: 400, backdropFilter: "blur(2px)" }} />
-      <div className="side-drawer" style={{ position: "fixed", top: 0, right: 0, bottom: 0, width: 420, maxWidth: "92vw", background: "#fff", zIndex: 500, boxShadow: "-8px 0 40px rgba(0,0,0,0.14)", display: "flex", flexDirection: "column", animation: "slideRight 0.22s ease" }}>
+      <div onClick={onClose} className="arq-drawer-scrim" />
+      <div className="side-drawer arq-drawer" role="dialog" aria-modal="true" aria-label={`Request #${request.id} details`}>
         {/* Header */}
-        <div style={{ padding: "20px 24px", borderBottom: "1px solid var(--gray-100)", background: "var(--gray-50)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <div style={{ width: 40, height: 40, borderRadius: 10, flexShrink: 0, background: avatarBg(request.employeeName), display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15, fontWeight: 700, color: "#fff" }}>
+        <div className="arq-drawer-header">
+          <div className="arq-drawer-header-id">
+            <div className="arq-drawer-avatar" style={{ background: avatarBg(request.employeeName) }}>
               {initials(request.employeeName)}
             </div>
             <div>
-              <div style={{ fontSize: 15, fontWeight: 700, color: "var(--gray-900)" }}>Request #{request.id}</div>
-              <div style={{ fontSize: 12, color: "var(--gray-400)", marginTop: 1 }}>{timeAgo(request.requestedAt)}</div>
+              <div className="arq-drawer-title">Request #{request.id}</div>
+              <div className="arq-drawer-subtitle">{timeAgo(request.requestedAt)}</div>
             </div>
           </div>
-          <button onClick={onClose} style={{ width: 32, height: 32, borderRadius: 8, border: "1px solid var(--gray-200)", background: "#fff", cursor: "pointer", fontSize: 16, color: "var(--gray-500)" }} aria-label="Close">✕</button>
+          <button onClick={onClose} className="arq-drawer-close" aria-label="Close details">✕</button>
         </div>
 
         {/* Body */}
-        <div style={{ flex: 1, overflowY: "auto", padding: "20px 24px" }}>
-          <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
+        <div className="arq-drawer-body">
+          <div className="arq-drawer-badges">
             <StatusBadge status={request.status} />
             <UrgencyBadge urgency={request.urgency} />
             <SlaBadge request={request} />
@@ -226,7 +301,7 @@ function DetailDrawer({ request, onClose, onApprove, onReject, saving }) {
 
           <div className="arq-drawer-section">
             <div className="arq-drawer-section-title"><IconBuilding size={12} />Reason / Justification</div>
-            <div style={{ padding: "14px 16px", fontSize: 13.5, color: "var(--gray-700)", lineHeight: 1.65 }}>{request.reason || "No reason provided."}</div>
+            <div className="arq-drawer-reason">{request.reason || "No reason provided."}</div>
           </div>
 
           <div className="arq-drawer-section">
@@ -285,7 +360,7 @@ function DetailDrawer({ request, onClose, onApprove, onReject, saving }) {
 
         {/* Footer Actions */}
         {request.status === "PENDING" && (
-          <div style={{ padding: "16px 24px", borderTop: "1px solid var(--gray-100)", display: "flex", gap: 10 }}>
+          <div className="arq-drawer-footer">
             <button className="btn btn-success" style={{ flex: 1, height: 42, fontSize: 14 }} onClick={() => onApprove(request.id)} disabled={saving}>
               {saving === "APPROVED" ? "Approving…" : "✓ Approve & Assign Asset"}
             </button>
@@ -295,7 +370,6 @@ function DetailDrawer({ request, onClose, onApprove, onReject, saving }) {
           </div>
         )}
       </div>
-      <style>{`@keyframes slideRight{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}`}</style>
     </>
   );
 }
@@ -313,6 +387,8 @@ export default function AdminAssetRequests() {
   const [employeesById, setEmployeesById] = useState({}); // employeeId -> { department, location }
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [lastLoadedAt, setLastLoadedAt] = useState(null);
+  const [, forceTick] = useState(0); // re-renders the "last updated Xm ago" label
 
   // Filters
   const [search, setSearch] = useState("");
@@ -323,6 +399,22 @@ export default function AdminAssetRequests() {
   const [assetTypeFilter, setAssetTypeFilter] = useState("ALL");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+
+  // Quick filter chips (additive, presentation-layer only)
+  const [qHighPriority, setQHighPriority] = useState(false);
+  const [qSlaBreached, setQSlaBreached] = useState(false);
+  const [qThisWeek, setQThisWeek] = useState(false);
+
+  // Filter UX chrome
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [savedFilters, setSavedFilters] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(SAVED_FILTERS_KEY)) || []; } catch { return []; }
+  });
+  const [recentSearches, setRecentSearches] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(RECENT_SEARCH_KEY)) || []; } catch { return []; }
+  });
+  const [searchFocused, setSearchFocused] = useState(false);
+  const searchRef = useRef(null);
 
   // Sorting / pagination
   const [sortKey, setSortKey] = useState("requestedAt");
@@ -342,12 +434,18 @@ export default function AdminAssetRequests() {
   const load = useCallback(() => {
     setLoading(true);
     axios.get(`${API}/api/admin/requests`)
-      .then((r) => { setRequests(r.data); setError(""); })
+      .then((r) => { setRequests(r.data); setError(""); setLastLoadedAt(Date.now()); })
       .catch(() => setError("Couldn't load asset requests. Is the API running on :8080?"))
       .finally(() => setLoading(false));
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  // Ticks once a minute purely so the "Updated Xm ago" chip stays fresh.
+  useEffect(() => {
+    const id = setInterval(() => forceTick((n) => n + 1), 60000);
+    return () => clearInterval(id);
+  }, []);
 
   useEffect(() => {
     axios.get(`${API}/api/admin/employees`)
@@ -435,24 +533,71 @@ export default function AdminAssetRequests() {
       approved, approvalRate, rejected, rejectionRate,
       avgResolutionMs, slaHealth, slaHealthLabel,
       urgentOpen: pending.filter((r) => r.urgency === "Urgent" || r.urgency === "Critical").length,
+      slaBreachedOpen: pending.filter((r) => slaBucketFor(r).key === "breached").length,
     };
   }, [requests]);
+
+  /* ── 7-day sparkline series for the KPI cards ───────────────────── */
+  const sparkTotal = useMemo(() => last7DaySeries(requests), [requests]);
+  const sparkPending = useMemo(() => last7DaySeries(requests, (r) => r.status === "PENDING"), [requests]);
+  const sparkApproved = useMemo(() => last7DaySeries(requests, (r) => r.status === "APPROVED"), [requests]);
+  const sparkRejected = useMemo(() => last7DaySeries(requests, (r) => r.status === "REJECTED"), [requests]);
 
   /* ── Filter option lists ──────────────────────────────────────── */
   const departments = useMemo(() => ["ALL", ...new Set(enriched.map((r) => r.department).filter(Boolean))], [enriched]);
   const locations = useMemo(() => ["ALL", ...new Set(enriched.map((r) => r.location).filter(Boolean))], [enriched]);
   const assetTypes = useMemo(() => ["ALL", ...new Set(enriched.map((r) => r.assetType).filter(Boolean))], [enriched]);
 
-  const anyFilterActive = !!(search || statusFilter !== "ALL" || urgencyFilter !== "ALL" || departmentFilter !== "ALL" || locationFilter !== "ALL" || assetTypeFilter !== "ALL" || dateFrom || dateTo);
+  const anyFilterActive = !!(search || statusFilter !== "ALL" || urgencyFilter !== "ALL" || departmentFilter !== "ALL" || locationFilter !== "ALL" || assetTypeFilter !== "ALL" || dateFrom || dateTo || qHighPriority || qSlaBreached || qThisWeek);
+  const advancedFilterCount = [departmentFilter !== "ALL", locationFilter !== "ALL", assetTypeFilter !== "ALL", !!dateFrom, !!dateTo].filter(Boolean).length;
+
   const resetFilters = () => {
     setSearch(""); setStatusFilter("ALL"); setUrgencyFilter("ALL");
     setDepartmentFilter("ALL"); setLocationFilter("ALL"); setAssetTypeFilter("ALL");
     setDateFrom(""); setDateTo("");
+    setQHighPriority(false); setQSlaBreached(false); setQThisWeek(false);
+  };
+
+  const commitSearch = () => {
+    const q = search.trim();
+    if (!q) return;
+    setRecentSearches((prev) => {
+      const next = [q, ...prev.filter((s) => s.toLowerCase() !== q.toLowerCase())].slice(0, 5);
+      localStorage.setItem(RECENT_SEARCH_KEY, JSON.stringify(next));
+      return next;
+    });
+  };
+
+  const saveCurrentFilter = () => {
+    const name = window.prompt("Name this filter view (e.g. \"Urgent — Bengaluru\"):");
+    if (!name || !name.trim()) return;
+    const snapshot = { search, statusFilter, urgencyFilter, departmentFilter, locationFilter, assetTypeFilter, dateFrom, dateTo, qHighPriority, qSlaBreached, qThisWeek };
+    setSavedFilters((prev) => {
+      const next = [...prev.filter((f) => f.name !== name.trim()), { name: name.trim(), snapshot }];
+      localStorage.setItem(SAVED_FILTERS_KEY, JSON.stringify(next));
+      return next;
+    });
+    toast(`Saved filter view "${name.trim()}"`, "success");
+  };
+  const applySavedFilter = (f) => {
+    const s = f.snapshot;
+    setSearch(s.search || ""); setStatusFilter(s.statusFilter || "ALL"); setUrgencyFilter(s.urgencyFilter || "ALL");
+    setDepartmentFilter(s.departmentFilter || "ALL"); setLocationFilter(s.locationFilter || "ALL"); setAssetTypeFilter(s.assetTypeFilter || "ALL");
+    setDateFrom(s.dateFrom || ""); setDateTo(s.dateTo || "");
+    setQHighPriority(!!s.qHighPriority); setQSlaBreached(!!s.qSlaBreached); setQThisWeek(!!s.qThisWeek);
+  };
+  const deleteSavedFilter = (name) => {
+    setSavedFilters((prev) => {
+      const next = prev.filter((f) => f.name !== name);
+      localStorage.setItem(SAVED_FILTERS_KEY, JSON.stringify(next));
+      return next;
+    });
   };
 
   /* ── Filter + sort ────────────────────────────────────────────── */
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
+    const now = Date.now();
     return enriched
       .filter((r) => statusFilter === "ALL" || r.status === statusFilter)
       .filter((r) => urgencyFilter === "ALL" || r.urgency === urgencyFilter)
@@ -461,8 +606,11 @@ export default function AdminAssetRequests() {
       .filter((r) => assetTypeFilter === "ALL" || r.assetType === assetTypeFilter)
       .filter((r) => !dateFrom || new Date(r.requestedAt) >= new Date(dateFrom))
       .filter((r) => !dateTo || new Date(r.requestedAt) <= new Date(`${dateTo}T23:59:59`))
+      .filter((r) => !qHighPriority || r.urgency === "Urgent" || r.urgency === "Critical")
+      .filter((r) => !qSlaBreached || slaBucketFor(r).key === "breached")
+      .filter((r) => !qThisWeek || (now - new Date(r.requestedAt).getTime()) / 86400000 <= 7)
       .filter((r) => !q || [r.employeeId, r.employeeName, r.assetType, r.reason, r.department, r.location].some((v) => (v || "").toLowerCase().includes(q)));
-  }, [enriched, search, statusFilter, urgencyFilter, departmentFilter, locationFilter, assetTypeFilter, dateFrom, dateTo]);
+  }, [enriched, search, statusFilter, urgencyFilter, departmentFilter, locationFilter, assetTypeFilter, dateFrom, dateTo, qHighPriority, qSlaBreached, qThisWeek]);
 
   const sorted = useMemo(() => {
     const arr = [...filtered];
@@ -490,7 +638,7 @@ export default function AdminAssetRequests() {
   };
 
   // Reset to page 1 whenever the result set changes shape
-  useEffect(() => { setPage(1); }, [search, statusFilter, urgencyFilter, departmentFilter, locationFilter, assetTypeFilter, dateFrom, dateTo, pageSize]);
+  useEffect(() => { setPage(1); }, [search, statusFilter, urgencyFilter, departmentFilter, locationFilter, assetTypeFilter, dateFrom, dateTo, qHighPriority, qSlaBreached, qThisWeek, pageSize]);
 
   const pageCount = Math.max(1, Math.ceil(sorted.length / pageSize));
   const pageSafe = Math.min(page, pageCount);
@@ -550,6 +698,32 @@ export default function AdminAssetRequests() {
     toast(`Exported ${filtered.length} request(s) to CSV.`, "success");
   };
 
+  /* ── Quick filter chip config ────────────────────────────────── */
+  const quickChips = [
+    { key: "pending", active: statusFilter === "PENDING", label: "Pending", count: kpis.pendingCount, icon: <IconClock size={12} />, onToggle: () => setStatusFilter((s) => (s === "PENDING" ? "ALL" : "PENDING")) },
+    { key: "highPriority", active: qHighPriority, label: "High priority", count: kpis.pendingHigh, icon: <IconAlert size={12} />, onToggle: () => setQHighPriority((v) => !v) },
+    { key: "slaBreached", active: qSlaBreached, label: "SLA breached", count: kpis.slaBreachedOpen, icon: <IconGauge size={12} />, onToggle: () => setQSlaBreached((v) => !v) },
+    { key: "thisWeek", active: qThisWeek, label: "This week", icon: <IconCalendar size={12} />, onToggle: () => setQThisWeek((v) => !v) },
+  ];
+
+  /* ── Removable "active filter" badges ────────────────────────── */
+  const activeChips = [];
+  if (search) activeChips.push({ key: "search", label: `Search: "${search}"`, onRemove: () => setSearch("") });
+  if (statusFilter !== "ALL") activeChips.push({ key: "status", label: `Status: ${STATUS_CFG[statusFilter]?.label || statusFilter}`, onRemove: () => setStatusFilter("ALL") });
+  if (urgencyFilter !== "ALL") activeChips.push({ key: "urgency", label: `Priority: ${urgencyFilter}`, onRemove: () => setUrgencyFilter("ALL") });
+  if (departmentFilter !== "ALL") activeChips.push({ key: "dept", label: `Dept: ${departmentFilter}`, onRemove: () => setDepartmentFilter("ALL") });
+  if (locationFilter !== "ALL") activeChips.push({ key: "loc", label: `Location: ${locationFilter}`, onRemove: () => setLocationFilter("ALL") });
+  if (assetTypeFilter !== "ALL") activeChips.push({ key: "asset", label: `Asset: ${assetTypeFilter}`, onRemove: () => setAssetTypeFilter("ALL") });
+  if (dateFrom || dateTo) activeChips.push({ key: "date", label: `Date: ${dateFrom || "…"} → ${dateTo || "…"}`, onRemove: () => { setDateFrom(""); setDateTo(""); } });
+  if (qHighPriority) activeChips.push({ key: "qhp", label: "High priority", onRemove: () => setQHighPriority(false) });
+  if (qSlaBreached) activeChips.push({ key: "qsb", label: "SLA breached", onRemove: () => setQSlaBreached(false) });
+  if (qThisWeek) activeChips.push({ key: "qtw", label: "This week", onRemove: () => setQThisWeek(false) });
+
+  const exportMenuItems = [
+    { label: `Export ${filtered.length} filtered (CSV)`, icon: <IconDownload size={13} />, onClick: exportAllFiltered },
+    selectedIds.size > 0 && { label: `Export ${selectedIds.size} selected (CSV)`, icon: <IconDownload size={13} />, onClick: bulkExport },
+  ];
+
   return (
     <Layout
       title="Asset Requests"
@@ -557,7 +731,7 @@ export default function AdminAssetRequests() {
       actions={
         <div style={{ display: "flex", gap: 8 }}>
           <button className="btn btn-secondary" onClick={load} disabled={loading}><IconRefresh size={13} /> {loading ? "Loading…" : "Refresh"}</button>
-          <button className="btn btn-secondary" onClick={exportAllFiltered}><IconDownload size={13} /> Export CSV</button>
+          <ExportMenu items={exportMenuItems} />
         </div>
       }
     >
@@ -567,19 +741,35 @@ export default function AdminAssetRequests() {
         </div>
       )}
 
+      {/* ── Page meta strip: freshness + active-filter indicator ── */}
+      <div className="arq-meta-strip">
+        <span className="arq-meta-item">
+          <span className={`arq-live-dot ${loading ? "is-loading" : ""}`} />
+          {loading ? "Refreshing…" : lastLoadedAt ? `Updated ${timeAgo(new Date(lastLoadedAt).toISOString())}` : "Not loaded yet"}
+        </span>
+        <span className="arq-meta-sep">·</span>
+        <span className="arq-meta-item">{filtered.length} of {requests.length} requests shown</span>
+        {anyFilterActive && (
+          <>
+            <span className="arq-meta-sep">·</span>
+            <span className="arq-meta-item arq-meta-filters"><IconSliders size={11} /> {activeChips.length} filter{activeChips.length !== 1 ? "s" : ""} active</span>
+          </>
+        )}
+      </div>
+
       {/* ── Executive KPI section ── */}
       <div className="arq-kpi-grid">
         <div className="arq-kpi-card accent-blue">
           <div className="arq-kpi-top"><div className="arq-kpi-icon"><IconInbox size={16} /></div><TrendPill pct={loading ? 0 : kpis.growthPct} /></div>
           <div className="arq-kpi-value">{loading ? "—" : <CountUp value={kpis.total} />}</div>
-          <div className="arq-kpi-label">Total Requests</div>
+          <div className="arq-kpi-label-row"><div className="arq-kpi-label">Total Requests</div><Sparkline data={sparkTotal} color="#2563eb" /></div>
           <div className="arq-kpi-meta"><div className="arq-kpi-meta-row"><span>vs previous 7 days</span><strong>{kpis.growthPct >= 0 ? "+" : ""}{kpis.growthPct}%</strong></div></div>
         </div>
 
         <div className="arq-kpi-card accent-amber">
           <div className="arq-kpi-top"><div className="arq-kpi-icon"><IconClock size={16} /></div>{kpis.pendingHigh > 0 && <span className="arq-kpi-trend down">{kpis.pendingHigh} high-pri</span>}</div>
           <div className="arq-kpi-value">{loading ? "—" : <CountUp value={kpis.pendingCount} />}</div>
-          <div className="arq-kpi-label">Pending</div>
+          <div className="arq-kpi-label-row"><div className="arq-kpi-label">Pending</div><Sparkline data={sparkPending} color="#d97706" /></div>
           <div className="arq-kpi-meta">
             <div className="arq-kpi-meta-row"><span>High priority</span><strong>{kpis.pendingHigh}</strong></div>
             <div className="arq-kpi-meta-row"><span>Avg waiting time</span><strong>{durationHuman(kpis.avgWaitMs)}</strong></div>
@@ -589,14 +779,14 @@ export default function AdminAssetRequests() {
         <div className="arq-kpi-card accent-green">
           <div className="arq-kpi-top"><div className="arq-kpi-icon"><IconCheck size={16} /></div></div>
           <div className="arq-kpi-value">{loading ? "—" : <CountUp value={kpis.approved} />}</div>
-          <div className="arq-kpi-label">Approved</div>
+          <div className="arq-kpi-label-row"><div className="arq-kpi-label">Approved</div><Sparkline data={sparkApproved} color="#15803d" /></div>
           <div className="arq-kpi-meta"><div className="arq-kpi-meta-row"><span>Approval rate</span><strong>{kpis.approvalRate}%</strong></div></div>
         </div>
 
         <div className="arq-kpi-card accent-red">
           <div className="arq-kpi-top"><div className="arq-kpi-icon"><IconX size={16} /></div></div>
           <div className="arq-kpi-value">{loading ? "—" : <CountUp value={kpis.rejected} />}</div>
-          <div className="arq-kpi-label">Rejected</div>
+          <div className="arq-kpi-label-row"><div className="arq-kpi-label">Rejected</div><Sparkline data={sparkRejected} color="#b91c1c" /></div>
           <div className="arq-kpi-meta"><div className="arq-kpi-meta-row"><span>Rejection rate</span><strong>{kpis.rejectionRate}%</strong></div></div>
         </div>
 
@@ -613,61 +803,131 @@ export default function AdminAssetRequests() {
         </div>
       </div>
 
-      {/* ── Request insights strip ── */}
-      <div className="arq-insights">
-        <span className="arq-insights-item">Showing <strong>{filtered.length}</strong> requests</span>
-        <span className="arq-insights-item">Pending <strong>{kpis.pendingCount}</strong></span>
-        <span className="arq-insights-item urgent">Urgent <strong>{kpis.urgentOpen}</strong></span>
-        <span className="arq-insights-item">Avg approval time <strong>{durationHuman(kpis.avgResolutionMs)}</strong></span>
-      </div>
-
-      {/* ── Sticky filter toolbar ── */}
+      {/* ── Filter experience: search + quick chips + collapsible advanced ── */}
       <div className="arq-toolbar-card">
         <div className="arq-toolbar-row">
           <div className="arq-toolbar-search">
             <IconSearch className="search-icon" size={14} />
-            <input className="input" placeholder="Search employee, ID, asset, department, reason…" value={search} onChange={(e) => setSearch(e.target.value)} />
+            <input
+              ref={searchRef}
+              className="input"
+              placeholder="Search employee, ID, asset, department, reason…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              onFocus={() => setSearchFocused(true)}
+              onBlur={() => setTimeout(() => setSearchFocused(false), 120)}
+              onKeyDown={(e) => { if (e.key === "Enter") commitSearch(); }}
+            />
             {search && <button className="clear-btn" onClick={() => setSearch("")} aria-label="Clear search"><IconX size={11} /></button>}
+            {searchFocused && recentSearches.length > 0 && !search && (
+              <div className="arq-search-suggest">
+                <div className="arq-search-suggest-label">Recent searches</div>
+                {recentSearches.map((s) => (
+                  <button key={s} className="arq-search-suggest-item" onMouseDown={() => setSearch(s)}>
+                    <IconSearch size={11} />{s}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
-          <select className="input arq-toolbar-select" aria-label="Filter by status" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-            <option value="ALL">All statuses</option>
-            <option value="PENDING">Pending</option>
-            <option value="APPROVED">Approved</option>
-            <option value="REJECTED">Rejected</option>
-          </select>
+          <button type="button" className={`arq-advanced-toggle ${advancedOpen ? "is-open" : ""}`} onClick={() => setAdvancedOpen((v) => !v)}>
+            <IconSliders size={13} /> Advanced filters
+            {advancedFilterCount > 0 && <span className="arq-advanced-count">{advancedFilterCount}</span>}
+            <IconChevronDown size={12} />
+          </button>
 
-          <select className="input arq-toolbar-select" aria-label="Filter by priority" value={urgencyFilter} onChange={(e) => setUrgencyFilter(e.target.value)}>
-            <option value="ALL">All priorities</option>
-            <option value="Normal">Normal</option>
-            <option value="Urgent">Urgent</option>
-            <option value="Critical">Critical</option>
-          </select>
-
-          <select className="input arq-toolbar-select" aria-label="Filter by department" value={departmentFilter} onChange={(e) => setDepartmentFilter(e.target.value)}>
-            {departments.map((d) => <option key={d} value={d}>{d === "ALL" ? "All departments" : d}</option>)}
-          </select>
-
-          <select className="input arq-toolbar-select" aria-label="Filter by location" value={locationFilter} onChange={(e) => setLocationFilter(e.target.value)}>
-            {locations.map((l) => <option key={l} value={l}>{l === "ALL" ? "All locations" : l}</option>)}
-          </select>
-
-          <select className="input arq-toolbar-select" aria-label="Filter by asset type" value={assetTypeFilter} onChange={(e) => setAssetTypeFilter(e.target.value)}>
-            {assetTypes.map((t) => <option key={t} value={t}>{t === "ALL" ? "All asset types" : t}</option>)}
-          </select>
-
-          <div className="arq-date-range">
-            <IconCalendar size={13} />
-            <input type="date" className="input" aria-label="From date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
-            <span className="arq-date-range-sep">–</span>
-            <input type="date" className="input" aria-label="To date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
-          </div>
-
-          <div className="arq-toolbar-spacer" />
+          <button type="button" className="arq-save-btn" onClick={saveCurrentFilter} disabled={!anyFilterActive} title="Save current filters as a view">
+            <IconBookmark size={13} /> Save view
+          </button>
 
           {anyFilterActive && (
-            <button className="btn btn-secondary btn-sm arq-reset-btn" onClick={resetFilters}><IconFilterX size={12} /> Reset Filters</button>
+            <button className="btn btn-secondary btn-sm arq-reset-btn" onClick={resetFilters}><IconFilterX size={12} /> Reset</button>
           )}
+        </div>
+
+        {/* Quick filter chips */}
+        <div className="arq-chip-row">
+          <IconZap size={12} className="arq-chip-row-icon" />
+          {quickChips.map((c) => (
+            <button key={c.key} type="button" className={`arq-chip ${c.active ? "is-active" : ""}`} onClick={c.onToggle}>
+              {c.icon}{c.label}{typeof c.count === "number" && <span className="arq-chip-count">{c.count}</span>}
+            </button>
+          ))}
+          {savedFilters.length > 0 && (
+            <>
+              <span className="arq-chip-divider" />
+              {savedFilters.map((f) => (
+                <span key={f.name} className="arq-chip arq-chip-saved">
+                  <button type="button" className="arq-chip-saved-btn" onClick={() => applySavedFilter(f)}><IconBookmark size={11} />{f.name}</button>
+                  <button type="button" className="arq-chip-saved-x" onClick={() => deleteSavedFilter(f.name)} aria-label={`Delete saved view ${f.name}`}><IconX size={9} /></button>
+                </span>
+              ))}
+            </>
+          )}
+        </div>
+
+        {/* Active filter badges */}
+        {activeChips.length > 0 && (
+          <div className="arq-active-filters">
+            {activeChips.map((c) => (
+              <span key={c.key} className="arq-filter-pill">
+                {c.label}
+                <button type="button" onClick={c.onRemove} aria-label={`Remove filter ${c.label}`}><IconX size={9} /></button>
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* Advanced filters — collapsed by default */}
+        <div className={`arq-advanced-panel ${advancedOpen ? "is-open" : ""}`}>
+          <div className="arq-advanced-grid">
+            <label className="arq-advanced-field">
+              <span>Status</span>
+              <select className="input" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+                <option value="ALL">All statuses</option>
+                <option value="PENDING">Pending</option>
+                <option value="APPROVED">Approved</option>
+                <option value="REJECTED">Rejected</option>
+              </select>
+            </label>
+            <label className="arq-advanced-field">
+              <span>Priority</span>
+              <select className="input" value={urgencyFilter} onChange={(e) => setUrgencyFilter(e.target.value)}>
+                <option value="ALL">All priorities</option>
+                <option value="Normal">Normal</option>
+                <option value="Urgent">Urgent</option>
+                <option value="Critical">Critical</option>
+              </select>
+            </label>
+            <label className="arq-advanced-field">
+              <span>Department</span>
+              <select className="input" value={departmentFilter} onChange={(e) => setDepartmentFilter(e.target.value)}>
+                {departments.map((d) => <option key={d} value={d}>{d === "ALL" ? "All departments" : d}</option>)}
+              </select>
+            </label>
+            <label className="arq-advanced-field">
+              <span>Location</span>
+              <select className="input" value={locationFilter} onChange={(e) => setLocationFilter(e.target.value)}>
+                {locations.map((l) => <option key={l} value={l}>{l === "ALL" ? "All locations" : l}</option>)}
+              </select>
+            </label>
+            <label className="arq-advanced-field">
+              <span>Asset type</span>
+              <select className="input" value={assetTypeFilter} onChange={(e) => setAssetTypeFilter(e.target.value)}>
+                {assetTypes.map((t) => <option key={t} value={t}>{t === "ALL" ? "All asset types" : t}</option>)}
+              </select>
+            </label>
+            <label className="arq-advanced-field arq-advanced-field-date">
+              <span>Date range</span>
+              <div className="arq-date-range">
+                <IconCalendar size={13} />
+                <input type="date" className="input" aria-label="From date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
+                <span className="arq-date-range-sep">–</span>
+                <input type="date" className="input" aria-label="To date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
+              </div>
+            </label>
+          </div>
         </div>
 
         {selectedIds.size > 0 && (
@@ -682,7 +942,7 @@ export default function AdminAssetRequests() {
       </div>
 
       {/* ── Request table ── */}
-      <div className="card">
+      <div className="card arq-table-card">
         {loading ? (
           <div className="table-wrap">
             <table className="data-table">
@@ -704,26 +964,24 @@ export default function AdminAssetRequests() {
             </table>
           </div>
         ) : filtered.length === 0 ? (
-          <div style={{ textAlign: "center", padding: "64px 20px" }}>
-            <div style={{ fontSize: 44, marginBottom: 12, opacity: 0.35 }}>📭</div>
-            <div style={{ fontSize: 15, fontWeight: 700, color: "var(--gray-600)", marginBottom: 6 }}>No requests found</div>
-            <div style={{ fontSize: 13, color: "var(--gray-400)" }}>
+          <div className="arq-empty-state">
+            <div className="arq-empty-icon">📭</div>
+            <div className="arq-empty-title">No requests found</div>
+            <div className="arq-empty-sub">
               {anyFilterActive ? "Try changing the filters or clearing your search." : "When employees raise equipment requests, they'll appear here."}
             </div>
             {anyFilterActive && <button className="btn btn-secondary" style={{ marginTop: 14 }} onClick={resetFilters}>Reset Filters</button>}
           </div>
         ) : (
           <>
-            <div className="table-wrap">
-              <table className="data-table">
+            <div className="table-wrap arq-table-wrap">
+              <table className="data-table arq-table">
                 <thead>
                   <tr>
                     <th style={{ width: 36 }}>
                       <input type="checkbox" className="row-checkbox" checked={paged.length > 0 && paged.every((r) => selectedIds.has(r.id))} onChange={(e) => toggleAllOnPage(e.target.checked)} title="Select all on page" />
                     </th>
                     <th><SortHeader label="Employee" sortKey="employeeName" active={sortKey} dir={sortDir} onSort={onSort} /></th>
-                    <th>Employee ID</th>
-                    <th><SortHeader label="Department" sortKey="department" active={sortKey} dir={sortDir} onSort={onSort} /></th>
                     <th><SortHeader label="Location" sortKey="location" active={sortKey} dir={sortDir} onSort={onSort} /></th>
                     <th><SortHeader label="Requested Asset" sortKey="assetType" active={sortKey} dir={sortDir} onSort={onSort} /></th>
                     <th>Reason</th>
@@ -732,11 +990,11 @@ export default function AdminAssetRequests() {
                     <th><SortHeader label="Age" sortKey="age" active={sortKey} dir={sortDir} onSort={onSort} /></th>
                     <th>Submitted</th>
                     <th><SortHeader label="Status" sortKey="status" active={sortKey} dir={sortDir} onSort={onSort} /></th>
-                    <th style={{ width: 60 }}>Actions</th>
+                    <th className="arq-th-sticky" style={{ width: 60 }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {paged.map((r) => {
+                  {paged.map((r, i) => {
                     const isSelected = selectedIds.has(r.id);
                     const menuItems = [
                       { label: "View Details", icon: <IconEye size={13} />, onClick: () => setSelectedId(r.id) },
@@ -744,29 +1002,31 @@ export default function AdminAssetRequests() {
                       r.status === "PENDING" && { label: "Reject Request", icon: <IconX size={13} />, danger: true, onClick: () => reject(r.id) },
                     ];
                     return (
-                      <tr key={r.id} className={`arq-row ${isSelected ? "is-selected" : ""}`} onClick={() => setSelectedId(r.id)}>
+                      <tr key={r.id} className={`arq-row ${isSelected ? "is-selected" : ""}`} style={{ animationDelay: `${Math.min(i, 12) * 0.02}s` }} onClick={() => setSelectedId(r.id)}>
                         <td onClick={(e) => e.stopPropagation()}>
                           <input type="checkbox" className="row-checkbox" checked={isSelected} onChange={() => toggleOne(r.id)} />
                         </td>
                         <td>
-                          <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
-                            <div style={{ width: 32, height: 32, borderRadius: 8, background: avatarBg(r.employeeName), display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11.5, fontWeight: 700, color: "#fff", flexShrink: 0 }}>
-                              {initials(r.employeeName)}
+                          <div className="arq-emp-cell">
+                            <div className="arq-emp-avatar" style={{ background: avatarBg(r.employeeName) }}>{initials(r.employeeName)}</div>
+                            <div className="arq-emp-info">
+                              <div className="arq-emp-name">{highlightMatch(r.employeeName, search)}</div>
+                              <div className="arq-emp-meta">
+                                <span className="arq-emp-id">{highlightMatch(r.employeeId, search)}</span>
+                                {r.department && <span className="arq-emp-dept">{highlightMatch(r.department, search)}</span>}
+                              </div>
                             </div>
-                            <div style={{ fontWeight: 700, fontSize: 13, color: "var(--gray-900)" }}>{r.employeeName}</div>
                           </div>
                         </td>
-                        <td style={{ fontSize: 11.5, color: "var(--gray-500)", fontFamily: "var(--font-mono)" }}>{r.employeeId}</td>
-                        <td style={{ fontSize: 12.5, color: "var(--gray-600)" }}>{r.department || "—"}</td>
                         <td style={{ fontSize: 12.5, color: "var(--gray-600)" }}>{r.location || "—"}</td>
-                        <td><span className="arq-asset-chip">{r.assetType}</span></td>
-                        <td style={{ maxWidth: 160 }}><span className="arq-reason-clamp">{r.reason || "—"}</span></td>
+                        <td><span className="arq-asset-chip">{highlightMatch(r.assetType, search)}</span></td>
+                        <td style={{ maxWidth: 160 }}><span className="arq-reason-clamp">{highlightMatch(r.reason || "—", search)}</span></td>
                         <td><UrgencyBadge urgency={r.urgency} /></td>
                         <td><SlaBadge request={r} /></td>
                         <td style={{ fontSize: 12.5, color: "var(--gray-500)", whiteSpace: "nowrap" }}>{durationHuman(Date.now() - new Date(r.requestedAt).getTime())}</td>
                         <td style={{ fontSize: 12.5, color: "var(--gray-400)", whiteSpace: "nowrap" }}>{formatDate(r.requestedAt)}</td>
                         <td><StatusBadge status={r.status} /></td>
-                        <td onClick={(e) => e.stopPropagation()}>
+                        <td className="arq-td-sticky" onClick={(e) => e.stopPropagation()}>
                           <RowActionMenu items={menuItems} ariaLabel={`Actions for request #${r.id}`} />
                         </td>
                       </tr>
@@ -820,6 +1080,26 @@ function RowActionMenu({ items, ariaLabel }) {
       onToggle={() => setOpen((o) => !o)}
       onClose={() => setOpen(false)}
       ariaLabel={ariaLabel}
+    />
+  );
+}
+
+/* ── Header export dropdown — reuses the shared ActionMenu so there's
+   still only one dropdown implementation in the codebase. ── */
+function ExportMenu({ items }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <ActionMenu
+      items={items}
+      open={open}
+      onToggle={() => setOpen((o) => !o)}
+      onClose={() => setOpen(false)}
+      ariaLabel="Export options"
+      renderTrigger={(triggerProps) => (
+        <button type="button" className={`btn btn-secondary ${open ? "is-active" : ""}`} {...triggerProps}>
+          <IconDownload size={13} /> Export <IconChevronDown size={11} />
+        </button>
+      )}
     />
   );
 }

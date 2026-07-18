@@ -17,7 +17,7 @@ const DotsIcon = () => (
   </svg>
 );
 
-export default function ActionMenu({ items, open, onToggle, onClose, align = "right", ariaLabel = "More actions" }) {
+export default function ActionMenu({ items, open, onToggle, onClose, align = "right", ariaLabel = "More actions", renderTrigger }) {
   const triggerRef = useRef(null);
   const menuRef = useRef(null);
   const itemRefs = useRef([]);
@@ -139,18 +139,22 @@ export default function ActionMenu({ items, open, onToggle, onClose, align = "ri
 
   return (
     <div className="gm-action-menu">
-      <button
-        ref={triggerRef}
-        className={`gm-action-menu-trigger${open ? " is-active" : ""}`}
-        onClick={onToggle}
-        onKeyDown={handleTriggerKeyDown}
-        title={ariaLabel}
-        aria-label={ariaLabel}
-        aria-haspopup="menu"
-        aria-expanded={open}
-      >
-        <DotsIcon />
-      </button>
+      {renderTrigger ? (
+        renderTrigger({ ref: triggerRef, onClick: onToggle, onKeyDown: handleTriggerKeyDown, "aria-label": ariaLabel, "aria-haspopup": "menu", "aria-expanded": open })
+      ) : (
+        <button
+          ref={triggerRef}
+          className={`gm-action-menu-trigger${open ? " is-active" : ""}`}
+          onClick={onToggle}
+          onKeyDown={handleTriggerKeyDown}
+          title={ariaLabel}
+          aria-label={ariaLabel}
+          aria-haspopup="menu"
+          aria-expanded={open}
+        >
+          <DotsIcon />
+        </button>
+      )}
       {menu}
     </div>
   );
