@@ -143,6 +143,7 @@
 }
 .detail-drawer-mini-table td { padding: 8px; border-top: 1px solid var(--gray-100); }
 .detail-drawer-mini-table tr:first-child td { border-top: none; }
+.detail-drawer-mini-table tbody tr:hover td { background: var(--gray-50); }
 
 .detail-drawer-footer {
   padding: 16px 26px; border-top: 1px solid var(--gray-100);

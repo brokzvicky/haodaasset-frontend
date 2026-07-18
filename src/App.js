@@ -8,6 +8,7 @@ import { AdminRoute, EmployeeRoute, GuestRoute } from "./components/ProtectedRou
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Assets from "./pages/Assets";
+import AssetDetails from "./pages/AssetDetails";
 import Employees from "./pages/Employees";
 import AdminAssetRequests from "./pages/AdminAssetRequests";
 import NetworkCredentials from "./pages/NetworkCredentials";
@@ -36,6 +37,7 @@ function App() {
               {/* Admin Routes */}
               <Route path="/dashboard"     element={<AdminRoute><Dashboard /></AdminRoute>} />
               <Route path="/assets"        element={<AdminRoute><Assets /></AdminRoute>} />
+              <Route path="/assets/:assetId" element={<AdminRoute><AssetDetails /></AdminRoute>} />
               <Route path="/employees"     element={<AdminRoute><Employees /></AdminRoute>} />
               <Route path="/asset-requests" element={<AdminRoute><AdminAssetRequests /></AdminRoute>} />
               <Route path="/network-credentials" element={<AdminRoute><NetworkCredentials /></AdminRoute>} />

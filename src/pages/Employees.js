@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState, useCallback } from "react";
 import axios from "axios";
+import { useNavigate } from "react-router-dom";
 import Layout from "../components/Layout";
 import { useToast } from "../utils/Toast";
 import StatusPill from "../components/StatusPill";
@@ -509,6 +510,7 @@ function AssignAssetModal({ employee, onClose, onSuccess }) {
 
 // ─── Employee Detail Drawer ─────────────────────────────────────────────────
 function EmployeeDetailDrawer({ employee, assets, loadingAssets, onClose, onEdit, onDelete, onAssign }) {
+  const navigate = useNavigate();
   if (!employee) return null;
   return (
     <div className="detail-drawer-overlay" onClick={onClose}>
@@ -570,7 +572,12 @@ function EmployeeDetailDrawer({ employee, assets, loadingAssets, onClose, onEdit
                 </thead>
                 <tbody>
                   {assets.map((item) => (
-                    <tr key={item.assetId}>
+                    <tr
+                      key={item.assetId}
+                      onClick={() => navigate(`/assets/${item.assetId}`)}
+                      style={{ cursor: "pointer" }}
+                      title="Click to view full asset details"
+                    >
                       <td>
                         <div style={{ fontWeight: 600, color: "var(--gray-900)" }}>{item.laptopName}</div>
                         <div style={{ fontSize: 11, color: "var(--gray-400)", marginTop: 1 }}>
