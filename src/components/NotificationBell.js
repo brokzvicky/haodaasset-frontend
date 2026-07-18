@@ -218,8 +218,12 @@ export default function NotificationBell() {
   };
 
   const handleComplete = (item) => {
+    // Completing a task-linked notification does two things: finish the
+    // underlying task (stops future day-based reminders for it) AND mark
+    // *this* notification as Actioned — otherwise it never becomes
+    // eligible for "Clear completed", which only sweeps Actioned items.
     if (item.category === "Task" && item.relatedRecordId) completeTask?.(item.relatedRecordId);
-    else completePulse?.(item.raw.notificationId);
+    completePulse?.(item.raw.notificationId);
   };
 
   const totalCount = totalUnread;
