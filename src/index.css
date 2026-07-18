@@ -177,12 +177,12 @@ input, select, textarea { font-family: var(--font); }
   text-transform: uppercase;
   letter-spacing: 0.10em;
   color: rgba(255,255,255,0.22);
-  padding: 14px 16px 4px;
+  padding: 10px 16px 3px;
 }
 
 .sidebar-nav {
   flex: 1;
-  padding: 6px 10px;
+  padding: 4px 8px;
   display: flex;
   flex-direction: column;
   gap: 1px;
@@ -193,10 +193,10 @@ input, select, textarea { font-family: var(--font); }
   display: flex;
   align-items: center;
   gap: 9px;
-  padding: 8px 10px;
+  padding: 6.5px 10px;
   border-radius: 7px;
   color: var(--sidebar-text);
-  font-size: 13px;
+  font-size: 12.5px;
   font-weight: 500;
   transition: all 0.13s ease;
   border: 1px solid transparent;
@@ -1702,11 +1702,54 @@ select:focus-visible, textarea:focus-visible, [tabindex]:focus-visible {
 .sidebar.sidebar-collapsed .sidebar-logo { justify-content: center; }
 .sidebar.sidebar-collapsed .sidebar-collapse-btn { margin-left: 0; }
 
-.sidebar.sidebar-collapsed .sidebar-item { justify-content: center; padding: 9px; position: relative; }
+.sidebar.sidebar-collapsed .sidebar-item { justify-content: center; padding: 8px; position: relative; }
 .sidebar.sidebar-collapsed .sidebar-item-badge { position: absolute; top: 4px; right: 4px; margin-left: 0; }
 .sidebar.sidebar-collapsed .sidebar-user { justify-content: center; }
 .sidebar.sidebar-collapsed .sidebar-logout { justify-content: center; padding: 9px; }
 .sidebar.sidebar-collapsed .sidebar-logout span { display: flex; }
+
+/* Section labels collapse to a thin divider instead of just vanishing,
+   so icon groups don't run together with no visual separation. */
+.sidebar.sidebar-collapsed .sidebar-nav { gap: 2px; }
+.sidebar.sidebar-collapsed .sidebar-section-divider {
+  height: 1px;
+  margin: 6px 10px 5px;
+  background: rgba(255,255,255,0.08);
+}
+.sidebar.sidebar-collapsed .sidebar-section-divider:first-child { display: none; }
+
+/* Premium flyout tooltip for collapsed items — replaces the native
+   browser title tooltip (slow, unstyled) with an instant styled one. */
+.sidebar.sidebar-collapsed .sidebar-item,
+.sidebar.sidebar-collapsed .sidebar-logout,
+.sidebar.sidebar-collapsed .sidebar-user {
+  position: relative;
+}
+.sidebar.sidebar-collapsed [data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  left: calc(100% + 10px);
+  top: 50%;
+  transform: translateY(-50%) translateX(-4px);
+  background: var(--sidebar-tooltip-bg, #1a1d2e);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  padding: 6px 10px;
+  border-radius: 7px;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.28);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.12s ease, transform 0.12s ease;
+  z-index: 200;
+}
+.sidebar.sidebar-collapsed [data-tooltip]:hover::after,
+.sidebar.sidebar-collapsed [data-tooltip]:focus-visible::after {
+  opacity: 1;
+  transform: translateY(-50%) translateX(0);
+  transition-delay: 0.05s;
+}
 
 @media (max-width: 900px) {
   /* Collapse is a desktop affordance; mobile keeps the existing slide-over sidebar untouched */

@@ -150,6 +150,7 @@ export default function Sidebar({ open = false, onClose, collapsed = false, onTo
           {sections.map((section) => (
             <React.Fragment key={section}>
               {!collapsed && <div className="sidebar-section-label">{section}</div>}
+              {collapsed && <div className="sidebar-section-divider" aria-hidden="true" />}
               {nav.filter((n) => n.section === section).map((item) => {
                 const active =
                   location.pathname === item.to ||
@@ -162,7 +163,8 @@ export default function Sidebar({ open = false, onClose, collapsed = false, onTo
                     className={`sidebar-item ${active ? "active" : ""}`}
                     onClick={handleNavClick}
                     aria-current={active ? "page" : undefined}
-                    title={collapsed ? item.label : undefined}
+                    aria-label={collapsed ? item.label : undefined}
+                    data-tooltip={collapsed ? item.label : undefined}
                   >
                     <span className="sidebar-item-icon" aria-hidden="true">
                       {item.icon === "networkCredentials"
@@ -184,7 +186,7 @@ export default function Sidebar({ open = false, onClose, collapsed = false, onTo
         </nav>
 
         <div className="sidebar-footer">
-          <div className="sidebar-user" title={collapsed ? (user?.name || "User") : undefined}>
+          <div className="sidebar-user" aria-label={collapsed ? (user?.name || "User") : undefined} data-tooltip={collapsed ? (user?.name || "User") : undefined}>
             <div className="sidebar-avatar" style={{ background: avatarColor(user?.name) }}>
               {initials(user?.name)}
             </div>
@@ -195,7 +197,7 @@ export default function Sidebar({ open = false, onClose, collapsed = false, onTo
               </div>
             )}
           </div>
-          <button className="sidebar-logout" onClick={handleLogout} title={collapsed ? "Sign Out" : undefined}>
+          <button className="sidebar-logout" onClick={handleLogout} aria-label={collapsed ? "Sign Out" : undefined} data-tooltip={collapsed ? "Sign Out" : undefined}>
             <span aria-hidden="true">{Ico.logout}</span> {!collapsed && "Sign Out"}
           </button>
         </div>
