@@ -25,6 +25,7 @@ import EmployeeDashboard from "./pages/EmployeeDashboard";
 import { EmployeeAssets, EmployeeProfile, EmployeeRequest, EmployeePassword } from "./pages/EmployeePages";
 import Maintenance from "./pages/Maintenance";
 import HaodaPulse from "./pages/HaodaPulse";
+import AiSearch from "./pages/AiSearch";
 
 function App() {
   return (
@@ -47,6 +48,7 @@ function App() {
               <Route path="/service-billing" element={<AdminRoute><ServiceBilling /></AdminRoute>} />
               <Route path="/maintenance"    element={<AdminRoute><Maintenance /></AdminRoute>} />
               <Route path="/pulse"         element={<AdminRoute><HaodaPulse /></AdminRoute>} />
+              <Route path="/ai-search"     element={<AdminRoute><AiSearch /></AdminRoute>} />
               <Route path="/reports"       element={<AdminRoute><Reports /></AdminRoute>} />
               <Route path="/settings"      element={<AdminRoute><Settings /></AdminRoute>} />
               <Route path="/activity-log"  element={<AdminRoute><ActivityLog /></AdminRoute>} />
@@ -61,6 +63,7 @@ function App() {
               <Route path="/emp/profile"   element={<EmployeeRoute><EmployeeProfile /></EmployeeRoute>} />
               <Route path="/emp/request"   element={<EmployeeRoute><EmployeeRequest /></EmployeeRoute>} />
               <Route path="/emp/password"  element={<EmployeeRoute><EmployeePassword /></EmployeeRoute>} />
+              <Route path="/emp/ai-search" element={<EmployeeRoute><AiSearch /></EmployeeRoute>} />
 
               {/* Fallback */}
               <Route path="*" element={<Navigate to="/" replace />} />
