@@ -1,9 +1,27 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ShieldCheck, RefreshCw, ArrowLeft, AlertTriangle, Boxes, KeyRound } from "lucide-react";
+import {
+  ShieldCheck, ArrowLeft, AlertTriangle, Boxes,
+  Eye, EyeOff, Loader2, Search, BadgeCheck, PieChart,
+  UserCog, LayoutGrid,
+} from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import ForgotPasswordModal from "../components/ForgotPasswordModal";
 import "../components/ForgotPasswordModal.css";
+import "./Login.css";
+
+const REMEMBER_KEY = "haoda_remember_login";
+
+// Feature highlights shown on the branding panel — purely presentational,
+// no functional dependency on anything below.
+const FEATURES = [
+  { icon: Boxes,        label: "Centralized Asset Tracking" },
+  { icon: UserCog,      label: "Employee Asset Assignment" },
+  { icon: BadgeCheck,   label: "Warranty Management" },
+  { icon: Search,       label: "AI-Powered Asset Search" },
+  { icon: PieChart,     label: "Reports & Analytics" },
+  { icon: ShieldCheck,  label: "Secure, Role-Based Access" },
+];
 
 export default function Login() {
   const { login, verifyAdminOtp, resendAdminOtp } = useAuth();
@@ -15,6 +33,24 @@ export default function Login() {
   const [error, setError]       = useState("");
   const [loading, setLoading]   = useState("");
   const [showForgotPassword, setShowForgotPassword] = useState(false);
+
+  // ── Presentational-only additions (no auth-logic impact) ─────────────
+  const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe]     = useState(false);
+  const [mounted, setMounted]           = useState(false);
+
+  // Restore a remembered identifier/tab (never the password) on first load.
+  useEffect(() => {
+    setMounted(true);
+    try {
+      const saved = JSON.parse(localStorage.getItem(REMEMBER_KEY) || "null");
+      if (saved?.identifier) {
+        setIdentifier(saved.identifier);
+        setTab(saved.tab === "employee" ? "employee" : "admin");
+        setRememberMe(true);
+      }
+    } catch { /* ignore malformed storage */ }
+  }, []);
 
   // ── Admin 2FA step ─────────────────────────────────────────────────
   const [stage, setStage] = useState("credentials"); // "credentials" | "2fa"
@@ -109,6 +145,15 @@ export default function Login() {
       return;
     }
 
+    // Presentational-only: remember the identifier + tab, never the password.
+    try {
+      if (rememberMe) {
+        localStorage.setItem(REMEMBER_KEY, JSON.stringify({ identifier: identifier.trim(), tab }));
+      } else {
+        localStorage.removeItem(REMEMBER_KEY);
+      }
+    } catch { /* storage may be unavailable — non-critical */ }
+
     if (result.role === "admin") {
       if (result.twoFactorRequired) {
         setChallengeToken(result.challengeToken);
@@ -133,23 +178,29 @@ export default function Login() {
     setIdentifier("");
     setPassword("");
     setError("");
+    setShowPassword(false);
   };
 
   return (
-    <div className="login-page">
-      {/* ── Left panel ─────────────────────────────────────────────── */}
+    <div className={`login-page ${mounted ? "is-mounted" : ""}`}>
+      {/* ── Left panel — branding & feature highlights ────────────────── */}
       <div className="login-left">
-        {/* Dot grid */}
         <div className="login-left-grid" />
+        <div className="login-left-orb login-left-orb-a" />
+        <div className="login-left-orb login-left-orb-b" />
 
         {/* Brand */}
         <div className="login-brand">
           <div className="login-brand-icon">
-            <img src="/haoda-icon.png" alt="Haoda Group" />
+            <img
+              src="/haoda-icon.png"
+              alt="HaodaAsset"
+              onError={(e) => { e.currentTarget.style.display = "none"; e.currentTarget.parentElement.classList.add("login-brand-icon--fallback"); }}
+            />
           </div>
           <div>
-            <div className="login-brand-name">Haoda Asset</div>
-            <div className="login-brand-sub">IT Asset Management · Haoda Group</div>
+            <div className="login-brand-name">HaodaAsset</div>
+            <div className="login-brand-sub">Enterprise IT Asset Management Platform</div>
           </div>
         </div>
 
@@ -157,53 +208,61 @@ export default function Login() {
         <div className="login-hero">
           <div className="login-hero-tag">
             <span className="login-hero-tag-dot" />
-            Internal IT Operations Platform
+            Trusted by IT teams across Haoda Group
           </div>
           <h1 className="login-hero-title">
-            Manage every<br />
-            <span>IT asset</span><br />
-            effortlessly.
+            Every asset.<br />
+            <span>One platform.</span><br />
+            Total control.
           </h1>
           <p className="login-hero-desc">
-            One platform to track, assign, and audit Haoda Group's hardware
-            and software assets across every department and location.
+            Track, assign, and audit every laptop, license, and device your
+            organization owns — with enterprise-grade security built in.
           </p>
         </div>
 
-        {/* What the platform actually does — real features, not stats */}
+        {/* Feature highlights */}
         <div className="login-features">
-          <div className="login-feature">
-            <div className="login-feature-icon"><Boxes size={16} /></div>
-            <div className="login-feature-text">Centralized asset tracking, end to end</div>
-          </div>
-          <div className="login-feature">
-            <div className="login-feature-icon"><ShieldCheck size={16} /></div>
-            <div className="login-feature-text">Two-factor secured admin access</div>
-          </div>
-          <div className="login-feature">
-            <div className="login-feature-icon"><KeyRound size={16} /></div>
-            <div className="login-feature-text">Role-based access for admins &amp; employees</div>
-          </div>
+          {FEATURES.map(({ icon: Icon, label }, i) => (
+            <div className="login-feature" key={label} style={{ animationDelay: `${i * 60}ms` }}>
+              <div className="login-feature-icon"><Icon size={16} /></div>
+              <div className="login-feature-text">{label}</div>
+            </div>
+          ))}
         </div>
       </div>
 
-      {/* ── Right panel ────────────────────────────────────────────── */}
+      {/* ── Right panel — sign in card ─────────────────────────────────── */}
       <div className="login-right">
         <div className="login-box fade-in">
+          <div className="login-box-brand-mobile">
+            <div className="login-brand-icon login-brand-icon--sm">
+              <img
+                src="/haoda-icon.png"
+                alt="HaodaAsset"
+                onError={(e) => { e.currentTarget.style.display = "none"; e.currentTarget.parentElement.classList.add("login-brand-icon--fallback"); }}
+              />
+            </div>
+            <span>HaodaAsset</span>
+          </div>
+
           <div className="login-box-header">
             <div className="login-box-title">{stage === "2fa" ? "Verify it's you" : "Welcome back"}</div>
             <div className="login-box-sub">
               {stage === "2fa"
                 ? `Enter the 6-digit code sent to ${maskedEmail}`
-                : "Sign in to your Haoda Asset account"}
+                : "Sign in to your HaodaAsset account"}
             </div>
           </div>
 
           {stage === "credentials" && (
             <>
               {/* Role tabs */}
-              <div className="login-tabs">
+              <div className="login-tabs" role="tablist" aria-label="Sign in as">
                 <button
+                  type="button"
+                  role="tab"
+                  aria-selected={tab === "admin"}
                   className={`login-tab ${tab === "admin" ? "active" : ""}`}
                   onClick={() => switchTab("admin")}
                 >
@@ -213,6 +272,9 @@ export default function Login() {
                   Admin
                 </button>
                 <button
+                  type="button"
+                  role="tab"
+                  aria-selected={tab === "employee"}
                   className={`login-tab ${tab === "employee" ? "active" : ""}`}
                   onClick={() => switchTab("employee")}
                 >
@@ -223,70 +285,88 @@ export default function Login() {
                 </button>
               </div>
 
-              <form className="login-form" onSubmit={handleLogin}>
+              <form className="login-form" onSubmit={handleLogin} noValidate>
                 {tab === "admin" ? (
-                  <>
-                    <div className="login-field">
-                      <label className="login-label">Username</label>
-                      <input
-                        className="login-input"
-                        type="text"
-                        placeholder="Enter username"
-                        value={identifier}
-                        onChange={(e) => setIdentifier(e.target.value)}
-                        autoFocus
-                        required
-                      />
-                    </div>
-                    <div className="login-field">
-                      <label className="login-label">Password</label>
-                      <input
-                        className="login-input"
-                        type="password"
-                        placeholder="Enter password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        required
-                      />
+                  <div className="login-field">
+                    <label className="login-label" htmlFor="login-identifier">Username</label>
+                    <input
+                      id="login-identifier"
+                      className="login-input"
+                      type="text"
+                      placeholder="Enter username"
+                      value={identifier}
+                      onChange={(e) => setIdentifier(e.target.value)}
+                      autoFocus
+                      autoComplete="username"
+                      required
+                    />
+                  </div>
+                ) : (
+                  <div className="login-field">
+                    <label className="login-label" htmlFor="login-identifier">Employee ID</label>
+                    <input
+                      id="login-identifier"
+                      className="login-input"
+                      type="text"
+                      placeholder="e.g. EMP001"
+                      value={identifier}
+                      onChange={(e) => setIdentifier(e.target.value)}
+                      autoFocus
+                      autoComplete="username"
+                      required
+                    />
+                  </div>
+                )}
+
+                <div className="login-field">
+                  <div className="login-label-row">
+                    <label className="login-label" htmlFor="login-password">Password</label>
+                    {tab === "admin" && (
                       <button
                         type="button"
                         className="login-forgot-link"
                         onClick={() => setShowForgotPassword(true)}
                       >
-                        Forgot Password?
+                        Forgot password?
                       </button>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <div className="login-field">
-                      <label className="login-label">Employee ID</label>
-                      <input
-                        className="login-input"
-                        type="text"
-                        placeholder="e.g. EMP001"
-                        value={identifier}
-                        onChange={(e) => setIdentifier(e.target.value)}
-                        autoFocus
-                        required
-                      />
-                    </div>
-                    <div className="login-field">
-                      <label className="login-label">Password</label>
-                      <input
-                        className="login-input"
-                        type="password"
-                        placeholder="Enter password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        required
-                      />
-                    </div>
-                  </>
-                )}
+                    )}
+                  </div>
+                  <div className="login-input-shell">
+                    <input
+                      id="login-password"
+                      className="login-input login-input--pw"
+                      type={showPassword ? "text" : "password"}
+                      placeholder="Enter password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      autoComplete="current-password"
+                      required
+                    />
+                    <button
+                      type="button"
+                      className="login-pw-toggle"
+                      aria-label={showPassword ? "Hide password" : "Show password"}
+                      aria-pressed={showPassword}
+                      onClick={() => setShowPassword((s) => !s)}
+                      tabIndex={-1}
+                    >
+                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+                </div>
+
+                <label className="login-remember">
+                  <input
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                  />
+                  <span className="login-remember-box" aria-hidden="true" />
+                  Remember me on this device
+                </label>
 
                 {error && (
-                  <div className="login-error">
+                  <div className="login-error" role="alert" aria-live="assertive">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
                     </svg>
@@ -295,15 +375,14 @@ export default function Login() {
                 )}
 
                 <button type="submit" className="login-btn" disabled={loading}>
-                  {loading ? "Signing in…" : `Sign in as ${tab === "admin" ? "Admin" : "Employee"}`}
+                  {loading
+                    ? <><Loader2 size={16} className="login-btn-spin" /> Signing in…</>
+                    : <>Sign in as {tab === "admin" ? "Admin" : "Employee"}</>}
                 </button>
               </form>
 
               {tab === "admin" && (
-                <div style={{
-                  marginTop: 16, display: "flex", alignItems: "center", gap: 6,
-                  fontSize: 11.5, color: "var(--gray-400)", justifyContent: "center",
-                }}>
+                <div className="login-2fa-note">
                   <ShieldCheck size={13} /> Protected by two-factor email verification
                 </div>
               )}
@@ -313,7 +392,7 @@ export default function Login() {
           {stage === "2fa" && (
             <form className="login-form" onSubmit={handleVerifyOtp}>
               {error && (
-                <div className="fpwd-error" style={{ marginBottom: 4 }}>
+                <div className="fpwd-error" style={{ marginBottom: 4 }} role="alert" aria-live="assertive">
                   <AlertTriangle size={14} /> {error}
                 </div>
               )}
@@ -329,6 +408,7 @@ export default function Login() {
                     value={d}
                     onChange={(e) => handleOtpChange(i, e.target.value)}
                     onKeyDown={(e) => handleOtpKeyDown(i, e)}
+                    aria-label={`Digit ${i + 1} of 6`}
                   />
                 ))}
               </div>
@@ -348,7 +428,9 @@ export default function Login() {
               </div>
 
               <button type="submit" className="login-btn" disabled={loading} style={{ marginTop: 14 }}>
-                {loading ? <><RefreshCw size={15} className="fpwd-spin" style={{ marginRight: 6 }} /> Verifying…</> : "Verify & Sign In"}
+                {loading
+                  ? <><Loader2 size={16} className="login-btn-spin" /> Verifying…</>
+                  : "Verify & Sign In"}
               </button>
 
               <button type="button" className="fpwd-back-btn" onClick={backToCredentials} style={{ margin: "12px auto 0" }}>
@@ -357,8 +439,8 @@ export default function Login() {
             </form>
           )}
 
-          <p style={{ textAlign: "center", fontSize: 11.5, color: "var(--gray-400)", marginTop: 20 }}>
-            Protected by enterprise-grade security · v2.0
+          <p className="login-footnote">
+            <LayoutGrid size={11} /> Protected by enterprise-grade security · v2.0
           </p>
         </div>
       </div>
