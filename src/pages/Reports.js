@@ -13,6 +13,8 @@ export default function Reports() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [pdfDownloading, setPdfDownloading] = useState(false);
+  const [exitPdfDownloading, setExitPdfDownloading] = useState(false);
+  const [exitExcelDownloading, setExitExcelDownloading] = useState(false);
   const [analytics, setAnalytics] = useState(null);
 
   useEffect(() => {
@@ -85,6 +87,31 @@ export default function Reports() {
       toast(err.response?.data?.message || "Couldn't generate the PDF report. Please try again.", "error");
     } finally {
       setPdfDownloading(false);
+    }
+  };
+
+  const downloadExitReport = async (format) => {
+    const isPdf = format === "pdf";
+    const setDownloading = isPdf ? setExitPdfDownloading : setExitExcelDownloading;
+    setDownloading(true);
+    try {
+      const token = sessionStorage.getItem("iam_token");
+      const response = await axios.get(`${API}/api/admin/reports/employee-exit-report/${format}`, {
+        responseType: "blob",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const mime = isPdf ? "application/pdf" : "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+      const blob = new Blob([response.data], { type: mime });
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement("a");
+      a.href = url;
+      a.download = `employee-exit-report-${new Date().toISOString().split("T")[0]}.${isPdf ? "pdf" : "xlsx"}`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      toast(err.response?.data?.message || `Couldn't generate the exit report ${format.toUpperCase()}. Please try again.`, "error");
+    } finally {
+      setDownloading(false);
     }
   };
 
@@ -251,6 +278,12 @@ export default function Reports() {
             </button>
             <button className="btn btn-secondary" onClick={downloadEmployeePdf} disabled={pdfDownloading}>
               {pdfDownloading ? "Generating…" : "📄 Employee Asset Report (PDF)"}
+            </button>
+            <button className="btn btn-secondary" onClick={() => downloadExitReport("pdf")} disabled={exitPdfDownloading}>
+              {exitPdfDownloading ? "Generating…" : "🚪 Employee Exit Report (PDF)"}
+            </button>
+            <button className="btn btn-secondary" onClick={() => downloadExitReport("excel")} disabled={exitExcelDownloading}>
+              {exitExcelDownloading ? "Generating…" : "📊 Employee Exit Report (Excel)"}
             </button>
           </div>
           {!assets.length && !loading && (

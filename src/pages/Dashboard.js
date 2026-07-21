@@ -202,6 +202,7 @@ export default function Dashboard() {
     overdueServices: null, totalInvoicesUploaded: null,
   });
   const [analytics, setAnalytics] = useState(null);
+  const [separationStats, setSeparationStats] = useState(null);
 
   const now      = new Date();
   const greeting = now.getHours() < 12 ? "Good morning" : now.getHours() < 17 ? "Good afternoon" : "Good evening";
@@ -231,6 +232,11 @@ export default function Dashboard() {
     // Warranty & Maintenance widgets — a failure here shouldn't block the rest of the dashboard.
     axios.get(`${API}/api/admin/reports/analytics`)
       .then((r) => setAnalytics(r.data))
+      .catch(() => { /* widgets simply stay hidden if this fails */ });
+
+    // Employee Separation widgets — a failure here shouldn't block the rest of the dashboard.
+    axios.get(`${API}/api/admin/employees/separation/dashboard-stats`)
+      .then((r) => setSeparationStats(r.data))
       .catch(() => { /* widgets simply stay hidden if this fails */ });
   }, []);
 
@@ -442,6 +448,29 @@ export default function Dashboard() {
             badge={billing.overdueServices > 0 ? "Action needed" : undefined}
             onClick={() => navigate("/service-billing")} />
           <KpiCard label="Invoices Uploaded"      value={billing.totalInvoicesUploaded === null ? null : (billing.totalInvoicesUploaded ?? 0)} gradient="linear-gradient(135deg,#a78bfa,#7c3aed)" glow="#7c3aed40" icon={<IconArchive />} />
+        </div>
+      </div>
+
+      {/* Employee Separation Overview */}
+      <div style={{ marginBottom: 16 }}>
+        <div style={{ marginBottom: 12, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ fontSize: 15, fontWeight: 700, color: "var(--gray-800)" }}>Employee Separation</span>
+            <span style={{ fontSize: 12, color: "var(--gray-400)", background: "var(--gray-100)", padding: "2px 10px", borderRadius: 999, fontWeight: 600 }}>
+              Resignation &amp; exit workflow
+            </span>
+          </div>
+          <Link to="/employees" style={{ fontSize: 12.5, fontWeight: 700, color: "var(--primary)", textDecoration: "none" }}>
+            Manage employees →
+          </Link>
+        </div>
+        <div className="kpi-row kpi-row-4 stagger-in">
+          <KpiCard icon={<IconUsers />}   label="Notice Period"          value={separationStats === null ? null : (separationStats.noticePeriod ?? 0)}         sub="Serving notice"        gradient="linear-gradient(135deg,#fde047,#ca8a04)" glow="#ca8a0440" onClick={() => navigate("/employees")} />
+          <KpiCard icon={<IconAlert />}   label="Pending Exit Clearance" value={separationStats === null ? null : (separationStats.pendingExitClearance ?? 0)} sub="Awaiting clearance"    gradient="linear-gradient(135deg,#fb923c,#ea580c)" glow="#ea580c40" onClick={() => navigate("/employees")} />
+          <KpiCard icon={<IconArchive />} label="Resigned This Month"    value={separationStats === null ? null : (separationStats.resignedThisMonth ?? 0)}    sub="Finalized exits"       gradient="linear-gradient(135deg,#94a3b8,#475569)" glow="#47556940" onClick={() => navigate("/employees")} />
+          <KpiCard icon={<IconBox />}     label="Pending Asset Returns"  value={separationStats === null ? null : (separationStats.pendingAssetReturns ?? 0)}  sub="Across separating staff" gradient="linear-gradient(135deg,#f87171,#dc2626)" glow="#dc262640"
+            badge={separationStats && separationStats.pendingAssetReturns > 0 ? "Action needed" : undefined}
+            onClick={() => navigate("/employees")} />
         </div>
       </div>
 

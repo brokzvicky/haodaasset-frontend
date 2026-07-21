@@ -4,6 +4,8 @@ import { useNavigate } from "react-router-dom";
 import Layout from "../components/Layout";
 import { useToast } from "../utils/Toast";
 import StatusPill from "../components/StatusPill";
+import EmployeeStatusPill from "../components/EmployeeStatusPill";
+import SeparationModal from "../components/SeparationModal";
 import ActionMenu from "../components/ActionMenu";
 import "../components/DetailDrawer.css";
 import "./Employees.css";
@@ -12,7 +14,7 @@ const API = "https://haodaasset-backend-1.onrender.com";
 
 const EMPTY_FORM = {
   employeeId: "", employeeName: "", email: "",
-  department: "", designation: "", location: "",
+  department: "", designation: "", location: "", joiningDate: "",
 };
 
 const LOCATIONS = ["Chennai - Kilpauk", "Chennai - Chetpet"];
@@ -56,6 +58,7 @@ const IconEye      = () => <svg width="13" height="13" viewBox="0 0 24 24" fill=
 const IconUserPlus = () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="17" y1="11" x2="23" y2="11"/></svg>;
 const IconEdit     = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4z"/></svg>;
 const IconTrash    = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>;
+const IconUserMinus= () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="17" y1="11" x2="23" y2="11"/></svg>;
 const IconUsers    = () => <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>;
 
 // ─── Assign Asset Modal ────────────────────────────────────────────────────────
@@ -509,9 +512,10 @@ function AssignAssetModal({ employee, onClose, onSuccess }) {
 }
 
 // ─── Employee Detail Drawer ─────────────────────────────────────────────────
-function EmployeeDetailDrawer({ employee, assets, loadingAssets, onClose, onEdit, onDelete, onAssign }) {
+function EmployeeDetailDrawer({ employee, assets, loadingAssets, onClose, onEdit, onDelete, onAssign, onSeparation }) {
   const navigate = useNavigate();
   if (!employee) return null;
+  const isSeparating = employee.employmentStatus && employee.employmentStatus !== "Active";
   return (
     <div className="detail-drawer-overlay" onClick={onClose}>
       <div className="detail-drawer" onClick={(e) => e.stopPropagation()}>
@@ -527,6 +531,9 @@ function EmployeeDetailDrawer({ employee, assets, loadingAssets, onClose, onEdit
             {employee.employeeId}{employee.designation ? ` · ${employee.designation}` : ""}{employee.department ? ` · ${employee.department}` : ""}
           </div>
           <div className="detail-drawer-pills">
+            <span className="pill" style={{ background: "rgba(255,255,255,0.18)", color: "#fff", border: "1px solid rgba(255,255,255,0.3)" }}>
+              {employee.employmentStatus || "Active"}
+            </span>
             {employee.mustChangePassword && <span className="pill" style={{ background: "rgba(255,255,255,0.18)", color: "#fff", border: "1px solid rgba(255,255,255,0.3)" }}>Default password</span>}
           </div>
         </div>
@@ -591,12 +598,47 @@ function EmployeeDetailDrawer({ employee, assets, loadingAssets, onClose, onEdit
               </table>
             )}
           </div>
+
+          {isSeparating && (
+            <div className="detail-drawer-section" style={{ marginBottom: 4 }}>
+              <div className="detail-drawer-section-title">Separation History</div>
+              <div className="detail-drawer-grid">
+                <div className="detail-drawer-stat">
+                  <div className="detail-drawer-stat-label">Notice Start Date</div>
+                  <div className="detail-drawer-stat-value">{employee.noticeStartDate || "—"}</div>
+                </div>
+                <div className="detail-drawer-stat">
+                  <div className="detail-drawer-stat-label">Last Working Date</div>
+                  <div className="detail-drawer-stat-value">{employee.lastWorkingDate || "—"}</div>
+                </div>
+                <div className="detail-drawer-stat">
+                  <div className="detail-drawer-stat-label">Resignation Reason</div>
+                  <div className="detail-drawer-stat-value">{employee.resignationReason || "—"}</div>
+                </div>
+                <div className="detail-drawer-stat">
+                  <div className="detail-drawer-stat-label">Clearance Completion Date</div>
+                  <div className="detail-drawer-stat-value">{employee.clearanceCompletionDate || "—"}</div>
+                </div>
+                <div className="detail-drawer-stat">
+                  <div className="detail-drawer-stat-label">Final Status</div>
+                  <div className="detail-drawer-stat-value">{employee.employmentStatus}</div>
+                </div>
+                <div className="detail-drawer-stat">
+                  <div className="detail-drawer-stat-label">Resigned Date</div>
+                  <div className="detail-drawer-stat-value">{employee.resignedDate || "—"}</div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Footer */}
         <div className="detail-drawer-footer" style={{ flexWrap: "wrap" }}>
           <button className="btn btn-primary" style={{ flex: "1 1 auto" }} onClick={() => onAssign(employee)}>
             ➕ Assign Asset
+          </button>
+          <button className="btn btn-secondary" onClick={() => onSeparation(employee)}>
+            🚪 {isSeparating ? "Manage Separation" : "Start Resignation"}
           </button>
           <button className="btn btn-secondary" onClick={() => onEdit(employee)}>✏ Edit</button>
           <button className="btn btn-danger" onClick={() => onDelete(employee)}>🗑 Delete</button>
@@ -629,6 +671,8 @@ export default function Employees() {
 
   // Assign Asset modal state
   const [assignTarget, setAssignTarget] = useState(null);
+  // Employee Separation / Resignation modal state
+  const [separationTarget, setSeparationTarget] = useState(null);
 
   // ── Filters (all client-side, presentational only) ─────────────────
   const [departmentFilter, setDepartmentFilter] = useState("All");
@@ -693,6 +737,7 @@ export default function Employees() {
       department: emp.department || "",
       designation: emp.designation || "",
       location: emp.location || "",
+      joiningDate: emp.joiningDate || "",
     });
     setShowForm(true);
   };
@@ -740,6 +785,13 @@ export default function Employees() {
   const handleAssignSuccess = () => {
     setAssignTarget(null);
     // Refresh employees + clear expanded assets cache so they reload fresh
+    setExpandedAssets({});
+    loadEmployees();
+  };
+
+  const handleSeparationSuccess = () => {
+    // Keep the modal open (workflow spans multiple steps) but refresh the
+    // directory in the background so status badges / counts stay live.
     setExpandedAssets({});
     loadEmployees();
   };
@@ -878,6 +930,10 @@ export default function Employees() {
                     <option value="">Select branch…</option>
                     {LOCATIONS.map(l => <option key={l} value={l}>{l}</option>)}
                   </select>
+                </div>
+                <div className="field">
+                  <label className="field-label">Joining Date</label>
+                  <input className="input" type="date" {...field("joiningDate")} />
                 </div>
               </div>
               <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
@@ -1075,6 +1131,7 @@ export default function Employees() {
 
               const menuItems = [
                 { label: "Edit Employee", icon: <IconEdit />, onClick: () => startEdit(emp) },
+                { label: (emp.employmentStatus && emp.employmentStatus !== "Active") ? "Manage Separation" : "Start Resignation", icon: <IconUserMinus />, onClick: () => setSeparationTarget(emp) },
                 { divider: true },
                 { label: "Delete Employee", icon: <IconTrash />, danger: true, onClick: () => deleteEmployee(emp) },
               ];
@@ -1143,9 +1200,7 @@ export default function Employees() {
                   </div>
 
                   <div className="emp-status-row">
-                    <span className="emp-status-pill is-active">
-                      <span className="emp-status-dot" />Active
-                    </span>
+                    <EmployeeStatusPill status={emp.employmentStatus} />
                     <span className={`emp-status-pill ${emp.mustChangePassword ? "is-warning" : "is-active"}`}>
                       <span className="emp-status-dot" />
                       {emp.mustChangePassword ? "Default Password" : "Password Changed"}
@@ -1167,13 +1222,23 @@ export default function Employees() {
                     >
                       <IconEye /> View
                     </button>
-                    <button
-                      className="emp-btn-assign"
-                      onClick={() => setAssignTarget(emp)}
-                      title="Assign an asset to this employee"
-                    >
-                      <IconUserPlus /> Assign Asset
-                    </button>
+                    {emp.employmentStatus === "Resigned" ? (
+                      <button
+                        className="emp-btn-assign"
+                        onClick={() => setSeparationTarget(emp)}
+                        title="View this employee's separation history"
+                      >
+                        <IconUserMinus /> Separation History
+                      </button>
+                    ) : (
+                      <button
+                        className="emp-btn-assign"
+                        onClick={() => setAssignTarget(emp)}
+                        title="Assign an asset to this employee"
+                      >
+                        <IconUserPlus /> Assign Asset
+                      </button>
+                    )}
                   </div>
                 </div>
               );
@@ -1191,6 +1256,15 @@ export default function Employees() {
         />
       )}
 
+      {/* Employee Separation / Resignation Modal */}
+      {separationTarget && (
+        <SeparationModal
+          employee={separationTarget}
+          onClose={() => { setSeparationTarget(null); loadEmployees(); }}
+          onSuccess={handleSeparationSuccess}
+        />
+      )}
+
       <EmployeeDetailDrawer
         employee={viewingEmployee}
         assets={viewingEmployee ? expandedAssets[viewingEmployee.employeeId] : null}
@@ -1199,6 +1273,7 @@ export default function Employees() {
         onEdit={(emp) => { setViewingEmployee(null); startEdit(emp); }}
         onDelete={(emp) => { setViewingEmployee(null); deleteEmployee(emp); }}
         onAssign={(emp) => { setViewingEmployee(null); setAssignTarget(emp); }}
+        onSeparation={(emp) => { setViewingEmployee(null); setSeparationTarget(emp); }}
       />
     </Layout>
   );
