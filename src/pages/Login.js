@@ -2,8 +2,8 @@ import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ShieldCheck, ArrowLeft, AlertTriangle, Boxes,
-  Eye, EyeOff, Loader2, Search, BadgeCheck, PieChart,
-  UserCog, LayoutGrid,
+  Eye, EyeOff, Search, BadgeCheck, PieChart,
+  UserCog, Lock, Check,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import ForgotPasswordModal from "../components/ForgotPasswordModal";
@@ -15,13 +15,28 @@ const REMEMBER_KEY = "haoda_remember_login";
 // Feature highlights shown on the branding panel — purely presentational,
 // no functional dependency on anything below.
 const FEATURES = [
-  { icon: Boxes,        label: "Centralized Asset Tracking" },
-  { icon: UserCog,      label: "Employee Asset Assignment" },
-  { icon: BadgeCheck,   label: "Warranty Management" },
-  { icon: Search,       label: "AI-Powered Asset Search" },
-  { icon: PieChart,     label: "Reports & Analytics" },
-  { icon: ShieldCheck,  label: "Secure, Role-Based Access" },
+  { icon: Boxes,       label: "Asset Tracking" },
+  { icon: UserCog,     label: "Employee Management" },
+  { icon: Search,      label: "AI Search" },
+  { icon: BadgeCheck,  label: "Warranty Management" },
+  { icon: PieChart,    label: "Reports & Analytics" },
+  { icon: ShieldCheck, label: "Secure Authentication" },
 ];
+
+// Wallet mark (Haoda Pay icon-only asset) — reused deliberately across every
+// "small brand touch" surface: mobile header, illustration, and the spinner.
+// This keeps a single consistent mark rather than mixing multiple logos.
+const WALLET_ICON = "/haoda-wallet-icon.png";
+const HAODA_PAY_LOGO = "/haoda-pay-logo.png";
+const HAODA_GROUP_LOGO = "/haoda-logo.png";
+
+function WalletSpinner({ size = 18 }) {
+  return (
+    <span className="wallet-spinner" style={{ width: size, height: size }}>
+      <img src={WALLET_ICON} alt="" />
+    </span>
+  );
+}
 
 export default function Login() {
   const { login, verifyAdminOtp, resendAdminOtp } = useAuth();
@@ -183,65 +198,90 @@ export default function Login() {
 
   return (
     <div className={`login-page ${mounted ? "is-mounted" : ""}`}>
-      {/* ── Left panel — branding & feature highlights ────────────────── */}
+      {/* ── Left panel — branding, illustration & feature highlights (60%) ── */}
       <div className="login-left">
         <div className="login-left-grid" />
         <div className="login-left-orb login-left-orb-a" />
         <div className="login-left-orb login-left-orb-b" />
 
-        {/* Brand */}
-        <div className="login-brand">
-          <div className="login-brand-icon">
-            <img
-              src="/haoda-icon.png"
-              alt="HaodaAsset"
-              onError={(e) => { e.currentTarget.style.display = "none"; e.currentTarget.parentElement.classList.add("login-brand-icon--fallback"); }}
-            />
-          </div>
-          <div>
-            <div className="login-brand-name">HaodaAsset</div>
-            <div className="login-brand-sub">Enterprise IT Asset Management Platform</div>
-          </div>
-        </div>
-
-        {/* Hero */}
-        <div className="login-hero">
+        <div className="login-left-top">
           <div className="login-hero-tag">
             <span className="login-hero-tag-dot" />
             Trusted by IT teams across Haoda Group
           </div>
+
           <h1 className="login-hero-title">
-            Every asset.<br />
-            <span>One platform.</span><br />
-            Total control.
+            IT Asset Management,
+            <br />
+            <span>built for the modern</span>
+            <br />
+            enterprise.
           </h1>
           <p className="login-hero-desc">
             Track, assign, and audit every laptop, license, and device your
             organization owns — with enterprise-grade security built in.
           </p>
+
+          {/* Feature highlights */}
+          <ul className="login-features">
+            {FEATURES.map(({ icon: Icon, label }, i) => (
+              <li className="login-feature" key={label} style={{ animationDelay: `${i * 60}ms` }}>
+                <span className="login-feature-check"><Check size={12} strokeWidth={3} /></span>
+                <span className="login-feature-icon"><Icon size={15} /></span>
+                <span className="login-feature-text">{label}</span>
+              </li>
+            ))}
+          </ul>
         </div>
 
-        {/* Feature highlights */}
-        <div className="login-features">
-          {FEATURES.map(({ icon: Icon, label }, i) => (
-            <div className="login-feature" key={label} style={{ animationDelay: `${i * 60}ms` }}>
-              <div className="login-feature-icon"><Icon size={16} /></div>
-              <div className="login-feature-text">{label}</div>
+        {/* Illustration — built around the Haoda Pay wallet mark, never the
+            full text logo, per brand rules for this surface. */}
+        <div className="login-illustration" aria-hidden="true">
+          <div className="login-illustration-glow" />
+          <div className="login-illustration-card login-illustration-card--main">
+            <div className="lic-row">
+              <div className="lic-dot" /><div className="lic-dot" /><div className="lic-dot" />
             </div>
-          ))}
+            <div className="lic-bar lic-bar--w70" />
+            <div className="lic-bar lic-bar--w40" />
+            <div className="lic-stats">
+              <div className="lic-stat">
+                <div className="lic-stat-bar" style={{ height: "62%" }} />
+                <div className="lic-stat-bar" style={{ height: "84%" }} />
+                <div className="lic-stat-bar" style={{ height: "45%" }} />
+                <div className="lic-stat-bar" style={{ height: "70%" }} />
+                <div className="lic-stat-bar" style={{ height: "92%" }} />
+              </div>
+            </div>
+          </div>
+          <div className="login-illustration-card login-illustration-card--badge">
+            <div className="lic-badge-icon">
+              <img src={WALLET_ICON} alt="" />
+            </div>
+            <div>
+              <div className="lic-badge-title">Assets Secured</div>
+              <div className="lic-badge-sub">Verified &amp; encrypted</div>
+            </div>
+          </div>
+          <div className="login-illustration-card login-illustration-card--float">
+            <ShieldCheck size={14} />
+            <span>2FA Active</span>
+          </div>
         </div>
       </div>
 
-      {/* ── Right panel — sign in card ─────────────────────────────────── */}
+      {/* ── Right panel — sign in card (40%) ────────────────────────────── */}
       <div className="login-right">
         <div className="login-box fade-in">
+          {/* Primary branding: Haoda Pay logo (with text) */}
+          <div className="login-box-brand">
+            <img src={HAODA_PAY_LOGO} alt="Haoda Pay" className="login-primary-logo" />
+          </div>
+
+          {/* Mobile-only compact brand row — wallet mark, not the full logo */}
           <div className="login-box-brand-mobile">
             <div className="login-brand-icon login-brand-icon--sm">
-              <img
-                src="/haoda-icon.png"
-                alt="HaodaAsset"
-                onError={(e) => { e.currentTarget.style.display = "none"; e.currentTarget.parentElement.classList.add("login-brand-icon--fallback"); }}
-              />
+              <img src={WALLET_ICON} alt="HaodaAsset" />
             </div>
             <span>HaodaAsset</span>
           </div>
@@ -376,7 +416,7 @@ export default function Login() {
 
                 <button type="submit" className="login-btn" disabled={loading}>
                   {loading
-                    ? <><Loader2 size={16} className="login-btn-spin" /> Signing in…</>
+                    ? <><WalletSpinner size={17} /> Signing in…</>
                     : <>Sign in as {tab === "admin" ? "Admin" : "Employee"}</>}
                 </button>
               </form>
@@ -429,7 +469,7 @@ export default function Login() {
 
               <button type="submit" className="login-btn" disabled={loading} style={{ marginTop: 14 }}>
                 {loading
-                  ? <><Loader2 size={16} className="login-btn-spin" /> Verifying…</>
+                  ? <><WalletSpinner size={17} /> Verifying…</>
                   : "Verify & Sign In"}
               </button>
 
@@ -439,11 +479,25 @@ export default function Login() {
             </form>
           )}
 
-          <p className="login-footnote">
-            <LayoutGrid size={11} /> Protected by enterprise-grade security · v2.0
-          </p>
+          {/* Secure login message */}
+          <div className="login-secure-msg">
+            <Lock size={12} /> Your connection is encrypted and secure
+          </div>
         </div>
       </div>
+
+      {/* ── Footer — full width, Haoda Group attribution only ───────────── */}
+      <footer className="login-footer">
+        <div className="login-footer-brand">
+          <span>Powered by</span>
+          <img src={HAODA_GROUP_LOGO} alt="Haoda Group" className="login-footer-logo" />
+        </div>
+        <div className="login-footer-meta">
+          <span>Version 2.0.0</span>
+          <span className="login-footer-dot" />
+          <span>© 2026 Haoda Group. All Rights Reserved.</span>
+        </div>
+      </footer>
 
       {showForgotPassword && (
         <ForgotPasswordModal onClose={() => setShowForgotPassword(false)} />
