@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import Sidebar from "./Sidebar";
 import NotificationBell from "./NotificationBell";
+import AiChatWidget from "./AiChatWidget";
 import { useAuth } from "../context/AuthContext";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useGet } from "../hooks/useEmployeeApi";
@@ -251,6 +252,8 @@ export default function Layout({ title, subtitle, children, actions }) {
           {children}
         </main>
       </div>
+
+      <AiChatWidget />
     </div>
   );
 }
