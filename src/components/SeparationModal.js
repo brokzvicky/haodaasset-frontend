@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import axios from "axios";
 import { useToast } from "../utils/Toast";
 import EmployeeStatusPill, { ClearanceStatusPill } from "./EmployeeStatusPill";
@@ -99,16 +99,16 @@ export default function SeparationModal({ employee, onClose, onSuccess }) {
 
   const employeeId = employee?.employeeId;
 
-  const load = () => {
+  const load = useCallback(() => {
     if (!employeeId) return;
     setLoading(true);
     axios.get(`${API}/api/admin/employees/${employeeId}/separation`)
       .then((r) => setDetail(r.data))
       .catch(() => toast("Couldn't load separation details.", "error"))
       .finally(() => setLoading(false));
-  };
+  }, [employeeId, toast]);
 
-  useEffect(() => { load(); /* eslint-disable-next-line */ }, [employeeId]);
+  useEffect(() => { load(); }, [load]);
 
   const status = detail?.employmentStatus || "Active";
 
