@@ -1,69 +1,58 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import axios from "axios";
 import {
-  Sparkles, X, Send, Laptop, MapPin, User, Wrench, Trophy, ChevronRight,
+  Sparkles, X, Send, Maximize2, Minimize2, Mic, Paperclip, Plus,
+  MessageSquare, Loader2, Search, Wrench, FileText, Mail, UserPlus,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import {
+  streamAssistantMessage, streamAssistantConfirm, fetchConversations, fetchConversationMessages,
+} from "../services/aiAssistantStream";
+import MarkdownLite from "./ai/MarkdownLite";
+import ConfirmActionCard from "./ai/ConfirmActionCard";
 import "./AiChatWidget.css";
-
-const API = "https://haodaasset-backend-1.onrender.com";
 
 const ADMIN_STARTERS = [
   "Which employee has the most assets?",
   "Which warranties expire this month?",
   "Show unassigned laptops",
-  "Which assets are due for maintenance?",
+  "Show duplicate serial numbers",
+  "Generate monthly asset report",
 ];
 
 const EMPLOYEE_STARTERS = [
   "Show my assets",
   "Where is my laptop?",
-  "Is my warranty active?",
+  "Is my warranty still active?",
 ];
 
-function AssetCard({ asset }) {
+const TOOL_LABELS = {
+  search_assets: { icon: Search, label: "Searching assets" },
+  get_asset_details: { icon: Search, label: "Looking up asset" },
+  assign_asset: { icon: UserPlus, label: "Assigning asset" },
+  return_asset: { icon: UserPlus, label: "Processing return" },
+  create_asset: { icon: Plus, label: "Creating asset" },
+  update_asset: { icon: Wrench, label: "Updating asset" },
+  search_employees: { icon: Search, label: "Searching employees" },
+  create_employee: { icon: UserPlus, label: "Creating employee" },
+  update_employee: { icon: Wrench, label: "Updating employee" },
+  schedule_maintenance: { icon: Wrench, label: "Scheduling maintenance" },
+  get_maintenance_due: { icon: Wrench, label: "Checking maintenance schedule" },
+  generate_report: { icon: FileText, label: "Generating report" },
+  email_report: { icon: Mail, label: "Sending email" },
+};
+
+function ToolBadge({ toolName }) {
+  const meta = TOOL_LABELS[toolName] || { icon: Loader2, label: "Working on it" };
+  const Icon = meta.icon;
   return (
-    <div className="ai-chat-card">
-      <div className="ai-chat-card-icon"><Laptop size={14} /></div>
-      <div className="ai-chat-card-body">
-        <div className="ai-chat-card-title">{asset.laptopName}</div>
-        <div className="ai-chat-card-sub">{asset.brand} {asset.model || ""}</div>
-        <div className="ai-chat-card-meta">
-          {asset.location && <span><MapPin size={11} /> {asset.location}</span>}
-          {asset.employeeName && <span><User size={11} /> {asset.employeeName}</span>}
-        </div>
-      </div>
-      <span className={`ai-chat-status-dot status-${(asset.assetStatus || "").toLowerCase()}`} />
+    <div className="ai-tool-badge">
+      <Icon size={12} /> {meta.label}…
     </div>
   );
 }
 
-function EmployeeStatRow({ stat, rank }) {
-  return (
-    <div className="ai-chat-emp-row">
-      <div className="ai-chat-emp-rank">{rank === 0 ? <Trophy size={13} /> : rank + 1}</div>
-      <div className="ai-chat-emp-body">
-        <div className="ai-chat-card-title">{stat.employeeName}</div>
-        <div className="ai-chat-card-sub">{stat.employeeId}</div>
-      </div>
-      <div className="ai-chat-emp-count">{stat.assetCount}</div>
-    </div>
-  );
-}
-
-function MaintenanceRow({ record }) {
-  return (
-    <div className="ai-chat-card">
-      <div className="ai-chat-card-icon"><Wrench size={14} /></div>
-      <div className="ai-chat-card-body">
-        <div className="ai-chat-card-title">{record.maintenanceType || "Maintenance"}</div>
-        <div className="ai-chat-card-sub">Asset #{record.assetId}</div>
-        <div className="ai-chat-card-meta">
-          <span>Due {record.nextMaintenanceDate || record.scheduledDate || "soon"}</span>
-        </div>
-      </div>
-    </div>
-  );
+function newAssistantMessage() {
+  return { role: "assistant", text: "", streaming: true, toolCalls: [], pendingConfirm: null, resolvedConfirm: null };
 }
 
 export default function AiChatWidget() {
@@ -71,42 +60,124 @@ export default function AiChatWidget() {
   const isAdmin = user?.role === "admin";
 
   const [open, setOpen] = useState(false);
+  const [fullScreen, setFullScreen] = useState(false);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
+  const [conversationId, setConversationId] = useState(null);
+  const [attachedFileName, setAttachedFileName] = useState(null);
+  const [listening, setListening] = useState(false);
+  const [history, setHistory] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+
   const scrollRef = useRef(null);
   const inputRef = useRef(null);
+  const fileInputRef = useRef(null);
+  const recognitionRef = useRef(null);
+  const abortRef = useRef(null);
 
   useEffect(() => {
-    if (open && scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, [messages, open]);
+    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+  }, [messages, open, fullScreen]);
 
   useEffect(() => {
     if (open) setTimeout(() => inputRef.current?.focus(), 150);
-  }, [open]);
+  }, [open, fullScreen]);
 
-  const send = useCallback(async (textOverride) => {
-    const text = (textOverride ?? input).trim();
-    if (!text || sending) return;
+  // Web Speech API is optional — most browsers support it, but we feature-detect
+  // rather than assume, and quietly hide the mic button where it's unavailable.
+  const speechSupported = typeof window !== "undefined" &&
+      (window.SpeechRecognition || window.webkitSpeechRecognition);
 
-    setMessages((m) => [...m, { role: "user", text }]);
+  const toggleVoiceInput = () => {
+    if (!speechSupported) return;
+    if (listening) {
+      recognitionRef.current?.stop();
+      return;
+    }
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+    recognition.lang = "en-US";
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+    recognition.onresult = (event) => {
+      const transcript = event.results[0][0].transcript;
+      setInput((prev) => (prev ? prev + " " + transcript : transcript));
+    };
+    recognition.onend = () => setListening(false);
+    recognition.onerror = () => setListening(false);
+    recognitionRef.current = recognition;
+    setListening(true);
+    recognition.start();
+  };
+
+  const handleFileSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (file) setAttachedFileName(file.name);
+    e.target.value = "";
+  };
+
+  // ── Updating the currently-streaming assistant message in place ─────────
+  const updateLastAssistant = (patchFn) => {
+    setMessages((prev) => {
+      const next = [...prev];
+      const lastIdx = next.length - 1;
+      if (lastIdx < 0 || next[lastIdx].role !== "assistant") return prev;
+      next[lastIdx] = patchFn(next[lastIdx]);
+      return next;
+    });
+  };
+
+  const send = useCallback((textOverride) => {
+    const rawText = (textOverride ?? input).trim();
+    if (!rawText || sending) return;
+
+    const text = attachedFileName ? `${rawText}\n\n[Attached file: ${attachedFileName}]` : rawText;
+
+    setMessages((m) => [...m, { role: "user", text }, newAssistantMessage()]);
     setInput("");
+    setAttachedFileName(null);
     setSending(true);
 
-    try {
-      const { data } = await axios.post(`${API}/api/ai/chat`, { message: text });
-      setMessages((m) => [...m, { role: "assistant", data }]);
-    } catch (err) {
-      setMessages((m) => [...m, {
-        role: "assistant",
-        data: { answer: err?.response?.data?.message || "Something went wrong reaching the assistant. Please try again." },
-      }]);
-    } finally {
-      setSending(false);
-    }
-  }, [input, sending]);
+    abortRef.current = streamAssistantMessage({ conversationId, message: text }, {
+      onMeta: ({ conversationId: cid }) => setConversationId((prev) => prev || cid),
+      onDelta: (delta) => updateLastAssistant((m) => ({ ...m, text: m.text + delta })),
+      onToolCall: ({ toolName }) => updateLastAssistant((m) => ({ ...m, toolCalls: [...m.toolCalls, toolName] })),
+      onConfirmRequired: ({ actionId, description }) => {
+        updateLastAssistant((m) => ({ ...m, streaming: false, pendingConfirm: { actionId, description } }));
+        setSending(false);
+      },
+      onDone: () => {
+        updateLastAssistant((m) => ({ ...m, streaming: false }));
+        setSending(false);
+      },
+      onError: (msg) => {
+        updateLastAssistant((m) => ({ ...m, streaming: false, text: m.text || msg }));
+        setSending(false);
+      },
+    });
+  }, [input, sending, attachedFileName, conversationId]);
+
+  const handleConfirmDecision = (msgIndex, actionId, approve) => {
+    setMessages((prev) => {
+      const next = [...prev];
+      next[msgIndex] = { ...next[msgIndex], resolvedConfirm: approve ? "approved" : "declined" };
+      next.push(newAssistantMessage());
+      return next;
+    });
+    setSending(true);
+
+    streamAssistantConfirm({ actionId, approve }, {
+      onDelta: (delta) => updateLastAssistant((m) => ({ ...m, text: m.text + delta })),
+      onToolCall: ({ toolName }) => updateLastAssistant((m) => ({ ...m, toolCalls: [...m.toolCalls, toolName] })),
+      onConfirmRequired: ({ actionId: nextId, description }) => {
+        updateLastAssistant((m) => ({ ...m, streaming: false, pendingConfirm: { actionId: nextId, description } }));
+        setSending(false);
+      },
+      onDone: () => { updateLastAssistant((m) => ({ ...m, streaming: false })); setSending(false); },
+      onError: (msg) => { updateLastAssistant((m) => ({ ...m, streaming: false, text: m.text || msg })); setSending(false); },
+    });
+  };
 
   const handleKeyDown = (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -114,6 +185,45 @@ export default function AiChatWidget() {
       send();
     }
   };
+
+  const startNewChat = () => {
+    abortRef.current?.abort?.();
+    setMessages([]);
+    setConversationId(null);
+    setInput("");
+  };
+
+  const openHistoryConversation = async (cid) => {
+    setHistoryLoading(true);
+    try {
+      const msgs = await fetchConversationMessages(cid);
+      setMessages(msgs.map((m) => ({
+        role: m.role,
+        text: m.content,
+        streaming: false,
+        toolCalls: [],
+        pendingConfirm: null,
+        resolvedConfirm: null,
+      })));
+      setConversationId(cid);
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
+  const loadHistory = async () => {
+    setHistoryLoading(true);
+    try {
+      setHistory(await fetchConversations());
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (fullScreen) loadHistory();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fullScreen]);
 
   const starters = isAdmin ? ADMIN_STARTERS : EMPLOYEE_STARTERS;
 
@@ -129,92 +239,133 @@ export default function AiChatWidget() {
       </button>
 
       {open && (
-        <div className="ai-chat-panel" role="dialog" aria-label="AI Asset Assistant">
+        <div className={`ai-chat-panel ${fullScreen ? "ai-chat-panel-fullscreen" : ""}`} role="dialog" aria-label="AI Asset Assistant">
           <div className="ai-chat-header">
             <div className="ai-chat-header-icon"><Sparkles size={16} /></div>
-            <div>
+            <div style={{ flex: 1, minWidth: 0 }}>
               <div className="ai-chat-header-title">Haoda AI Assistant</div>
-              <div className="ai-chat-header-sub">Ask about assets, employees, warranties &amp; maintenance</div>
+              <div className="ai-chat-header-sub">Ask, search, and act on assets, employees &amp; maintenance</div>
             </div>
+            <button className="ai-chat-icon-btn" title="New chat" onClick={startNewChat}><Plus size={16} /></button>
+            <button
+              className="ai-chat-icon-btn"
+              title={fullScreen ? "Exit full screen" : "Full screen"}
+              onClick={() => setFullScreen((v) => !v)}
+            >
+              {fullScreen ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
+            </button>
           </div>
 
-          <div className="ai-chat-body" ref={scrollRef}>
-            {messages.length === 0 && (
-              <div className="ai-chat-empty">
-                <div className="ai-chat-empty-icon"><Sparkles size={22} /></div>
-                <div className="ai-chat-empty-title">Hi {user?.name?.split(" ")[0] || "there"}, ask me anything.</div>
-                <div className="ai-chat-starters">
-                  {starters.map((s) => (
-                    <button key={s} className="ai-chat-starter-chip" onClick={() => send(s)}>
-                      {s} <ChevronRight size={12} />
+          <div className="ai-chat-workspace">
+            {fullScreen && (
+              <div className="ai-chat-sidebar">
+                <div className="ai-chat-sidebar-title">Chat history</div>
+                <button className="ai-chat-sidebar-newbtn" onClick={startNewChat}><Plus size={13} /> New chat</button>
+                <div className="ai-chat-sidebar-list">
+                  {historyLoading && <div className="ai-chat-sidebar-loading">Loading…</div>}
+                  {history.map((c) => (
+                    <button
+                      key={c.conversationId}
+                      className={`ai-chat-sidebar-item ${c.conversationId === conversationId ? "active" : ""}`}
+                      onClick={() => openHistoryConversation(c.conversationId)}
+                    >
+                      <MessageSquare size={13} />
+                      <span className="ai-chat-sidebar-item-title">{c.title}</span>
                     </button>
                   ))}
+                  {!historyLoading && history.length === 0 && (
+                    <div className="ai-chat-sidebar-empty">No past conversations yet.</div>
+                  )}
                 </div>
               </div>
             )}
 
-            {messages.map((m, i) => (
-              <div key={i} className={`ai-chat-msg ai-chat-msg-${m.role}`}>
-                {m.role === "user" ? (
-                  <div className="ai-chat-bubble ai-chat-bubble-user">{m.text}</div>
-                ) : (
-                  <div className="ai-chat-bubble ai-chat-bubble-assistant">
-                    <div className="ai-chat-answer">{m.data.answer}</div>
+            <div className="ai-chat-main">
+              <div className="ai-chat-body" ref={scrollRef}>
+                {messages.length === 0 && (
+                  <div className="ai-chat-empty">
+                    <div className="ai-chat-empty-icon"><Sparkles size={22} /></div>
+                    <div className="ai-chat-empty-title">Hi {user?.name?.split(" ")[0] || "there"}, ask me anything.</div>
+                    <div className="ai-chat-starters">
+                      {starters.map((s) => (
+                        <button key={s} className="ai-chat-starter-chip" onClick={() => send(s)}>
+                          {s}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
-                    {m.data.type === "ASSETS" && m.data.assets?.length > 0 && (
-                      <div className="ai-chat-card-list">
-                        {m.data.assets.slice(0, 6).map((a) => <AssetCard key={a.assetId} asset={a} />)}
-                      </div>
-                    )}
+                {messages.map((m, i) => (
+                  <div key={i} className={`ai-chat-msg ai-chat-msg-${m.role}`}>
+                    {m.role === "user" ? (
+                      <div className="ai-chat-bubble ai-chat-bubble-user">{m.text}</div>
+                    ) : (
+                      <div className="ai-chat-bubble ai-chat-bubble-assistant">
+                        {m.toolCalls?.map((t, idx) => <ToolBadge key={idx} toolName={t} />)}
 
-                    {m.data.type === "EMPLOYEES" && m.data.employees?.length > 0 && (
-                      <div className="ai-chat-card-list">
-                        {m.data.employees.map((s, idx) => <EmployeeStatRow key={s.employeeId} stat={s} rank={idx} />)}
-                      </div>
-                    )}
+                        {m.text ? (
+                          <MarkdownLite text={m.text} />
+                        ) : m.streaming ? (
+                          <div className="ai-chat-typing"><span /><span /><span /></div>
+                        ) : null}
 
-                    {m.data.type === "MAINTENANCE" && m.data.maintenanceRecords?.length > 0 && (
-                      <div className="ai-chat-card-list">
-                        {m.data.maintenanceRecords.slice(0, 6).map((r) => <MaintenanceRow key={r.id} record={r} />)}
-                      </div>
-                    )}
-
-                    {m.data.suggestions?.length > 0 && (
-                      <div className="ai-chat-suggest-row">
-                        {m.data.suggestions.map((s) => (
-                          <button key={s} className="ai-chat-starter-chip ai-chat-starter-chip-sm" onClick={() => send(s)}>
-                            {s}
-                          </button>
-                        ))}
+                        {m.pendingConfirm && !m.resolvedConfirm && (
+                          <ConfirmActionCard
+                            description={m.pendingConfirm.description}
+                            onDecide={(approve) => handleConfirmDecision(i, m.pendingConfirm.actionId, approve)}
+                          />
+                        )}
+                        {m.pendingConfirm && m.resolvedConfirm && (
+                          <div className="ai-confirm-resolved-inline">
+                            {m.resolvedConfirm === "approved" ? "✓ Confirmed" : "✕ Cancelled"}
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
-                )}
+                ))}
               </div>
-            ))}
 
-            {sending && (
-              <div className="ai-chat-msg ai-chat-msg-assistant">
-                <div className="ai-chat-bubble ai-chat-bubble-assistant ai-chat-typing">
-                  <span /><span /><span />
+              {attachedFileName && (
+                <div className="ai-chat-attachment-chip">
+                  <Paperclip size={12} /> {attachedFileName}
+                  <button onClick={() => setAttachedFileName(null)}><X size={11} /></button>
                 </div>
-              </div>
-            )}
-          </div>
+              )}
 
-          <div className="ai-chat-input-row">
-            <input
-              ref={inputRef}
-              className="ai-chat-input"
-              placeholder="Ask a question..."
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              disabled={sending}
-            />
-            <button className="ai-chat-send-btn" onClick={() => send()} disabled={!input.trim() || sending} aria-label="Send">
-              <Send size={15} />
-            </button>
+              <div className="ai-chat-input-row">
+                <input ref={fileInputRef} type="file" style={{ display: "none" }} onChange={handleFileSelect} />
+                <button
+                  className="ai-chat-icon-btn ai-chat-input-icon-btn"
+                  title="Attach a file"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <Paperclip size={15} />
+                </button>
+                {speechSupported && (
+                  <button
+                    className={`ai-chat-icon-btn ai-chat-input-icon-btn ${listening ? "ai-chat-mic-active" : ""}`}
+                    title="Voice input"
+                    onClick={toggleVoiceInput}
+                  >
+                    <Mic size={15} />
+                  </button>
+                )}
+                <input
+                  ref={inputRef}
+                  className="ai-chat-input"
+                  placeholder="Ask a question or tell me what to do..."
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  disabled={sending}
+                />
+                <button className="ai-chat-send-btn" onClick={() => send()} disabled={!input.trim() || sending} aria-label="Send">
+                  <Send size={15} />
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
