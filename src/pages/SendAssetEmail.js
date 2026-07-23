@@ -5,7 +5,7 @@ import { Search, Mail, Send, X, Building2, Briefcase, MapPin, User, CheckCircle2
 import Layout from "../components/Layout";
 import { useToast } from "../utils/Toast";
 
-const API = "https://haodaasset-backend-1.onrender.com";
+import { API_BASE as API } from "../config";
 
 function avatarBg(name) {
   const colors = ["#1a56db", "#059669", "#7c3aed", "#b45309", "#be185d", "#0284c7"];

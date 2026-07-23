@@ -3,9 +3,10 @@ import { useNavigate } from "react-router-dom";
 import {
   ShieldCheck, ArrowLeft, AlertTriangle, Boxes,
   Eye, EyeOff, Search, BadgeCheck, PieChart,
-  UserCog, Lock, Check,
+  UserCog, Lock, Check, Smartphone, KeyRound,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import { GOOGLE_CLIENT_ID } from "../config";
 import ForgotPasswordModal from "../components/ForgotPasswordModal";
 import "../components/ForgotPasswordModal.css";
 import "./Login.css";
@@ -39,7 +40,7 @@ function WalletSpinner({ size = 18 }) {
 }
 
 export default function Login() {
-  const { login, verifyAdminOtp, resendAdminOtp } = useAuth();
+  const { login, verifyAdminOtp, resendAdminOtp, loginWithGoogle, requestMobileOtp, verifyMobileOtp } = useAuth();
   const navigate   = useNavigate();
 
   const [tab, setTab]           = useState("admin");
@@ -48,6 +49,20 @@ export default function Login() {
   const [error, setError]       = useState("");
   const [loading, setLoading]   = useState("");
   const [showForgotPassword, setShowForgotPassword] = useState(false);
+
+  // ── "Sign in with" method: password (default) or mobile OTP ──────────
+  const [loginMethod, setLoginMethod] = useState("password"); // "password" | "mobile"
+  const [mobileNumber, setMobileNumber] = useState("");
+  const [mobileOtp, setMobileOtp] = useState(["", "", "", "", "", ""]);
+  const [mobileStage, setMobileStage] = useState("enter-number"); // "enter-number" | "verify"
+  const [mobileResendCooldown, setMobileResendCooldown] = useState(0);
+  const [mobileExpirySeconds, setMobileExpirySeconds] = useState(300);
+  const mobileOtpRefs = useRef([]);
+
+  // ── Google Sign-In (Google Identity Services) ─────────────────────────
+  const googleButtonRef = useRef(null);
+  const tabRef = useRef(tab);
+  useEffect(() => { tabRef.current = tab; }, [tab]);
 
   // ── Presentational-only additions (no auth-logic impact) ─────────────
   const [showPassword, setShowPassword] = useState(false);
@@ -147,6 +162,149 @@ export default function Login() {
 
   const fmtTime = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 
+  // ── Google Sign-In: load the GSI script once, then render its button
+  // into googleButtonRef. The credential callback reads tabRef.current
+  // (not `tab` directly) so it always uses whichever role tab is selected
+  // at the moment the user actually completes the Google popup, not
+  // whichever tab was active when the script first loaded. ──────────────
+  useEffect(() => {
+    if (!GOOGLE_CLIENT_ID) return;
+
+    const handleCredential = async (response) => {
+      setError("");
+      setLoading(true);
+      const result = await loginWithGoogle(response.credential, tabRef.current);
+      setLoading(false);
+      if (!result.success) {
+        setError(result.message);
+        return;
+      }
+      if (result.role === "admin") {
+        navigate("/dashboard");
+      } else if (result.mustChangePassword) {
+        navigate("/emp/password", { state: { forced: true } });
+      } else {
+        navigate("/emp/dashboard");
+      }
+    };
+
+    const renderButton = () => {
+      if (!window.google?.accounts?.id || !googleButtonRef.current) return;
+      window.google.accounts.id.initialize({
+        client_id: GOOGLE_CLIENT_ID,
+        callback: handleCredential,
+      });
+      googleButtonRef.current.innerHTML = "";
+      window.google.accounts.id.renderButton(googleButtonRef.current, {
+        theme: "outline", size: "large", width: 320, text: "continue_with",
+      });
+    };
+
+    if (window.google?.accounts?.id) {
+      renderButton();
+      return;
+    }
+    const existing = document.getElementById("google-identity-script");
+    if (existing) { existing.addEventListener("load", renderButton); return; }
+
+    const script = document.createElement("script");
+    script.id = "google-identity-script";
+    script.src = "https://accounts.google.com/gsi/client";
+    script.async = true;
+    script.defer = true;
+    script.onload = renderButton;
+    document.body.appendChild(script);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stage, loginMethod]);
+
+  // ── Mobile OTP login ──────────────────────────────────────────────────
+  useEffect(() => {
+    if (mobileStage !== "verify") return;
+    const t = setInterval(() => {
+      setMobileResendCooldown((s) => (s > 0 ? s - 1 : 0));
+      setMobileExpirySeconds((s) => (s > 0 ? s - 1 : 0));
+    }, 1000);
+    return () => clearInterval(t);
+  }, [mobileStage]);
+
+  const handleMobileOtpChange = (idx, value) => {
+    const digit = value.replace(/\D/g, "").slice(-1);
+    const next = [...mobileOtp];
+    next[idx] = digit;
+    setMobileOtp(next);
+    if (digit && idx < 5) mobileOtpRefs.current[idx + 1]?.focus();
+  };
+  const handleMobileOtpKeyDown = (idx, e) => {
+    if (e.key === "Backspace" && !mobileOtp[idx] && idx > 0) mobileOtpRefs.current[idx - 1]?.focus();
+  };
+
+  const handleSendMobileOtp = async (e) => {
+    e.preventDefault();
+    if (!mobileNumber.trim()) { setError("Enter your registered mobile number."); return; }
+    setError("");
+    setLoading(true);
+    const result = await requestMobileOtp(mobileNumber.trim(), tab);
+    setLoading(false);
+    if (!result.success) { setError(result.message); return; }
+    setMobileResendCooldown(result.resendAfterSeconds ?? 30);
+    setMobileExpirySeconds(result.expiresInSeconds ?? 300);
+    setMobileOtp(["", "", "", "", "", ""]);
+    setMobileStage("verify");
+    setTimeout(() => mobileOtpRefs.current[0]?.focus(), 50);
+  };
+
+  const handleResendMobileOtp = async () => {
+    setLoading(true);
+    setError("");
+    const result = await requestMobileOtp(mobileNumber.trim(), tab);
+    setLoading(false);
+    if (result.success) {
+      setMobileResendCooldown(result.resendAfterSeconds ?? 30);
+      setMobileExpirySeconds(result.expiresInSeconds ?? 300);
+      setMobileOtp(["", "", "", "", "", ""]);
+      mobileOtpRefs.current[0]?.focus();
+    } else {
+      setError(result.message);
+    }
+  };
+
+  const handleVerifyMobileOtp = async (e) => {
+    e.preventDefault();
+    const code = mobileOtp.join("");
+    if (code.length !== 6) { setError("Enter the 6-digit code."); return; }
+    setError("");
+    setLoading(true);
+    const result = await verifyMobileOtp(mobileNumber.trim(), code, tab);
+    setLoading(false);
+    if (!result.success) {
+      setError(result.message);
+      setMobileOtp(["", "", "", "", "", ""]);
+      mobileOtpRefs.current[0]?.focus();
+      return;
+    }
+    if (result.role === "admin") {
+      navigate("/dashboard");
+    } else if (result.mustChangePassword) {
+      navigate("/emp/password", { state: { forced: true } });
+    } else {
+      navigate("/emp/dashboard");
+    }
+  };
+
+  const backToMobileNumber = () => {
+    setMobileStage("enter-number");
+    setMobileOtp(["", "", "", "", "", ""]);
+    setError("");
+  };
+
+  const switchLoginMethod = (method) => {
+    setLoginMethod(method);
+    setMobileStage("enter-number");
+    setMobileNumber("");
+    setMobileOtp(["", "", "", "", "", ""]);
+    setError("");
+  };
+
   const handleLogin = async (e) => {
     e.preventDefault();
     setError("");
@@ -194,6 +352,9 @@ export default function Login() {
     setPassword("");
     setError("");
     setShowPassword(false);
+    setMobileStage("enter-number");
+    setMobileNumber("");
+    setMobileOtp(["", "", "", "", "", ""]);
   };
 
   return (
@@ -325,6 +486,107 @@ export default function Login() {
                 </button>
               </div>
 
+              {/* Sign-in method toggle */}
+              <div className="login-method-toggle" role="tablist" aria-label="Sign-in method">
+                <button
+                  type="button"
+                  className={`login-method-btn ${loginMethod === "password" ? "active" : ""}`}
+                  onClick={() => switchLoginMethod("password")}
+                >
+                  <KeyRound size={13} /> Password
+                </button>
+                <button
+                  type="button"
+                  className={`login-method-btn ${loginMethod === "mobile" ? "active" : ""}`}
+                  onClick={() => switchLoginMethod("mobile")}
+                >
+                  <Smartphone size={13} /> Mobile OTP
+                </button>
+              </div>
+
+              {loginMethod === "mobile" ? (
+                mobileStage === "enter-number" ? (
+                  <form className="login-form" onSubmit={handleSendMobileOtp} noValidate>
+                    <div className="login-field">
+                      <label className="login-label" htmlFor="login-mobile">Registered Mobile Number</label>
+                      <input
+                        id="login-mobile"
+                        className="login-input"
+                        type="tel"
+                        placeholder="e.g. 9876543210"
+                        value={mobileNumber}
+                        onChange={(e) => setMobileNumber(e.target.value)}
+                        autoFocus
+                        autoComplete="tel"
+                        required
+                      />
+                    </div>
+
+                    {error && (
+                      <div className="login-error" role="alert" aria-live="assertive">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                        </svg>
+                        {error}
+                      </div>
+                    )}
+
+                    <button type="submit" className="login-btn" disabled={loading}>
+                      {loading ? <><WalletSpinner size={17} /> Sending code…</> : "Send Verification Code"}
+                    </button>
+                  </form>
+                ) : (
+                  <form className="login-form" onSubmit={handleVerifyMobileOtp}>
+                    <div className="login-box-sub" style={{ marginBottom: 4 }}>
+                      Enter the 6-digit code sent to your registered mobile number
+                    </div>
+
+                    {error && (
+                      <div className="fpwd-error" style={{ marginBottom: 4 }} role="alert" aria-live="assertive">
+                        <AlertTriangle size={14} /> {error}
+                      </div>
+                    )}
+
+                    <div className="fpwd-otp-row">
+                      {mobileOtp.map((d, i) => (
+                        <input
+                          key={i}
+                          ref={(el) => (mobileOtpRefs.current[i] = el)}
+                          className="fpwd-otp-box"
+                          inputMode="numeric"
+                          maxLength={1}
+                          value={d}
+                          onChange={(e) => handleMobileOtpChange(i, e.target.value)}
+                          onKeyDown={(e) => handleMobileOtpKeyDown(i, e)}
+                          aria-label={`Digit ${i + 1} of 6`}
+                        />
+                      ))}
+                    </div>
+
+                    <div className="fpwd-meta-row">
+                      <span className={`fpwd-expiry ${mobileExpirySeconds <= 30 ? "is-low" : ""}`}>
+                        Code expires in {fmtTime(Math.max(mobileExpirySeconds, 0))}
+                      </span>
+                      <button
+                        type="button"
+                        className="fpwd-link-btn"
+                        disabled={mobileResendCooldown > 0 || loading}
+                        onClick={handleResendMobileOtp}
+                      >
+                        {mobileResendCooldown > 0 ? `Resend in ${mobileResendCooldown}s` : "Resend code"}
+                      </button>
+                    </div>
+
+                    <button type="submit" className="login-btn" disabled={loading} style={{ marginTop: 14 }}>
+                      {loading ? <><WalletSpinner size={17} /> Verifying…</> : "Verify & Sign In"}
+                    </button>
+
+                    <button type="button" className="fpwd-back-btn" onClick={backToMobileNumber} style={{ margin: "12px auto 0" }}>
+                      <ArrowLeft size={13} /> Use a different number
+                    </button>
+                  </form>
+                )
+              ) : (
               <form className="login-form" onSubmit={handleLogin} noValidate>
                 {tab === "admin" ? (
                   <div className="login-field">
@@ -420,8 +682,16 @@ export default function Login() {
                     : <>Sign in as {tab === "admin" ? "Admin" : "Employee"}</>}
                 </button>
               </form>
+              )}
 
-              {tab === "admin" && (
+              {GOOGLE_CLIENT_ID && loginMethod === "password" && (
+                <>
+                  <div className="login-divider"><span>or continue with</span></div>
+                  <div ref={googleButtonRef} className="login-google-btn-slot" />
+                </>
+              )}
+
+              {tab === "admin" && loginMethod === "password" && (
                 <div className="login-2fa-note">
                   <ShieldCheck size={13} /> Protected by two-factor email verification
                 </div>

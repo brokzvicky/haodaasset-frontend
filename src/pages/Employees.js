@@ -10,7 +10,7 @@ import ActionMenu from "../components/ActionMenu";
 import "../components/DetailDrawer.css";
 import "./Employees.css";
 
-const API = "https://haodaasset-backend-1.onrender.com";
+import { API_BASE as API } from "../config";
 
 const EMPTY_FORM = {
   employeeId: "", employeeName: "", email: "",

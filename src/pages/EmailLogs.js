@@ -5,7 +5,7 @@ import Layout from "../components/Layout";
 import EmailStatusPill from "../components/EmailStatusPill";
 import { useToast } from "../utils/Toast";
 
-const API = "https://haodaasset-backend-1.onrender.com";
+import { API_BASE as API } from "../config";
 
 function formatDateTime(iso) {
   if (!iso) return "—";

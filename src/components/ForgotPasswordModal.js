@@ -4,7 +4,7 @@ import { Mail, ShieldCheck, KeyRound, Lock, Eye, EyeOff, RefreshCw, CheckCircle2
 import { useToast } from "../utils/Toast";
 import "./ForgotPasswordModal.css";
 
-const API = "https://haodaasset-backend-1.onrender.com";
+import { API_BASE as API } from "../config";
 
 // ── Password strength helper ──────────────────────────────────────────
 function scorePassword(pwd) {

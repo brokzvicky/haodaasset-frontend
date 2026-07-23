@@ -11,7 +11,7 @@ import { useAuth } from "./AuthContext";
 
 const NotificationContext = createContext(null);
 
-const API = "https://haodaasset-backend-1.onrender.com";
+import { API_BASE as API } from "../config";
 const POLL_MS = 15_000; // poll every 15 s
 const SEEN_KEY = "iam_seen_requests"; // localStorage key for read IDs
 const TOKEN_KEY = "iam_token";

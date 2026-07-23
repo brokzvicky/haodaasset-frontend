@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import axios from "axios";
 
-const BASE = "https://haodaasset-backend-1.onrender.com";
+import { API_BASE as BASE } from "../config";
 
 // All employee self-service routes live under /api/employee/** on the
 // backend (see EmployeeSelfController). Previously this hook called paths

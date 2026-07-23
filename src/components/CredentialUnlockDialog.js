@@ -3,7 +3,7 @@ import axios from "axios";
 import { ShieldCheck, RefreshCw, AlertTriangle, X } from "lucide-react";
 import "./CredentialUnlockDialog.css";
 
-const API = "https://haodaasset-backend-1.onrender.com";
+import { API_BASE as API } from "../config";
 
 export default function CredentialUnlockDialog({ onUnlocked, onClose }) {
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);

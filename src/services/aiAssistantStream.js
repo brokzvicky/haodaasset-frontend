@@ -1,4 +1,4 @@
-const API = "https://haodaasset-backend-1.onrender.com";
+import { API_BASE as API } from "../config";
 
 function authHeaders() {
   const token = sessionStorage.getItem("iam_token");

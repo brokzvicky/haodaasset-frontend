@@ -6,7 +6,7 @@ import StatusPill, { ConditionPill } from "../components/StatusPill";
 import { useToast } from "../utils/Toast";
 import "./AssetDetails.css";
 
-const API = "https://haodaasset-backend-1.onrender.com";
+import { API_BASE as API } from "../config";
 
 const DOC_TYPES = ["Invoice", "Warranty Card", "Insurance", "Manual", "Other"];
 

@@ -8,7 +8,7 @@ import AssignAssetModal from "../components/AssignAssetModal";
 import CountUp from "../components/CountUp";
 import "./AdminAssetRequests.css";
 
-const API = "https://haodaasset-backend-1.onrender.com";
+import { API_BASE as API } from "../config";
 const SAVED_FILTERS_KEY = "arq-saved-filters";
 const RECENT_SEARCH_KEY = "arq-recent-searches";
 

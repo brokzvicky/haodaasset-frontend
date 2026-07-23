@@ -4,7 +4,7 @@ import Layout from "../components/Layout";
 import { useToast } from "../utils/Toast";
 import "./ServiceBilling.css";
 
-const API = "https://haodaasset-backend-1.onrender.com";
+import { API_BASE as API } from "../config";
 
 const STATUS_OPTIONS = ["Paid", "Pending", "Overdue"];
 const SERVICE_OPTIONS = [

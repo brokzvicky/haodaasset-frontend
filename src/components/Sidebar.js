@@ -6,7 +6,7 @@ import { useAuth } from "../context/AuthContext";
 import { useNotifications } from "../context/NotificationContext";
 import "./Sidebar.css";
 
-const API = "https://haodaasset-backend-1.onrender.com";
+import { API_BASE as API } from "../config";
 
 /* ── SVG Icon Set ─────────────────────────────────────────────── */
 const Ico = {
@@ -31,23 +31,29 @@ const Ico = {
   logout:    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>,
 };
 
+// Each entry's `permission` matches a code from DataSeeder.PERMISSION_DEFS
+// on the backend. Sidebar.js filters this list by the signed-in admin's
+// resolved permission set (see useAuth().hasPermission) so an admin only
+// ever sees the modules their assigned Role actually grants — a System
+// Admin (all permissions) sees every row below; an HR Admin, for example,
+// would only see Dashboard/AI Search/Employees/Reports/Activity Log.
 const ADMIN_NAV = [
-  { to: "/dashboard",      label: "Dashboard",      icon: "dashboard",  section: "MAIN"      },
-  { to: "/ai-search",      label: "AI Search",      icon: "aiSearch",   section: "MAIN"      },
-  { to: "/assets",         label: "Assets",         icon: "assets",     section: "MAIN"      },
-  { to: "/employees",      label: "Employees",      icon: "employees",  section: "MAIN"      },
-  { to: "/asset-requests", label: "Asset Requests", icon: "requests",   section: "MAIN"      },
-  { to: "/network-credentials", label: "Network Credentials", icon: "networkCredentials", section: "MAIN" },
-  { to: "/service-billing", label: "Service Billing", icon: "serviceBilling", section: "MAIN" },
-  { to: "/maintenance",    label: "Maintenance",    icon: "maintenance", section: "MAIN" },
-  { to: "/pulse",          label: "Haoda Pulse",    icon: "pulse",      section: "MAIN" },
-  { to: "/filecenter",     label: "File Center",    icon: "fileCenter", section: "MAIN" },
-  { to: "/reports",        label: "Reports",        icon: "reports",    section: "ANALYTICS" },
-  { to: "/email-logs",     label: "Email Logs",     icon: "emailLogs",  section: "ANALYTICS" },
-  { to: "/send-asset-email", label: "Send Asset Email", icon: "sendAssetEmail", section: "ENTERPRISE" },
-  { to: "/asset-email-logs", label: "Asset Email Logs", icon: "emailLogs",      section: "ENTERPRISE" },
-  { to: "/settings",       label: "Settings",       icon: "settings",   section: "SYSTEM"    },
-  { to: "/activity-log",   label: "Activity Log",   icon: "activity",   section: "SYSTEM"    },
+  { to: "/dashboard",      label: "Dashboard",      icon: "dashboard",  section: "MAIN", permission: "DASHBOARD_VIEW" },
+  { to: "/ai-search",      label: "AI Search",      icon: "aiSearch",   section: "MAIN", permission: "AI_SEARCH_USE" },
+  { to: "/assets",         label: "Assets",         icon: "assets",     section: "MAIN", permission: "ASSETS_VIEW" },
+  { to: "/employees",      label: "Employees",      icon: "employees",  section: "MAIN", permission: "EMPLOYEES_VIEW" },
+  { to: "/asset-requests", label: "Asset Requests", icon: "requests",   section: "MAIN", permission: "ASSET_REQUESTS_VIEW" },
+  { to: "/network-credentials", label: "Network Credentials", icon: "networkCredentials", section: "MAIN", permission: "NETWORK_CREDENTIALS_VIEW" },
+  { to: "/service-billing", label: "Service Billing", icon: "serviceBilling", section: "MAIN", permission: "SERVICE_BILLING_VIEW" },
+  { to: "/maintenance",    label: "Maintenance",    icon: "maintenance", section: "MAIN", permission: "MAINTENANCE_VIEW" },
+  { to: "/pulse",          label: "Haoda Pulse",    icon: "pulse",      section: "MAIN", permission: "PULSE_VIEW" },
+  { to: "/filecenter",     label: "File Center",    icon: "fileCenter", section: "MAIN", permission: "FILE_CENTER_VIEW" },
+  { to: "/reports",        label: "Reports",        icon: "reports",    section: "ANALYTICS", permission: "REPORTS_VIEW" },
+  { to: "/email-logs",     label: "Email Logs",     icon: "emailLogs",  section: "ANALYTICS", permission: "EMAIL_LOGS_VIEW" },
+  { to: "/send-asset-email", label: "Send Asset Email", icon: "sendAssetEmail", section: "ENTERPRISE", permission: "SEND_ASSET_EMAIL" },
+  { to: "/asset-email-logs", label: "Asset Email Logs", icon: "emailLogs",      section: "ENTERPRISE", permission: "ASSET_EMAIL_LOGS_VIEW" },
+  { to: "/settings",       label: "Settings",       icon: "settings",   section: "SYSTEM", permission: "SETTINGS_MANAGE" },
+  { to: "/activity-log",   label: "Activity Log",   icon: "activity",   section: "SYSTEM", permission: "ACTIVITY_LOG_VIEW" },
 ];
 
 const EMP_NAV = [
@@ -76,7 +82,7 @@ function initials(name) {
 }
 
 export default function Sidebar({ open = false, onClose, collapsed = false, onToggleCollapse }) {
-  const { user, logout } = useAuth();
+  const { user, logout, hasPermission } = useAuth();
   const location  = useLocation();
   const navigate  = useNavigate();
   const notifCtx  = useNotifications();
@@ -96,7 +102,12 @@ export default function Sidebar({ open = false, onClose, collapsed = false, onTo
     return () => { cancelled = true; clearInterval(interval); };
   }, [user?.role]);
 
-  const nav = user?.role === "admin" ? ADMIN_NAV : EMP_NAV;
+  // Only the modules this specific admin's assigned Role grants — see the
+  // `permission` field on each ADMIN_NAV entry above and useAuth().hasPermission.
+  // Employee nav is unchanged (self-service surface, not yet permission-gated).
+  const nav = user?.role === "admin"
+    ? ADMIN_NAV.filter((item) => hasPermission(item.permission))
+    : EMP_NAV;
 
   const handleLogout  = () => { logout(); navigate("/"); };
   const handleNavClick = () => { if (onClose) onClose(); };
@@ -196,7 +207,7 @@ export default function Sidebar({ open = false, onClose, collapsed = false, onTo
             {!collapsed && (
               <div className="sidebar-user-info">
                 <div className="sidebar-user-name">{user?.name || "User"}</div>
-                <div className="sidebar-user-role">{user?.role === "admin" ? "Administrator" : user?.id || "Employee"}</div>
+                <div className="sidebar-user-role">{user?.role === "admin" ? (user?.roleLabel || "Administrator") : user?.id || "Employee"}</div>
               </div>
             )}
           </div>

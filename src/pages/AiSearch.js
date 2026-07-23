@@ -12,7 +12,7 @@ import StatusPill from "../components/StatusPill";
 import { useAuth } from "../context/AuthContext";
 import "./AiSearch.css";
 
-const API = "https://haodaasset-backend-1.onrender.com";
+import { API_BASE as API } from "../config";
 
 const SUGGESTION_CHIPS = [
   "Expired Warranty",

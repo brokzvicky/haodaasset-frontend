@@ -4,7 +4,7 @@ import Layout from "../components/Layout";
 import { useToast } from "../utils/Toast";
 import "./FileCenter.css";
 
-const API = "https://haodaasset-backend-1.onrender.com";
+import { API_BASE as API } from "../config";
 const LOCATIONS = ["Chennai - Kilpauk", "Chennai - Chetpet"];
 const PRIORITIES = ["Low", "Normal", "High", "Critical"];
 

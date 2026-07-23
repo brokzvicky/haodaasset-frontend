@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import axios from "axios";
 import "./SendEmailModal.css";
 
-const API = "https://haodaasset-backend-1.onrender.com";
+import { API_BASE as API } from "../config";
 
 /**
  * Premium confirmation modal for the "Send Asset Assignment Email" feature.

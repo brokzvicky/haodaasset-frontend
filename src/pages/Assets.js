@@ -11,7 +11,7 @@ import CountUp from "../components/CountUp";
 import { useToast } from "../utils/Toast";
 import "./Assets.css";
 
-const API = "https://haodaasset-backend-1.onrender.com";
+import { API_BASE as API } from "../config";
 
 const ASSET_STATUSES = ["Available","Assigned","Spare","Under Repair","Faulty","Lost","Retired","Disposed"];
 const ASSET_CONDITIONS = ["New","Excellent","Good","Fair","Faulty","Damaged"];

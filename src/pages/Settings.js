@@ -3,7 +3,7 @@ import axios from "axios";
 import Layout from "../components/Layout";
 import { useToast } from "../utils/Toast";
 
-const API = "https://haodaasset-backend-1.onrender.com";
+import { API_BASE as API } from "../config";
 
 // ── Step constants ────────────────────────────────────────────────
 const STEP_FORM  = "form";   // enter current + new password

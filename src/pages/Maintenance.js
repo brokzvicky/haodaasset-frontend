@@ -4,7 +4,7 @@ import Layout from "../components/Layout";
 import { useToast } from "../utils/Toast";
 import "./Maintenance.css";
 
-const API = "https://haodaasset-backend-1.onrender.com";
+import { API_BASE as API } from "../config";
 
 const TYPES = ["Preventive", "Corrective", "Inspection", "Upgrade"];
 const STATUSES = ["Scheduled", "In Progress", "Completed", "Cancelled"];

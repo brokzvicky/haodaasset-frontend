@@ -4,7 +4,7 @@ import { useToast } from "../utils/Toast";
 import EmployeeStatusPill, { ClearanceStatusPill } from "./EmployeeStatusPill";
 import StatusPill from "./StatusPill";
 
-const API = "https://haodaasset-backend-1.onrender.com";
+import { API_BASE as API } from "../config";
 
 const RESIGNATION_REASONS = [
   "Better Opportunity", "Higher Studies", "Relocation", "Personal Reasons",

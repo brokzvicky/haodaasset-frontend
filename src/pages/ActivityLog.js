@@ -3,7 +3,7 @@ import axios from "axios";
 import { RefreshCw, Activity } from "lucide-react";
 import Layout from "../components/Layout";
 
-const API = "https://haodaasset-backend-1.onrender.com";
+import { API_BASE as API } from "../config";
 
 const ENTITY_FILTERS = ["All", "ASSET", "EMPLOYEE", "NETWORK_CREDENTIAL", "ASSET_REQUEST"];
 const ENTITY_LABELS = {

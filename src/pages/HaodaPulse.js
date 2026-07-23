@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import "./HaodaPulse.css";
 
-const API = "https://haodaasset-backend-1.onrender.com";
+import { API_BASE as API } from "../config";
 
 const CATEGORIES = ["General", "Asset", "Employee", "NetworkCredential", "ServiceBilling", "Maintenance", "Security", "Backup"];
 const PRIORITIES = ["Low", "Normal", "High", "Critical"];

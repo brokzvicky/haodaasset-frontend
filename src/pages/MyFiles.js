@@ -6,7 +6,7 @@ import { useToast } from "../utils/Toast";
 import { useGet } from "../hooks/useEmployeeApi";
 import "./MyFiles.css";
 
-const API = "https://haodaasset-backend-1.onrender.com";
+import { API_BASE as API } from "../config";
 const EMPLOYEE_API = `${API}/api/employee`;
 
 const IconEye      = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>;

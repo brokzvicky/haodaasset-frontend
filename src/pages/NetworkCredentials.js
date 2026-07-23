@@ -18,7 +18,7 @@ import CredentialUnlockDialog from "../components/CredentialUnlockDialog";
 import CountUp from "../components/CountUp";
 import "./NetworkCredentials.css";
 
-const API = "https://haodaasset-backend-1.onrender.com";
+import { API_BASE as API } from "../config";
 
 const DEVICE_TYPES = [
   "Router", "Switch", "Firewall", "Access Point", "Server", "NAS",

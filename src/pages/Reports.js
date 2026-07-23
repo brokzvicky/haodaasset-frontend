@@ -5,7 +5,7 @@ import { AssetTypeBarChart } from "../components/DashboardChart";
 import CountUp from "../components/CountUp";
 import { useToast } from "../utils/Toast";
 
-const API = "https://haodaasset-backend-1.onrender.com";
+import { API_BASE as API } from "../config";
 
 export default function Reports() {
   const toast = useToast();
