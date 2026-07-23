@@ -8,10 +8,8 @@ import React, {
 } from "react";
 import axios from "axios";
 import { useAuth } from "./AuthContext";
-
-const NotificationContext = createContext(null);
-
 import { API_BASE as API } from "../config";
+const NotificationContext = createContext(null);
 const POLL_MS = 15_000; // poll every 15 s
 const SEEN_KEY = "iam_seen_requests"; // localStorage key for read IDs
 const TOKEN_KEY = "iam_token";
