@@ -512,7 +512,84 @@ function AssignAssetModal({ employee, onClose, onSuccess }) {
 }
 
 // ─── Employee Detail Drawer ─────────────────────────────────────────────────
-function EmployeeDetailDrawer({ employee, assets, loadingAssets, onClose, onEdit, onDelete, onAssign, onSeparation }) {
+// ─── Return Asset Dialog ────────────────────────────────────────────────────────
+function ReturnAssetDialog({ target, onClose, onConfirm, saving }) {
+  const [condition, setCondition] = useState("Good");
+  const [nextStatus, setNextStatus] = useState("Available");
+  const [stage, setStage] = useState("form");
+
+  useEffect(() => {
+    setCondition("Good");
+    setNextStatus("Available");
+    setStage("form");
+  }, [target]);
+
+  if (!target) return null;
+  const { asset, employee } = target;
+
+  const closeAndReset = () => { setStage("form"); onClose(); };
+
+  return (
+    <div className="modal-overlay" onClick={closeAndReset}>
+      <div className="modal-content" style={{ maxWidth: 440 }} onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div>
+            <h3 className="modal-title">Return Asset</h3>
+            <div className="card-subtitle" style={{ marginTop: 4 }}>
+              {asset.laptopName} · {employee.employeeName}
+            </div>
+          </div>
+          <button className="btn btn-secondary btn-icon" onClick={closeAndReset} aria-label="Close">✕</button>
+        </div>
+
+        {stage === "form" ? (
+          <div className="modal-body" style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+            <div className="field">
+              <label className="field-label">Returned Condition</label>
+              <div className="selector-grid" style={{ gridTemplateColumns: "repeat(3,1fr)" }}>
+                {["Excellent", "Good", "Fair", "Faulty", "Damaged"].map((c) => (
+                  <button key={c} type="button" className={`btn btn-sm ${condition === c ? "btn-primary" : "btn-secondary"}`} onClick={() => setCondition(c)}>
+                    {c}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="field">
+              <label className="field-label">Move Asset To</label>
+              <select className="input" value={nextStatus} onChange={(e) => setNextStatus(e.target.value)}>
+                <option value="Available">Available — Ready to reassign</option>
+                <option value="Spare">Spare — Keep in reserve</option>
+                <option value="Under Repair">Under Repair — Send for servicing</option>
+                <option value="Faulty">Faulty — Flag as defective</option>
+                <option value="Retired">Retired — End of life</option>
+              </select>
+            </div>
+            <div style={{ display: "flex", gap: 10, marginTop: 8 }}>
+              <button className="btn btn-secondary" style={{ flex: 1 }} onClick={closeAndReset}>Cancel</button>
+              <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => setStage("emailChoice")} disabled={saving}>↩ Confirm Return</button>
+            </div>
+          </div>
+        ) : (
+          <div className="modal-body" style={{ textAlign: "center", padding: "24px 8px" }}>
+            <div style={{ fontSize: 40, marginBottom: 12 }}>📧</div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: "var(--gray-900)", marginBottom: 24, maxWidth: 380, marginLeft: "auto", marginRight: "auto" }}>
+              Do you want to send an Asset Return email to the employee?
+            </div>
+            <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
+              <button className="btn btn-secondary" onClick={closeAndReset} disabled={saving}>Cancel</button>
+              <button className="btn btn-secondary" onClick={() => onConfirm(asset.assetId, { condition, nextStatus, sendReturnEmail: false })} disabled={saving}>No</button>
+              <button className="btn btn-primary" onClick={() => onConfirm(asset.assetId, { condition, nextStatus, sendReturnEmail: true })} disabled={saving} style={{ minWidth: 110 }}>
+                {saving ? "Sending…" : "Yes"}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function EmployeeDetailDrawer({ employee, assets, loadingAssets, onClose, onEdit, onDelete, onAssign, onSeparation, onReturn }) {
   const navigate = useNavigate();
   if (!employee) return null;
   const isSeparating = employee.employmentStatus && employee.employmentStatus !== "Active";
@@ -575,7 +652,7 @@ function EmployeeDetailDrawer({ employee, assets, loadingAssets, onClose, onEdit
             ) : (
               <table className="detail-drawer-mini-table">
                 <thead>
-                  <tr><th>Asset</th><th>Status</th></tr>
+                  <tr><th>Asset</th><th>Status</th><th></th></tr>
                 </thead>
                 <tbody>
                   {assets.map((item) => (
@@ -592,6 +669,17 @@ function EmployeeDetailDrawer({ employee, assets, loadingAssets, onClose, onEdit
                         </div>
                       </td>
                       <td><StatusPill status={item.assetStatus} /></td>
+                      <td>
+                        {item.assetStatus === "Assigned" && (
+                          <button
+                            className="btn btn-secondary btn-sm"
+                            onClick={(e) => { e.stopPropagation(); onReturn(item, employee); }}
+                            title="Return this asset"
+                          >
+                            ↩ Return
+                          </button>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -673,6 +761,9 @@ export default function Employees() {
   const [assignTarget, setAssignTarget] = useState(null);
   // Employee Separation / Resignation modal state
   const [separationTarget, setSeparationTarget] = useState(null);
+  // Return Asset modal state — { asset, employee }
+  const [returnTarget, setReturnTarget] = useState(null);
+  const [returning, setReturning] = useState(false);
 
   // ── Filters (all client-side, presentational only) ─────────────────
   const [departmentFilter, setDepartmentFilter] = useState("All");
@@ -794,6 +885,29 @@ export default function Employees() {
     // directory in the background so status badges / counts stay live.
     setExpandedAssets({});
     loadEmployees();
+  };
+
+  const handleReturnAsset = (assetId, { condition, nextStatus, sendReturnEmail }) => {
+    const employeeKey = returnTarget?.employee?.employeeId;
+    setReturning(true);
+    axios.put(`${API}/assets/return/${assetId}`, { condition, assetStatus: nextStatus, sendReturnEmail: sendReturnEmail ? "true" : "false" })
+      .then(() => {
+        toast(sendReturnEmail ? "Asset returned and return email sent to the employee." : "Asset returned and inventory updated.", "success");
+        setReturnTarget(null);
+        // Refresh the employee directory + asset counts everywhere...
+        setExpandedAssets({});
+        loadEmployees();
+        // ...and, since the detail drawer may still be open for this
+        // employee, refetch their assets right away so the "Assigned
+        // Assets" table updates without the admin needing to reopen it.
+        if (employeeKey) {
+          axios.get(`${API}/api/admin/employees/${employeeKey}/assets`)
+            .then((r) => setExpandedAssets((prev) => ({ ...prev, [employeeKey]: r.data })))
+            .catch(() => {});
+        }
+      })
+      .catch((err) => toast(err.response?.data?.message || "Couldn't process return.", "error"))
+      .finally(() => setReturning(false));
   };
 
   const uniqueLocations = useMemo(() => {
@@ -1274,6 +1388,15 @@ export default function Employees() {
         onDelete={(emp) => { setViewingEmployee(null); deleteEmployee(emp); }}
         onAssign={(emp) => { setViewingEmployee(null); setAssignTarget(emp); }}
         onSeparation={(emp) => { setViewingEmployee(null); setSeparationTarget(emp); }}
+        onReturn={(asset, emp) => setReturnTarget({ asset, employee: emp })}
+      />
+
+      {/* Return Asset Dialog */}
+      <ReturnAssetDialog
+        target={returnTarget}
+        onClose={() => setReturnTarget(null)}
+        onConfirm={handleReturnAsset}
+        saving={returning}
       />
     </Layout>
   );
