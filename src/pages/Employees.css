@@ -5,6 +5,48 @@
 
 .emp-page { display: flex; flex-direction: column; gap: 20px; }
 
+/* ── Lifecycle Status Tabs ────────────────────────────────────────── */
+.emp-status-tabs {
+  display: flex; gap: 6px; flex-wrap: wrap;
+  background: #fff; border: 1px solid var(--gray-200);
+  border-radius: var(--radius-lg); padding: 6px;
+  box-shadow: var(--shadow-xs);
+}
+.emp-status-tab {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 8px 14px; border-radius: 9px;
+  font-size: 13px; font-weight: 600; color: var(--gray-500);
+  background: transparent; border: none; cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+.emp-status-tab:hover { background: var(--gray-100); color: var(--gray-700); }
+.emp-status-tab.is-active { background: var(--primary); color: #fff; }
+.emp-status-tab-count {
+  font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 999px;
+  background: var(--gray-100); color: var(--gray-600);
+}
+.emp-status-tab.is-active .emp-status-tab-count { background: rgba(255,255,255,0.25); color: #fff; }
+
+/* ── Dedicated Resigned Employees table ──────────────────────────── */
+.emp-resigned-table-wrap {
+  background: #fff; border: 1px solid var(--gray-200);
+  border-radius: var(--radius-lg); overflow-x: auto; box-shadow: var(--shadow-xs);
+}
+.emp-resigned-table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 980px; }
+.emp-resigned-table th {
+  text-align: left; padding: 12px 14px; font-size: 11.5px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.04em; color: var(--gray-500);
+  background: var(--gray-50); border-bottom: 1px solid var(--gray-200); white-space: nowrap;
+}
+.emp-resigned-table td {
+  padding: 12px 14px; border-bottom: 1px solid var(--gray-100); color: var(--gray-700); vertical-align: middle;
+}
+.emp-resigned-table tr:last-child td { border-bottom: none; }
+.emp-resigned-table tr:hover td { background: var(--gray-50); }
+.emp-resigned-table .emp-rt-name { font-weight: 700; color: var(--gray-800); }
+.emp-resigned-table .emp-rt-id { font-size: 11.5px; color: var(--gray-400); font-family: var(--font-mono, monospace); }
+.emp-resigned-table .emp-rt-actions { display: flex; gap: 6px; white-space: nowrap; }
+
 /* ── Premium "Add Employee" CTA ──────────────────────────────────── */
 .emp-add-btn {
   display: inline-flex; align-items: center; gap: 8px;

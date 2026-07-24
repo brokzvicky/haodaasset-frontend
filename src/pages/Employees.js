@@ -14,8 +14,21 @@ import { API_BASE as API } from "../config";
 
 const EMPTY_FORM = {
   employeeId: "", employeeName: "", email: "",
-  department: "", designation: "", location: "", joiningDate: "",
+  department: "", designation: "", location: "", joiningDate: "", manager: "",
 };
+
+// The 5-stage lifecycle + "All". "Notice Period" also covers the legacy
+// Exit Clearance / Assets Returned sub-stages so nothing in the middle of
+// separation falls through the cracks.
+const STATUS_TABS = [
+  { key: "Active", label: "Active" },
+  { key: "On Leave", label: "On Leave" },
+  { key: "Notice Period", label: "Notice Period" },
+  { key: "Resigned", label: "Resigned" },
+  { key: "Terminated", label: "Terminated" },
+  { key: "All", label: "All Employees" },
+];
+const NOTICE_PERIOD_BUCKET = ["Notice Period", "Exit Clearance", "Assets Returned"];
 
 const LOCATIONS = ["Chennai - Kilpauk", "Chennai - Chetpet"];
 
@@ -60,6 +73,9 @@ const IconEdit     = () => <svg width="14" height="14" viewBox="0 0 24 24" fill=
 const IconTrash    = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>;
 const IconUserMinus= () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="17" y1="11" x2="23" y2="11"/></svg>;
 const IconUsers    = () => <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>;
+const IconUserCheck= () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><polyline points="17 11 19 13 23 9"/></svg>;
+const IconPause    = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>;
+const IconBan      = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>;
 
 // ─── Assign Asset Modal ────────────────────────────────────────────────────────
 function AssignAssetModal({ employee, onClose, onSuccess }) {
@@ -512,84 +528,7 @@ function AssignAssetModal({ employee, onClose, onSuccess }) {
 }
 
 // ─── Employee Detail Drawer ─────────────────────────────────────────────────
-// ─── Return Asset Dialog ────────────────────────────────────────────────────────
-function ReturnAssetDialog({ target, onClose, onConfirm, saving }) {
-  const [condition, setCondition] = useState("Good");
-  const [nextStatus, setNextStatus] = useState("Available");
-  const [stage, setStage] = useState("form");
-
-  useEffect(() => {
-    setCondition("Good");
-    setNextStatus("Available");
-    setStage("form");
-  }, [target]);
-
-  if (!target) return null;
-  const { asset, employee } = target;
-
-  const closeAndReset = () => { setStage("form"); onClose(); };
-
-  return (
-    <div className="modal-overlay" onClick={closeAndReset}>
-      <div className="modal-content" style={{ maxWidth: 440 }} onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <div>
-            <h3 className="modal-title">Return Asset</h3>
-            <div className="card-subtitle" style={{ marginTop: 4 }}>
-              {asset.laptopName} · {employee.employeeName}
-            </div>
-          </div>
-          <button className="btn btn-secondary btn-icon" onClick={closeAndReset} aria-label="Close">✕</button>
-        </div>
-
-        {stage === "form" ? (
-          <div className="modal-body" style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-            <div className="field">
-              <label className="field-label">Returned Condition</label>
-              <div className="selector-grid" style={{ gridTemplateColumns: "repeat(3,1fr)" }}>
-                {["Excellent", "Good", "Fair", "Faulty", "Damaged"].map((c) => (
-                  <button key={c} type="button" className={`btn btn-sm ${condition === c ? "btn-primary" : "btn-secondary"}`} onClick={() => setCondition(c)}>
-                    {c}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="field">
-              <label className="field-label">Move Asset To</label>
-              <select className="input" value={nextStatus} onChange={(e) => setNextStatus(e.target.value)}>
-                <option value="Available">Available — Ready to reassign</option>
-                <option value="Spare">Spare — Keep in reserve</option>
-                <option value="Under Repair">Under Repair — Send for servicing</option>
-                <option value="Faulty">Faulty — Flag as defective</option>
-                <option value="Retired">Retired — End of life</option>
-              </select>
-            </div>
-            <div style={{ display: "flex", gap: 10, marginTop: 8 }}>
-              <button className="btn btn-secondary" style={{ flex: 1 }} onClick={closeAndReset}>Cancel</button>
-              <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => setStage("emailChoice")} disabled={saving}>↩ Confirm Return</button>
-            </div>
-          </div>
-        ) : (
-          <div className="modal-body" style={{ textAlign: "center", padding: "24px 8px" }}>
-            <div style={{ fontSize: 40, marginBottom: 12 }}>📧</div>
-            <div style={{ fontSize: 15, fontWeight: 700, color: "var(--gray-900)", marginBottom: 24, maxWidth: 380, marginLeft: "auto", marginRight: "auto" }}>
-              Do you want to send an Asset Return email to the employee?
-            </div>
-            <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
-              <button className="btn btn-secondary" onClick={closeAndReset} disabled={saving}>Cancel</button>
-              <button className="btn btn-secondary" onClick={() => onConfirm(asset.assetId, { condition, nextStatus, sendReturnEmail: false })} disabled={saving}>No</button>
-              <button className="btn btn-primary" onClick={() => onConfirm(asset.assetId, { condition, nextStatus, sendReturnEmail: true })} disabled={saving} style={{ minWidth: 110 }}>
-                {saving ? "Sending…" : "Yes"}
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function EmployeeDetailDrawer({ employee, assets, loadingAssets, onClose, onEdit, onDelete, onAssign, onSeparation, onReturn }) {
+function EmployeeDetailDrawer({ employee, assets, loadingAssets, onClose, onEdit, onDelete, onAssign, onSeparation }) {
   const navigate = useNavigate();
   if (!employee) return null;
   const isSeparating = employee.employmentStatus && employee.employmentStatus !== "Active";
@@ -652,7 +591,7 @@ function EmployeeDetailDrawer({ employee, assets, loadingAssets, onClose, onEdit
             ) : (
               <table className="detail-drawer-mini-table">
                 <thead>
-                  <tr><th>Asset</th><th>Status</th><th></th></tr>
+                  <tr><th>Asset</th><th>Status</th></tr>
                 </thead>
                 <tbody>
                   {assets.map((item) => (
@@ -669,17 +608,6 @@ function EmployeeDetailDrawer({ employee, assets, loadingAssets, onClose, onEdit
                         </div>
                       </td>
                       <td><StatusPill status={item.assetStatus} /></td>
-                      <td>
-                        {item.assetStatus === "Assigned" && (
-                          <button
-                            className="btn btn-secondary btn-sm"
-                            onClick={(e) => { e.stopPropagation(); onReturn(item, employee); }}
-                            title="Return this asset"
-                          >
-                            ↩ Return
-                          </button>
-                        )}
-                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -736,6 +664,156 @@ function EmployeeDetailDrawer({ employee, assets, loadingAssets, onClose, onEdit
   );
 }
 
+// ─── Place On Leave Modal ───────────────────────────────────────────────
+function OnLeaveModal({ employee, onClose, onSuccess }) {
+  const toast = useToast();
+  const [reason, setReason] = useState("");
+  const [reasons, setReasons] = useState([]);
+  const [startDate, setStartDate] = useState(new Date().toISOString().split("T")[0]);
+  const [endDate, setEndDate] = useState("");
+  const [remarks, setRemarks] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    axios.get(`${API}/api/admin/employees/leave/reasons`)
+      .then((r) => setReasons(r.data || []))
+      .catch(() => setReasons(["Medical Leave", "Personal Leave", "Other"]));
+  }, []);
+
+  const submit = () => {
+    if (!reason) { toast("Please select a leave reason.", "error"); return; }
+    setSaving(true);
+    axios.post(`${API}/api/admin/employees/${employee.employeeId}/leave/start`, {
+      reason, startDate, endDate: endDate || undefined, remarks: remarks || undefined,
+    })
+      .then(() => { toast(`${employee.employeeName} placed On Leave.`, "success"); onSuccess(); onClose(); })
+      .catch((err) => toast(err.response?.data?.message || "Couldn't place employee on leave.", "error"))
+      .finally(() => setSaving(false));
+  };
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-content" style={{ maxWidth: 460 }} onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header">
+          <div className="card-title">Place On Leave</div>
+          <button className="modal-close" onClick={onClose}><IconX /></button>
+        </div>
+        <div className="modal-body">
+          <p style={{ fontSize: 13, color: "var(--gray-500)", marginBottom: 14 }}>
+            {employee.employeeName} ({employee.employeeId}) will be marked On Leave. Login stays enabled.
+          </p>
+          <div className="field" style={{ marginBottom: 12 }}>
+            <label className="field-label">Leave Reason *</label>
+            <select className="input" value={reason} onChange={(e) => setReason(e.target.value)}>
+              <option value="">Select reason…</option>
+              {reasons.map((r) => <option key={r} value={r}>{r}</option>)}
+            </select>
+          </div>
+          <div className="form-grid">
+            <div className="field">
+              <label className="field-label">Start Date</label>
+              <input className="input" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+            </div>
+            <div className="field">
+              <label className="field-label">Expected End Date</label>
+              <input className="input" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+            </div>
+          </div>
+          <div className="field" style={{ marginTop: 12 }}>
+            <label className="field-label">Remarks</label>
+            <textarea className="input" rows={2} value={remarks} onChange={(e) => setRemarks(e.target.value)} placeholder="Optional notes…" />
+          </div>
+        </div>
+        <div className="modal-footer">
+          <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
+          <button className="btn btn-primary" onClick={submit} disabled={saving}>{saving ? "Saving…" : "Place On Leave"}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Terminate Employee Modal ───────────────────────────────────────────
+function TerminateModal({ employee, onClose, onSuccess }) {
+  const toast = useToast();
+  const [reasons, setReasons] = useState([]);
+  const [exitReason, setExitReason] = useState("");
+  const [terminationDate, setTerminationDate] = useState(new Date().toISOString().split("T")[0]);
+  const [exitRemarks, setExitRemarks] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [pendingAssets, setPendingAssets] = useState(null);
+
+  useEffect(() => {
+    axios.get(`${API}/api/admin/employees/separation/reasons`)
+      .then((r) => setReasons(r.data || []))
+      .catch(() => setReasons(["Policy Violation", "Performance", "Other"]));
+  }, []);
+
+  const submit = () => {
+    if (!exitReason) { toast("Please select an exit reason.", "error"); return; }
+    if (!terminationDate) { toast("Termination date is required.", "error"); return; }
+    setSaving(true);
+    setPendingAssets(null);
+    axios.post(`${API}/api/admin/employees/${employee.employeeId}/terminate`, {
+      terminationDate, exitReason, exitRemarks: exitRemarks || undefined,
+    })
+      .then(() => { toast(`${employee.employeeName} has been terminated. Login disabled.`, "success"); onSuccess(); onClose(); })
+      .catch((err) => {
+        if (err.response?.status === 409 && err.response?.data?.details) {
+          setPendingAssets(err.response.data.details);
+          toast("This employee still has assets assigned. Return them first.", "error");
+        } else {
+          toast(err.response?.data?.message || "Couldn't terminate employee.", "error");
+        }
+      })
+      .finally(() => setSaving(false));
+  };
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-content" style={{ maxWidth: 460 }} onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header">
+          <div className="card-title">Terminate Employee</div>
+          <button className="modal-close" onClick={onClose}><IconX /></button>
+        </div>
+        <div className="modal-body">
+          <p style={{ fontSize: 13, color: "var(--gray-500)", marginBottom: 14 }}>
+            {employee.employeeName} ({employee.employeeId}) will be marked <strong>Terminated</strong>.
+            Login access is disabled immediately and the record is preserved permanently.
+          </p>
+          {pendingAssets && pendingAssets.length > 0 && (
+            <div style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 8, padding: 12, marginBottom: 12, fontSize: 12.5, color: "#991b1b" }}>
+              <strong>{pendingAssets.length} asset(s) still assigned.</strong> Return them from Assets before terminating:
+              <ul style={{ margin: "6px 0 0 18px", padding: 0 }}>
+                {pendingAssets.map((a) => <li key={a.assetId}>{a.laptopName} ({a.serialNumber})</li>)}
+              </ul>
+            </div>
+          )}
+          <div className="field" style={{ marginBottom: 12 }}>
+            <label className="field-label">Exit Reason *</label>
+            <select className="input" value={exitReason} onChange={(e) => setExitReason(e.target.value)}>
+              <option value="">Select reason…</option>
+              {reasons.map((r) => <option key={r} value={r}>{r}</option>)}
+            </select>
+          </div>
+          <div className="field" style={{ marginBottom: 12 }}>
+            <label className="field-label">Termination Date *</label>
+            <input className="input" type="date" value={terminationDate} onChange={(e) => setTerminationDate(e.target.value)} />
+          </div>
+          <div className="field">
+            <label className="field-label">Exit Remarks</label>
+            <textarea className="input" rows={2} value={exitRemarks} onChange={(e) => setExitRemarks(e.target.value)} placeholder="Optional notes…" />
+          </div>
+        </div>
+        <div className="modal-footer">
+          <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
+          <button className="btn btn-danger" onClick={submit} disabled={saving}>{saving ? "Terminating…" : "Terminate Employee"}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main Employees Page ───────────────────────────────────────────────────────
 export default function Employees() {
   const toast = useToast();
@@ -761,9 +839,14 @@ export default function Employees() {
   const [assignTarget, setAssignTarget] = useState(null);
   // Employee Separation / Resignation modal state
   const [separationTarget, setSeparationTarget] = useState(null);
-  // Return Asset modal state — { asset, employee }
-  const [returnTarget, setReturnTarget] = useState(null);
-  const [returning, setReturning] = useState(false);
+  // On Leave / Terminate modal state
+  const [leaveTarget, setLeaveTarget] = useState(null);
+  const [terminateTarget, setTerminateTarget] = useState(null);
+
+  // ── Lifecycle status tab (Active / On Leave / Notice Period / Resigned / Terminated / All) ──
+  const [statusTab, setStatusTab] = useState("Active");
+  const [resignedView, setResignedView] = useState([]);
+  const [loadingResignedView, setLoadingResignedView] = useState(false);
 
   // ── Filters (all client-side, presentational only) ─────────────────
   const [departmentFilter, setDepartmentFilter] = useState("All");
@@ -810,6 +893,28 @@ export default function Employees() {
 
   useEffect(() => { loadEmployees(); }, [loadEmployees]);
 
+  useEffect(() => {
+    if (statusTab !== "Resigned") return;
+    setLoadingResignedView(true);
+    axios.get(`${API}/api/admin/employees/resigned`)
+      .then((r) => setResignedView(r.data || []))
+      .catch(() => setResignedView([]))
+      .finally(() => setLoadingResignedView(false));
+  }, [statusTab, employees]);
+
+  const endLeave = (emp) => {
+    axios.post(`${API}/api/admin/employees/${emp.employeeId}/leave/end`)
+      .then(() => { toast(`${emp.employeeName} restored to Active.`, "success"); loadEmployees(); })
+      .catch((err) => toast(err.response?.data?.message || "Couldn't end leave.", "error"));
+  };
+
+  const reactivateEmployee = (emp) => {
+    if (!window.confirm(`Reactivate ${emp.employeeName} (${emp.employeeId})? Their status will be set back to Active and login access restored.`)) return;
+    axios.post(`${API}/api/admin/employees/${emp.employeeId}/reactivate`)
+      .then(() => { toast(`${emp.employeeName} reactivated.`, "success"); loadEmployees(); })
+      .catch((err) => toast(err.response?.data?.message || "Couldn't reactivate employee.", "error"));
+  };
+
   const field = (key) => ({
     value: form[key],
     onChange: (e) => setForm((f) => ({ ...f, [key]: e.target.value })),
@@ -829,6 +934,7 @@ export default function Employees() {
       designation: emp.designation || "",
       location: emp.location || "",
       joiningDate: emp.joiningDate || "",
+      manager: emp.manager || "",
     });
     setShowForm(true);
   };
@@ -887,29 +993,6 @@ export default function Employees() {
     loadEmployees();
   };
 
-  const handleReturnAsset = (assetId, { condition, nextStatus, sendReturnEmail }) => {
-    const employeeKey = returnTarget?.employee?.employeeId;
-    setReturning(true);
-    axios.put(`${API}/assets/return/${assetId}`, { condition, assetStatus: nextStatus, sendReturnEmail: sendReturnEmail ? "true" : "false" })
-      .then(() => {
-        toast(sendReturnEmail ? "Asset returned and return email sent to the employee." : "Asset returned and inventory updated.", "success");
-        setReturnTarget(null);
-        // Refresh the employee directory + asset counts everywhere...
-        setExpandedAssets({});
-        loadEmployees();
-        // ...and, since the detail drawer may still be open for this
-        // employee, refetch their assets right away so the "Assigned
-        // Assets" table updates without the admin needing to reopen it.
-        if (employeeKey) {
-          axios.get(`${API}/api/admin/employees/${employeeKey}/assets`)
-            .then((r) => setExpandedAssets((prev) => ({ ...prev, [employeeKey]: r.data })))
-            .catch(() => {});
-        }
-      })
-      .catch((err) => toast(err.response?.data?.message || "Couldn't process return.", "error"))
-      .finally(() => setReturning(false));
-  };
-
   const uniqueLocations = useMemo(() => {
     const fromData = employees.map((e) => e.location).filter(Boolean);
     const combined = Array.from(new Set([...LOCATIONS, ...fromData])).sort();
@@ -950,11 +1033,26 @@ export default function Employees() {
       const count = assetCounts[e.employeeId] || 0;
       const matchesAssetFilter =
         assetFilter === "All" || (assetFilter === "Assigned" ? count > 0 : count === 0);
+      const status = e.employmentStatus || "Active";
+      const matchesStatusTab =
+        statusTab === "All" ? true :
+        statusTab === "Notice Period" ? NOTICE_PERIOD_BUCKET.includes(status) :
+        status === statusTab;
       return matchesSearch && matchesLocation && matchesDept && matchesDesignation &&
-        matchesRole && matchesPasswordStatus && matchesAssetFilter;
+        matchesRole && matchesPasswordStatus && matchesAssetFilter && matchesStatusTab;
     }),
-    [employees, search, locationFilter, departmentFilter, designationFilter, roleFilter, passwordStatusFilter, assetFilter, assetCounts]
+    [employees, search, locationFilter, departmentFilter, designationFilter, roleFilter, passwordStatusFilter, assetFilter, assetCounts, statusTab]
   );
+
+  const statusTabCounts = useMemo(() => {
+    const counts = { Active: 0, "On Leave": 0, "Notice Period": 0, Resigned: 0, Terminated: 0, All: employees.length };
+    employees.forEach((e) => {
+      const status = e.employmentStatus || "Active";
+      if (NOTICE_PERIOD_BUCKET.includes(status)) counts["Notice Period"] += 1;
+      else if (counts[status] !== undefined) counts[status] += 1;
+    });
+    return counts;
+  }, [employees]);
 
   const activeFilterChips = useMemo(() => {
     const chips = [];
@@ -1003,6 +1101,22 @@ export default function Employees() {
           </div>
         )}
 
+        {/* ── Lifecycle Status Tabs ─────────────────────────────────── */}
+        <div className="emp-status-tabs" role="tablist" aria-label="Filter employees by status">
+          {STATUS_TABS.map((tab) => (
+            <button
+              key={tab.key}
+              role="tab"
+              aria-selected={statusTab === tab.key}
+              className={`emp-status-tab${statusTab === tab.key ? " is-active" : ""}`}
+              onClick={() => setStatusTab(tab.key)}
+            >
+              {tab.label}
+              <span className="emp-status-tab-count">{statusTabCounts[tab.key] ?? 0}</span>
+            </button>
+          ))}
+        </div>
+
         {/* Add / Edit Form */}
         {showForm && (
           <div className="card fade-in">
@@ -1048,6 +1162,10 @@ export default function Employees() {
                 <div className="field">
                   <label className="field-label">Joining Date</label>
                   <input className="input" type="date" {...field("joiningDate")} />
+                </div>
+                <div className="field">
+                  <label className="field-label">Reporting Manager</label>
+                  <input className="input" {...field("manager")} placeholder="e.g. Priya Raman" />
                 </div>
               </div>
               <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
@@ -1200,8 +1318,72 @@ export default function Employees() {
           )}
         </div>
 
-        {/* ── Employee Cards ───────────────────────────────────────── */}
-        {loading ? (
+        {/* ── Employee Cards / Dedicated Resigned View ─────────────── */}
+        {statusTab === "Resigned" ? (
+          loadingResignedView ? (
+            <div className="emp-empty-state"><div className="emp-empty-sub">Loading resigned employees…</div></div>
+          ) : resignedView.length === 0 ? (
+            <div className="emp-empty-state">
+              <div className="emp-empty-illustration" style={{ color: "var(--gray-300)" }}><IconUsers /></div>
+              <div className="emp-empty-title">No resigned employees</div>
+              <div className="emp-empty-sub">Employees who resign will appear here permanently, with their full asset and exit history preserved.</div>
+            </div>
+          ) : (
+            <div className="emp-resigned-table-wrap">
+              <table className="emp-resigned-table">
+                <thead>
+                  <tr>
+                    <th>Employee</th><th>Department</th><th>Designation</th><th>Manager</th>
+                    <th>Joining Date</th><th>Last Working Date</th><th>Resignation Date</th>
+                    <th>Exit Reason</th><th>Asset Return Status</th><th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {resignedView
+                    .filter((r) => {
+                      const q = search.toLowerCase();
+                      return !q ||
+                        (r.employeeName || "").toLowerCase().includes(q) ||
+                        (r.employeeId || "").toLowerCase().includes(q) ||
+                        (r.department || "").toLowerCase().includes(q);
+                    })
+                    .map((r) => (
+                      <tr key={r.employeeId}>
+                        <td>
+                          <div className="emp-rt-name">{r.employeeName}</div>
+                          <div className="emp-rt-id">{r.employeeId}</div>
+                        </td>
+                        <td>{r.department || "—"}</td>
+                        <td>{r.designation || "—"}</td>
+                        <td>{r.manager || "—"}</td>
+                        <td>{r.joiningDate || "—"}</td>
+                        <td>{r.lastWorkingDate || "—"}</td>
+                        <td>{r.resignationDate || "—"}</td>
+                        <td>{r.exitReason || "—"}</td>
+                        <td>
+                          <span className={`emp-status-pill ${r.assetReturnStatus === "Completed" ? "is-active" : "is-warning"}`}>
+                            <span className="emp-status-dot" />{r.assetReturnStatus || "Pending"}
+                          </span>
+                        </td>
+                        <td>
+                          <div className="emp-rt-actions">
+                            <button className="btn btn-secondary" style={{ padding: "5px 10px", fontSize: 12 }}
+                              onClick={() => { const full = employees.find((e) => e.employeeId === r.employeeId); if (full) openProfile(full); }}>
+                              <IconEye /> Details
+                            </button>
+                            <button className="btn btn-secondary" style={{ padding: "5px 10px", fontSize: 12 }}
+                              onClick={() => { const full = employees.find((e) => e.employeeId === r.employeeId); if (full) setSeparationTarget(full); }}>
+                              Asset History
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
+          )
+        ) : loading ? (
           <div className="emp-grid">
             {[1, 2, 3, 4, 5, 6].map((i) => (
               <div key={i} className="emp-skel-card">
@@ -1243,12 +1425,31 @@ export default function Employees() {
               const activity = lastActivityById[emp.employeeId];
               const menuOpen = openMenuId === emp.employeeId;
 
-              const menuItems = [
-                { label: "Edit Employee", icon: <IconEdit />, onClick: () => startEdit(emp) },
-                { label: (emp.employmentStatus && emp.employmentStatus !== "Active") ? "Manage Separation" : "Start Resignation", icon: <IconUserMinus />, onClick: () => setSeparationTarget(emp) },
-                { divider: true },
-                { label: "Delete Employee", icon: <IconTrash />, danger: true, onClick: () => deleteEmployee(emp) },
-              ];
+              const status = emp.employmentStatus || "Active";
+              const isLeftOrg = status === "Resigned" || status === "Terminated";
+              const isOnLeave = status === "On Leave";
+              const isSeparating = NOTICE_PERIOD_BUCKET.includes(status);
+
+              const menuItems = [];
+              if (!isLeftOrg) {
+                menuItems.push({ label: "Edit Employee", icon: <IconEdit />, onClick: () => startEdit(emp) });
+              }
+              if (status === "Active") {
+                menuItems.push({ label: "Place On Leave", icon: <IconPause />, onClick: () => setLeaveTarget(emp) });
+              }
+              if (isOnLeave) {
+                menuItems.push({ label: "End Leave (Restore to Active)", icon: <IconUserCheck />, onClick: () => endLeave(emp) });
+              }
+              if (!isLeftOrg) {
+                menuItems.push({ label: isSeparating ? "Manage Separation" : "Start Resignation", icon: <IconUserMinus />, onClick: () => setSeparationTarget(emp) });
+                menuItems.push({ label: "Terminate Employee", icon: <IconBan />, danger: true, onClick: () => setTerminateTarget(emp) });
+              }
+              if (isLeftOrg) {
+                menuItems.push({ label: "View Asset History", icon: <IconEye />, onClick: () => setSeparationTarget(emp) });
+                menuItems.push({ label: "Reactivate Employee", icon: <IconUserCheck />, onClick: () => reactivateEmployee(emp) });
+              }
+              menuItems.push({ divider: true });
+              menuItems.push({ label: "Delete Employee", icon: <IconTrash />, danger: true, onClick: () => deleteEmployee(emp) });
 
               return (
                 <div key={emp.employeeId} className="employee-card">
@@ -1336,13 +1537,13 @@ export default function Employees() {
                     >
                       <IconEye /> View
                     </button>
-                    {emp.employmentStatus === "Resigned" ? (
+                    {isLeftOrg ? (
                       <button
                         className="emp-btn-assign"
                         onClick={() => setSeparationTarget(emp)}
-                        title="View this employee's separation history"
+                        title="View this employee's separation and asset history"
                       >
-                        <IconUserMinus /> Separation History
+                        <IconUserMinus /> Exit History
                       </button>
                     ) : (
                       <button
@@ -1379,6 +1580,24 @@ export default function Employees() {
         />
       )}
 
+      {/* Place On Leave Modal */}
+      {leaveTarget && (
+        <OnLeaveModal
+          employee={leaveTarget}
+          onClose={() => setLeaveTarget(null)}
+          onSuccess={loadEmployees}
+        />
+      )}
+
+      {/* Terminate Employee Modal */}
+      {terminateTarget && (
+        <TerminateModal
+          employee={terminateTarget}
+          onClose={() => setTerminateTarget(null)}
+          onSuccess={loadEmployees}
+        />
+      )}
+
       <EmployeeDetailDrawer
         employee={viewingEmployee}
         assets={viewingEmployee ? expandedAssets[viewingEmployee.employeeId] : null}
@@ -1388,15 +1607,6 @@ export default function Employees() {
         onDelete={(emp) => { setViewingEmployee(null); deleteEmployee(emp); }}
         onAssign={(emp) => { setViewingEmployee(null); setAssignTarget(emp); }}
         onSeparation={(emp) => { setViewingEmployee(null); setSeparationTarget(emp); }}
-        onReturn={(asset, emp) => setReturnTarget({ asset, employee: emp })}
-      />
-
-      {/* Return Asset Dialog */}
-      <ReturnAssetDialog
-        target={returnTarget}
-        onClose={() => setReturnTarget(null)}
-        onConfirm={handleReturnAsset}
-        saving={returning}
       />
     </Layout>
   );

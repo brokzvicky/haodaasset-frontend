@@ -24,6 +24,8 @@ const IconDoc      = () => <svg width="18" height="18" viewBox="0 0 24 24" fill=
 const IconPlus     = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>;
 const IconBell     = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>;
 const IconMonitor  = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="4" width="20" height="14" rx="2"/><path d="M8 20h8M12 18v2"/></svg>;
+const IconUserCheck = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><polyline points="17 11 19 13 23 9"/></svg>;
+const IconUserX = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="18" y1="8" x2="23" y2="13"/><line x1="23" y1="8" x2="18" y2="13"/></svg>;
 
 /* ── KPI Card ──────────────────────────────────────────────────── */
 function KpiCard({ icon, label, value, sub, gradient, glow, onClick, badge }) {
@@ -202,7 +204,7 @@ export default function Dashboard() {
     overdueServices: null, totalInvoicesUploaded: null,
   });
   const [analytics, setAnalytics] = useState(null);
-  const [separationStats, setSeparationStats] = useState(null);
+  const [lifecycleStats, setLifecycleStats] = useState(null);
 
   const now      = new Date();
   const greeting = now.getHours() < 12 ? "Good morning" : now.getHours() < 17 ? "Good afternoon" : "Good evening";
@@ -234,9 +236,10 @@ export default function Dashboard() {
       .then((r) => setAnalytics(r.data))
       .catch(() => { /* widgets simply stay hidden if this fails */ });
 
-    // Employee Separation widgets — a failure here shouldn't block the rest of the dashboard.
-    axios.get(`${API}/api/admin/employees/separation/dashboard-stats`)
-      .then((r) => setSeparationStats(r.data))
+    // Employee Lifecycle widgets (Active / On Leave / Notice Period / Resigned /
+    // Terminated / Pending Returns / Joined & Left This Month).
+    axios.get(`${API}/api/admin/employees/dashboard/lifecycle-stats`)
+      .then((r) => setLifecycleStats(r.data))
       .catch(() => { /* widgets simply stay hidden if this fails */ });
   }, []);
 
@@ -451,26 +454,32 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Employee Separation Overview */}
+      {/* Employee Lifecycle Overview */}
       <div style={{ marginBottom: 16 }}>
         <div style={{ marginBottom: 12, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ fontSize: 15, fontWeight: 700, color: "var(--gray-800)" }}>Employee Separation</span>
+            <span style={{ fontSize: 15, fontWeight: 700, color: "var(--gray-800)" }}>Employee Lifecycle</span>
             <span style={{ fontSize: 12, color: "var(--gray-400)", background: "var(--gray-100)", padding: "2px 10px", borderRadius: 999, fontWeight: 600 }}>
-              Resignation &amp; exit workflow
+              Active · On Leave · Notice Period · Resigned · Terminated
             </span>
           </div>
           <Link to="/employees" style={{ fontSize: 12.5, fontWeight: 700, color: "var(--primary)", textDecoration: "none" }}>
             Manage employees →
           </Link>
         </div>
+        <div className="kpi-row kpi-row-4 stagger-in" style={{ marginBottom: 12 }}>
+          <KpiCard icon={<IconUserCheck />} label="Active Employees"    value={lifecycleStats === null ? null : (lifecycleStats.active ?? 0)}       sub="Currently working"     gradient="linear-gradient(135deg,#4ade80,#16a34a)" glow="#16a34a40" onClick={() => navigate("/employees")} />
+          <KpiCard icon={<IconAlert />}     label="On Leave"            value={lifecycleStats === null ? null : (lifecycleStats.onLeave ?? 0)}      sub="Temporarily away"      gradient="linear-gradient(135deg,#38bdf8,#0284c7)" glow="#0284c740" onClick={() => navigate("/employees")} />
+          <KpiCard icon={<IconUsers />}     label="Notice Period"       value={lifecycleStats === null ? null : (lifecycleStats.noticePeriod ?? 0)} sub="Serving notice"        gradient="linear-gradient(135deg,#fde047,#ca8a04)" glow="#ca8a0440" onClick={() => navigate("/employees")} />
+          <KpiCard icon={<IconArchive />}   label="Resigned"            value={lifecycleStats === null ? null : (lifecycleStats.resigned ?? 0)}     sub="Left voluntarily"      gradient="linear-gradient(135deg,#94a3b8,#475569)" glow="#47556940" onClick={() => navigate("/employees")} />
+        </div>
         <div className="kpi-row kpi-row-4 stagger-in">
-          <KpiCard icon={<IconUsers />}   label="Notice Period"          value={separationStats === null ? null : (separationStats.noticePeriod ?? 0)}         sub="Serving notice"        gradient="linear-gradient(135deg,#fde047,#ca8a04)" glow="#ca8a0440" onClick={() => navigate("/employees")} />
-          <KpiCard icon={<IconAlert />}   label="Pending Exit Clearance" value={separationStats === null ? null : (separationStats.pendingExitClearance ?? 0)} sub="Awaiting clearance"    gradient="linear-gradient(135deg,#fb923c,#ea580c)" glow="#ea580c40" onClick={() => navigate("/employees")} />
-          <KpiCard icon={<IconArchive />} label="Resigned This Month"    value={separationStats === null ? null : (separationStats.resignedThisMonth ?? 0)}    sub="Finalized exits"       gradient="linear-gradient(135deg,#94a3b8,#475569)" glow="#47556940" onClick={() => navigate("/employees")} />
-          <KpiCard icon={<IconBox />}     label="Pending Asset Returns"  value={separationStats === null ? null : (separationStats.pendingAssetReturns ?? 0)}  sub="Across separating staff" gradient="linear-gradient(135deg,#f87171,#dc2626)" glow="#dc262640"
-            badge={separationStats && separationStats.pendingAssetReturns > 0 ? "Action needed" : undefined}
+          <KpiCard icon={<IconUserX />}     label="Terminated"          value={lifecycleStats === null ? null : (lifecycleStats.terminated ?? 0)}   sub="Involuntary exits"     gradient="linear-gradient(135deg,#f87171,#b91c1c)" glow="#b91c1c40" onClick={() => navigate("/employees")} />
+          <KpiCard icon={<IconBox />}       label="Pending Asset Returns" value={lifecycleStats === null ? null : (lifecycleStats.pendingAssetReturns ?? 0)} sub="Across separating staff" gradient="linear-gradient(135deg,#fb923c,#ea580c)" glow="#ea580c40"
+            badge={lifecycleStats && lifecycleStats.pendingAssetReturns > 0 ? "Action needed" : undefined}
             onClick={() => navigate("/employees")} />
+          <KpiCard icon={<IconPlus />}      label="Joined This Month"   value={lifecycleStats === null ? null : (lifecycleStats.joinedThisMonth ?? 0)} sub="New hires"            gradient="linear-gradient(135deg,#a78bfa,#7c3aed)" glow="#7c3aed40" onClick={() => navigate("/employees")} />
+          <KpiCard icon={<IconArchive />}   label="Left This Month"     value={lifecycleStats === null ? null : (lifecycleStats.leftThisMonth ?? 0)} sub="Resigned + terminated" gradient="linear-gradient(135deg,#f472b6,#be185d)" glow="#be185d40" onClick={() => navigate("/employees")} />
         </div>
       </div>
 

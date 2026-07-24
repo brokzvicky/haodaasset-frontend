@@ -4,10 +4,12 @@ import React from "react";
 // (dot + pill) so separation statuses feel native to the rest of the app.
 const EMPLOYMENT_STATUS_CONFIG = {
   Active:           { bg: "var(--badge-available-bg)", color: "var(--badge-available-fg)", border: "var(--badge-available-bd)", dot: "var(--badge-available-fg)" },
+  "On Leave":       { bg: "#e0f2fe", color: "#0369a1", border: "#7dd3fc", dot: "#0369a1" },
   "Notice Period":  { bg: "#fef9c3", color: "#a16207", border: "#fde047", dot: "#a16207" },
   "Exit Clearance": { bg: "#ffedd5", color: "#c2410c", border: "#fdba74", dot: "#c2410c" },
   "Assets Returned":{ bg: "#e0e7ff", color: "#4338ca", border: "#c7d2fe", dot: "#4338ca" },
   Resigned:         { bg: "#f1f5f9", color: "#475569", border: "#cbd5e1", dot: "#94a3b8" },
+  Terminated:       { bg: "#fee2e2", color: "#b91c1c", border: "#fca5a5", dot: "#b91c1c" },
 };
 
 export default function EmployeeStatusPill({ status }) {
