@@ -120,79 +120,19 @@
 }
 .login-feature-text { font-size: 12.5px; font-weight: 600; color: rgba(226,232,240,0.9); }
 
-.login-status-row {
-  display: flex; align-items: center; gap: 8px;
-  margin-top: 22px;
-  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
-  font-size: 10.5px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase;
-  color: rgba(226,232,240,0.55);
-}
-.login-status-led {
-  width: 6px; height: 6px; border-radius: 50%;
-  background: #34d399;
-  box-shadow: 0 0 0 3px rgba(52,211,153,0.16);
-  animation: loginStatusPulse 2.2s ease-in-out infinite;
-}
-@keyframes loginStatusPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
-
 /* ── Illustration — built from the wallet mark, never the wordmarks ──── */
 
 .login-illustration {
   position: relative; z-index: 1;
   flex: 1;
-  min-height: 260px;
-  display: flex; align-items: flex-end; justify-content: center;
+  min-height: 220px;
+  display: flex; align-items: center; justify-content: center;
 }
 .login-illustration-glow {
   position: absolute; inset: 8% 14%;
   background: radial-gradient(circle, rgba(243,184,51,0.14) 0%, transparent 68%);
   pointer-events: none;
 }
-
-/* ── Walking figure — original flat-vector illustration in the Haoda Pay
-   palette (not a stock asset), walks in on mount then settles into a
-   soft idle breathing loop. Positioned bottom-left so the floating cards
-   read as "their" dashboard, arriving alongside them. ─────────────────── */
-.login-walker {
-  position: absolute; left: 0; bottom: 0; z-index: 1;
-  transform: translateX(-220px); opacity: 0;
-}
-.login-page.is-mounted .login-walker { animation: lwWalkIn 1.3s cubic-bezier(.22,.7,.3,1) 0.15s forwards; }
-@keyframes lwWalkIn {
-  0%   { transform: translateX(-220px); opacity: 0; }
-  8%   { opacity: 1; }
-  100% { transform: translateX(0); opacity: 1; }
-}
-.login-page.is-mounted .login-walker .lw-walk { animation: lwIdleBob 3.2s ease-in-out 1.5s infinite; }
-@keyframes lwIdleBob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
-
-.lw-shadow { fill: rgba(10,6,32,0.32); opacity: 0; }
-.login-page.is-mounted .lw-shadow { animation: lwShadowIn 0.5s ease 0.85s forwards; }
-@keyframes lwShadowIn { to { opacity: 1; } }
-
-.lw-torso { fill: var(--brand-purple-dark); }
-.lw-tie   { fill: var(--brand-gold); }
-.lw-head  { fill: #f2b58a; }
-.lw-hair  { fill: #2a2119; }
-.lw-arm-front rect, .lw-arm-back rect { fill: #f2b58a; }
-.lw-leg-front rect, .lw-leg-back rect { fill: var(--brand-purple); }
-.lw-bag { fill: var(--brand-gold-dark); }
-.lw-bag-handle { fill: none; stroke: var(--brand-gold-dark); stroke-width: 4; }
-
-.lw-arm-front { transform-origin: 92px 70px; }
-.lw-arm-back  { transform-origin: 50px 70px; }
-.lw-leg-front { transform-origin: 78px 130px; }
-.lw-leg-back  { transform-origin: 62px 130px; }
-
-.login-page.is-mounted .lw-arm-front { animation: lwArmFront 0.34s ease-in-out 0.15s 4 alternate forwards; }
-.login-page.is-mounted .lw-arm-back  { animation: lwArmBack  0.34s ease-in-out 0.15s 4 alternate forwards; }
-.login-page.is-mounted .lw-leg-front { animation: lwLegFront 0.34s ease-in-out 0.15s 4 alternate forwards; }
-.login-page.is-mounted .lw-leg-back  { animation: lwLegBack  0.34s ease-in-out 0.15s 4 alternate forwards; }
-
-@keyframes lwArmFront { from { transform: rotate(-15deg); } to { transform: rotate(15deg); } }
-@keyframes lwArmBack  { from { transform: rotate(15deg); }  to { transform: rotate(-15deg); } }
-@keyframes lwLegFront { from { transform: rotate(17deg); }  to { transform: rotate(-17deg); } }
-@keyframes lwLegBack  { from { transform: rotate(-17deg); } to { transform: rotate(17deg); } }
 
 .login-illustration-card {
   position: absolute;
@@ -201,56 +141,32 @@
   border-radius: 16px;
   backdrop-filter: blur(14px);
   box-shadow: 0 20px 48px rgba(10,6,32,0.35);
-  opacity: 0;
 }
 
 .login-illustration-card--main {
-  right: 0; bottom: 4%;
-  width: min(320px, 60%);
+  position: relative;
+  width: min(400px, 88%);
   padding: 20px 22px 24px;
-}
-.login-page.is-mounted .login-illustration-card--main {
-  animation: licEntrance 0.55s ease 0.95s forwards, licFloat 7s ease-in-out 1.5s infinite;
+  animation: licFloat 7s ease-in-out infinite;
 }
 .lic-row { display: flex; gap: 6px; margin-bottom: 16px; }
 .lic-dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,0.22); }
-
-/* Terminal boot-log — replaces the generic dashboard-bar mock with copy
-   from the product's own domain (asset inventory boot sequence). */
-.lic-terminal {
-  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
-  font-size: 12px; line-height: 2;
-  color: rgba(226,232,240,0.75);
-  border-left: 2px solid rgba(243,184,51,0.3);
-  padding-left: 13px;
-  min-height: 92px;
-}
-.lic-terminal-line { animation: licLineIn 0.35s ease both; }
-.lic-terminal-line:last-child { color: var(--brand-gold-light); }
-@keyframes licLineIn {
-  from { opacity: 0; transform: translateY(4px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-.lic-caret { color: var(--brand-gold); }
-.lic-blink {
-  display: inline-block; width: 7px; height: 13px;
-  background: var(--brand-gold-light); margin-left: 13px;
-  animation: licBlink 1s steps(1) infinite; vertical-align: -2px;
-}
-@keyframes licBlink { 50% { opacity: 0; } }
-
-@keyframes licEntrance {
-  from { opacity: 0; transform: translateY(18px) scale(0.97); }
-  to   { opacity: 1; transform: translateY(0) scale(1); }
+.lic-bar { height: 9px; border-radius: 5px; background: rgba(255,255,255,0.16); margin-bottom: 9px; }
+.lic-bar--w70 { width: 70%; }
+.lic-bar--w40 { width: 40%; background: rgba(243,184,51,0.35); }
+.lic-stats { margin-top: 18px; height: 74px; }
+.lic-stat { display: flex; align-items: flex-end; gap: 10px; height: 100%; }
+.lic-stat-bar {
+  flex: 1; border-radius: 6px 6px 2px 2px;
+  background: linear-gradient(180deg, var(--brand-gold-light), var(--brand-gold));
+  opacity: 0.9;
 }
 
 .login-illustration-card--badge {
   right: 4%; top: 6%;
   display: flex; align-items: center; gap: 10px;
   padding: 12px 16px;
-}
-.login-page.is-mounted .login-illustration-card--badge {
-  animation: licEntrance 0.5s ease 1.15s forwards, licFloat 6s ease-in-out 1.65s infinite;
+  animation: licFloat 6s ease-in-out infinite 0.4s;
 }
 .lic-badge-icon {
   width: 32px; height: 32px; border-radius: 9px; flex-shrink: 0;
@@ -262,22 +178,16 @@
 .lic-badge-sub { font-size: 10.5px; color: rgba(226,232,240,0.6); margin-top: 1px; }
 
 .login-illustration-card--float {
-  left: 1%; top: 4%;
+  left: 2%; bottom: 8%;
   display: flex; align-items: center; gap: 7px;
   padding: 9px 14px;
   font-size: 11.5px; font-weight: 700; color: var(--brand-gold-light);
-}
-.login-page.is-mounted .login-illustration-card--float {
-  animation: licPop 0.4s cubic-bezier(.34,1.56,.64,1) 1.35s forwards, licFloat 8s ease-in-out 1.8s infinite;
+  animation: licFloat 8s ease-in-out infinite 0.9s;
 }
 
 @keyframes licFloat {
   0%, 100% { transform: translateY(0); }
   50%      { transform: translateY(-8px); }
-}
-@keyframes licPop {
-  from { opacity: 0; transform: scale(0.6); }
-  to   { opacity: 1; transform: scale(1); }
 }
 
 /* ── Right panel: sign-in card (40%) ──────────────────────────────────── */
@@ -513,16 +423,8 @@
 @media (prefers-reduced-motion: reduce) {
   .login-left-orb, .login-hero-tag-dot, .login-box.fade-in, .login-feature,
   .wallet-spinner::before, .login-error, .login-tab.active,
-  .login-illustration-card--main, .login-illustration-card--badge, .login-illustration-card--float,
-  .lic-terminal-line, .lic-blink, .login-status-led,
-  .login-walker, .login-walker .lw-walk, .lw-shadow,
-  .lw-arm-front, .lw-arm-back, .lw-leg-front, .lw-leg-back {
+  .login-illustration-card--main, .login-illustration-card--badge, .login-illustration-card--float {
     animation: none !important;
-  }
-  .login-illustration-card--main, .login-illustration-card--badge, .login-illustration-card--float,
-  .login-walker, .lw-shadow {
-    opacity: 1 !important;
-    transform: none !important;
   }
 }
 

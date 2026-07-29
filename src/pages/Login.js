@@ -13,16 +13,6 @@ import "./Login.css";
 
 const REMEMBER_KEY = "haoda_remember_login";
 
-// Boot log lines typed into the illustration panel's terminal card — purely
-// presentational, echoes the product's own domain (asset inventory) rather
-// than generic loading copy.
-const BOOT_LINES = [
-  "INITIALIZING HAODAASSET…",
-  "CONNECTING TO INVENTORY DB… OK",
-  "VERIFYING SECURITY TOKENS… OK",
-  "STATUS: ONLINE",
-];
-
 // Feature highlights shown on the branding panel — purely presentational,
 // no functional dependency on anything below.
 const FEATURES = [
@@ -78,15 +68,6 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe]     = useState(false);
   const [mounted, setMounted]           = useState(false);
-  const [bootIndex, setBootIndex]       = useState(0);
-
-  // Type the boot log into the illustration terminal card, one line at a time.
-  useEffect(() => {
-    if (bootIndex >= BOOT_LINES.length) return;
-    const delay = bootIndex === 0 ? 500 : 550;
-    const t = setTimeout(() => setBootIndex((i) => i + 1), delay);
-    return () => clearTimeout(t);
-  }, [bootIndex]);
 
   // Restore a remembered identifier/tab (never the password) on first load.
   useEffect(() => {
@@ -412,56 +393,26 @@ export default function Login() {
               </li>
             ))}
           </ul>
-
-          <div className="login-status-row">
-            <span className="login-status-led" />
-            SYSTEM STATUS: OPERATIONAL
-          </div>
         </div>
 
         {/* Illustration — built around the Haoda Pay wallet mark, never the
-            full text logo, per brand rules for this surface. An original
-            flat-vector figure (suit re-colored to the brand palette, gold
-            briefcase) walks in on mount, then the floating cards reveal in
-            sequence around them. */}
+            full text logo, per brand rules for this surface. */}
         <div className="login-illustration" aria-hidden="true">
           <div className="login-illustration-glow" />
-
-          <svg className="login-walker" viewBox="0 0 140 220" width="132" height="207">
-            <ellipse className="lw-shadow" cx="70" cy="208" rx="32" ry="7" />
-            <g className="lw-walk">
-              <g className="lw-limb lw-arm-back">
-                <rect x="-4" y="0" width="12" height="52" rx="6" transform="translate(50 70)" />
-              </g>
-              <g className="lw-limb lw-leg-back">
-                <rect x="-7" y="0" width="14" height="58" rx="7" transform="translate(62 130)" />
-              </g>
-              <g className="lw-limb lw-leg-front">
-                <rect x="-7" y="0" width="14" height="58" rx="7" transform="translate(78 130)" />
-              </g>
-              <rect className="lw-torso" x="46" y="62" width="48" height="72" rx="20" />
-              <rect className="lw-tie" x="66" y="66" width="8" height="34" rx="3" />
-              <circle className="lw-head" cx="70" cy="40" r="24" />
-              <path className="lw-hair" d="M47 34 Q70 8 93 34 Q88 20 70 18 Q52 20 47 34Z" />
-              <g className="lw-limb lw-arm-front">
-                <rect x="-4" y="0" width="12" height="50" rx="6" transform="translate(92 70)" />
-              </g>
-              <rect className="lw-bag" x="96" y="112" width="30" height="24" rx="4" />
-              <rect className="lw-bag-handle" x="106" y="104" width="10" height="10" rx="4" />
-            </g>
-          </svg>
-
           <div className="login-illustration-card login-illustration-card--main">
             <div className="lic-row">
               <div className="lic-dot" /><div className="lic-dot" /><div className="lic-dot" />
             </div>
-            <div className="lic-terminal">
-              {BOOT_LINES.slice(0, bootIndex).map((line, i) => (
-                <div className="lic-terminal-line" key={i}>
-                  <span className="lic-caret">&gt;</span> {line}
-                </div>
-              ))}
-              {bootIndex < BOOT_LINES.length && <span className="lic-blink" />}
+            <div className="lic-bar lic-bar--w70" />
+            <div className="lic-bar lic-bar--w40" />
+            <div className="lic-stats">
+              <div className="lic-stat">
+                <div className="lic-stat-bar" style={{ height: "62%" }} />
+                <div className="lic-stat-bar" style={{ height: "84%" }} />
+                <div className="lic-stat-bar" style={{ height: "45%" }} />
+                <div className="lic-stat-bar" style={{ height: "70%" }} />
+                <div className="lic-stat-bar" style={{ height: "92%" }} />
+              </div>
             </div>
           </div>
           <div className="login-illustration-card login-illustration-card--badge">
