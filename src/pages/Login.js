@@ -420,9 +420,37 @@ export default function Login() {
         </div>
 
         {/* Illustration — built around the Haoda Pay wallet mark, never the
-            full text logo, per brand rules for this surface. */}
+            full text logo, per brand rules for this surface. An original
+            flat-vector figure (suit re-colored to the brand palette, gold
+            briefcase) walks in on mount, then the floating cards reveal in
+            sequence around them. */}
         <div className="login-illustration" aria-hidden="true">
           <div className="login-illustration-glow" />
+
+          <svg className="login-walker" viewBox="0 0 140 220" width="132" height="207">
+            <ellipse className="lw-shadow" cx="70" cy="208" rx="32" ry="7" />
+            <g className="lw-walk">
+              <g className="lw-limb lw-arm-back">
+                <rect x="-4" y="0" width="12" height="52" rx="6" transform="translate(50 70)" />
+              </g>
+              <g className="lw-limb lw-leg-back">
+                <rect x="-7" y="0" width="14" height="58" rx="7" transform="translate(62 130)" />
+              </g>
+              <g className="lw-limb lw-leg-front">
+                <rect x="-7" y="0" width="14" height="58" rx="7" transform="translate(78 130)" />
+              </g>
+              <rect className="lw-torso" x="46" y="62" width="48" height="72" rx="20" />
+              <rect className="lw-tie" x="66" y="66" width="8" height="34" rx="3" />
+              <circle className="lw-head" cx="70" cy="40" r="24" />
+              <path className="lw-hair" d="M47 34 Q70 8 93 34 Q88 20 70 18 Q52 20 47 34Z" />
+              <g className="lw-limb lw-arm-front">
+                <rect x="-4" y="0" width="12" height="50" rx="6" transform="translate(92 70)" />
+              </g>
+              <rect className="lw-bag" x="96" y="112" width="30" height="24" rx="4" />
+              <rect className="lw-bag-handle" x="106" y="104" width="10" height="10" rx="4" />
+            </g>
+          </svg>
+
           <div className="login-illustration-card login-illustration-card--main">
             <div className="lic-row">
               <div className="lic-dot" /><div className="lic-dot" /><div className="lic-dot" />
