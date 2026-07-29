@@ -5,7 +5,7 @@ import { AuthProvider } from "./context/AuthContext";
 import { NotificationProvider } from "./context/NotificationContext";
 import { AdminRoute, EmployeeRoute, GuestRoute } from "./components/ProtectedRoute";
 
-import Login from "./pages/Login";
+import Login from "./pages/LoginAnimated";
 import Dashboard from "./pages/Dashboard";
 import Assets from "./pages/Assets";
 import AssetDetails from "./pages/AssetDetails";
