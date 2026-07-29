@@ -120,6 +120,21 @@
 }
 .login-feature-text { font-size: 12.5px; font-weight: 600; color: rgba(226,232,240,0.9); }
 
+.login-status-row {
+  display: flex; align-items: center; gap: 8px;
+  margin-top: 22px;
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  font-size: 10.5px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase;
+  color: rgba(226,232,240,0.55);
+}
+.login-status-led {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: #34d399;
+  box-shadow: 0 0 0 3px rgba(52,211,153,0.16);
+  animation: loginStatusPulse 2.2s ease-in-out infinite;
+}
+@keyframes loginStatusPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+
 /* ── Illustration — built from the wallet mark, never the wordmarks ──── */
 
 .login-illustration {
@@ -151,16 +166,30 @@
 }
 .lic-row { display: flex; gap: 6px; margin-bottom: 16px; }
 .lic-dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,0.22); }
-.lic-bar { height: 9px; border-radius: 5px; background: rgba(255,255,255,0.16); margin-bottom: 9px; }
-.lic-bar--w70 { width: 70%; }
-.lic-bar--w40 { width: 40%; background: rgba(243,184,51,0.35); }
-.lic-stats { margin-top: 18px; height: 74px; }
-.lic-stat { display: flex; align-items: flex-end; gap: 10px; height: 100%; }
-.lic-stat-bar {
-  flex: 1; border-radius: 6px 6px 2px 2px;
-  background: linear-gradient(180deg, var(--brand-gold-light), var(--brand-gold));
-  opacity: 0.9;
+
+/* Terminal boot-log — replaces the generic dashboard-bar mock with copy
+   from the product's own domain (asset inventory boot sequence). */
+.lic-terminal {
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  font-size: 12px; line-height: 2;
+  color: rgba(226,232,240,0.75);
+  border-left: 2px solid rgba(243,184,51,0.3);
+  padding-left: 13px;
+  min-height: 92px;
 }
+.lic-terminal-line { animation: licLineIn 0.35s ease both; }
+.lic-terminal-line:last-child { color: var(--brand-gold-light); }
+@keyframes licLineIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.lic-caret { color: var(--brand-gold); }
+.lic-blink {
+  display: inline-block; width: 7px; height: 13px;
+  background: var(--brand-gold-light); margin-left: 13px;
+  animation: licBlink 1s steps(1) infinite; vertical-align: -2px;
+}
+@keyframes licBlink { 50% { opacity: 0; } }
 
 .login-illustration-card--badge {
   right: 4%; top: 6%;
@@ -423,7 +452,8 @@
 @media (prefers-reduced-motion: reduce) {
   .login-left-orb, .login-hero-tag-dot, .login-box.fade-in, .login-feature,
   .wallet-spinner::before, .login-error, .login-tab.active,
-  .login-illustration-card--main, .login-illustration-card--badge, .login-illustration-card--float {
+  .login-illustration-card--main, .login-illustration-card--badge, .login-illustration-card--float,
+  .lic-terminal-line, .lic-blink, .login-status-led {
     animation: none !important;
   }
 }

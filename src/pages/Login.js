@@ -13,6 +13,16 @@ import "./Login.css";
 
 const REMEMBER_KEY = "haoda_remember_login";
 
+// Boot log lines typed into the illustration panel's terminal card — purely
+// presentational, echoes the product's own domain (asset inventory) rather
+// than generic loading copy.
+const BOOT_LINES = [
+  "INITIALIZING HAODAASSET…",
+  "CONNECTING TO INVENTORY DB… OK",
+  "VERIFYING SECURITY TOKENS… OK",
+  "STATUS: ONLINE",
+];
+
 // Feature highlights shown on the branding panel — purely presentational,
 // no functional dependency on anything below.
 const FEATURES = [
@@ -68,6 +78,15 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe]     = useState(false);
   const [mounted, setMounted]           = useState(false);
+  const [bootIndex, setBootIndex]       = useState(0);
+
+  // Type the boot log into the illustration terminal card, one line at a time.
+  useEffect(() => {
+    if (bootIndex >= BOOT_LINES.length) return;
+    const delay = bootIndex === 0 ? 500 : 550;
+    const t = setTimeout(() => setBootIndex((i) => i + 1), delay);
+    return () => clearTimeout(t);
+  }, [bootIndex]);
 
   // Restore a remembered identifier/tab (never the password) on first load.
   useEffect(() => {
@@ -393,6 +412,11 @@ export default function Login() {
               </li>
             ))}
           </ul>
+
+          <div className="login-status-row">
+            <span className="login-status-led" />
+            SYSTEM STATUS: OPERATIONAL
+          </div>
         </div>
 
         {/* Illustration — built around the Haoda Pay wallet mark, never the
@@ -403,16 +427,13 @@ export default function Login() {
             <div className="lic-row">
               <div className="lic-dot" /><div className="lic-dot" /><div className="lic-dot" />
             </div>
-            <div className="lic-bar lic-bar--w70" />
-            <div className="lic-bar lic-bar--w40" />
-            <div className="lic-stats">
-              <div className="lic-stat">
-                <div className="lic-stat-bar" style={{ height: "62%" }} />
-                <div className="lic-stat-bar" style={{ height: "84%" }} />
-                <div className="lic-stat-bar" style={{ height: "45%" }} />
-                <div className="lic-stat-bar" style={{ height: "70%" }} />
-                <div className="lic-stat-bar" style={{ height: "92%" }} />
-              </div>
+            <div className="lic-terminal">
+              {BOOT_LINES.slice(0, bootIndex).map((line, i) => (
+                <div className="lic-terminal-line" key={i}>
+                  <span className="lic-caret">&gt;</span> {line}
+                </div>
+              ))}
+              {bootIndex < BOOT_LINES.length && <span className="lic-blink" />}
             </div>
           </div>
           <div className="login-illustration-card login-illustration-card--badge">
