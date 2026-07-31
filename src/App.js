@@ -22,10 +22,11 @@ import ActivityLog from "./pages/ActivityLog";
 import SendAssetEmail from "./pages/SendAssetEmail";
 import AssetEmailLogs from "./pages/AssetEmailLogs";
 import EmployeeDashboard from "./pages/EmployeeDashboard";
-import { EmployeeAssets, EmployeeProfile, EmployeeRequest, EmployeePassword } from "./pages/EmployeePages";
+import { EmployeeAssets, EmployeeProfile, EmployeeRequest, EmployeePassword, EmployeeAttendance } from "./pages/EmployeePages";
 import Maintenance from "./pages/Maintenance";
 import HaodaPulse from "./pages/HaodaPulse";
 import AiSearch from "./pages/AiSearch";
+import Attendance from "./pages/Attendance";
 
 function App() {
   return (
@@ -47,6 +48,7 @@ function App() {
               <Route path="/network-credentials" element={<AdminRoute><NetworkCredentials /></AdminRoute>} />
               <Route path="/service-billing" element={<AdminRoute><ServiceBilling /></AdminRoute>} />
               <Route path="/maintenance"    element={<AdminRoute><Maintenance /></AdminRoute>} />
+              <Route path="/attendance"    element={<AdminRoute><Attendance /></AdminRoute>} />
               <Route path="/pulse"         element={<AdminRoute><HaodaPulse /></AdminRoute>} />
               <Route path="/ai-search"     element={<AdminRoute><AiSearch /></AdminRoute>} />
               <Route path="/reports"       element={<AdminRoute><Reports /></AdminRoute>} />
@@ -62,6 +64,7 @@ function App() {
               <Route path="/emp/files"     element={<EmployeeRoute><MyFiles /></EmployeeRoute>} />
               <Route path="/emp/profile"   element={<EmployeeRoute><EmployeeProfile /></EmployeeRoute>} />
               <Route path="/emp/request"   element={<EmployeeRoute><EmployeeRequest /></EmployeeRoute>} />
+              <Route path="/emp/attendance" element={<EmployeeRoute><EmployeeAttendance /></EmployeeRoute>} />
               <Route path="/emp/password"  element={<EmployeeRoute><EmployeePassword /></EmployeeRoute>} />
               <Route path="/emp/ai-search" element={<EmployeeRoute><AiSearch /></EmployeeRoute>} />
 
