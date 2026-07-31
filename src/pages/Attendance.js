@@ -92,13 +92,6 @@ export default function Attendance() {
 
     return () => { es.close(); eventSourceRef.current = null; };
   }, []);
-
-  const employeeById = useMemo(() => {
-    const map = {};
-    employees.forEach((e) => { map[e.employeeId] = e; });
-    return map;
-  }, [employees]);
-
   const openCreateMapping = () => { setMappingForm(EMPTY_MAPPING_FORM); setEditingMappingId(null); setShowMappingForm(true); };
   const openEditMapping = (m) => { setMappingForm({ devicePin: m.devicePin, employeeId: m.employeeId }); setEditingMappingId(m.id); setShowMappingForm(true); };
 
