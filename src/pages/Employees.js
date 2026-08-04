@@ -7,6 +7,7 @@ import StatusPill from "../components/StatusPill";
 import EmployeeStatusPill from "../components/EmployeeStatusPill";
 import SeparationModal from "../components/SeparationModal";
 import ActionMenu from "../components/ActionMenu";
+import ReturnAssetDialog from "../components/ReturnAssetDialog";
 import "../components/DetailDrawer.css";
 import "./Employees.css";
 
@@ -528,7 +529,7 @@ function AssignAssetModal({ employee, onClose, onSuccess }) {
 }
 
 // ─── Employee Detail Drawer ─────────────────────────────────────────────────
-function EmployeeDetailDrawer({ employee, assets, loadingAssets, onClose, onEdit, onDelete, onAssign, onSeparation }) {
+function EmployeeDetailDrawer({ employee, assets, loadingAssets, onClose, onEdit, onDelete, onAssign, onSeparation, onReturn }) {
   const navigate = useNavigate();
   if (!employee) return null;
   const isSeparating = employee.employmentStatus && employee.employmentStatus !== "Active";
@@ -591,23 +592,33 @@ function EmployeeDetailDrawer({ employee, assets, loadingAssets, onClose, onEdit
             ) : (
               <table className="detail-drawer-mini-table">
                 <thead>
-                  <tr><th>Asset</th><th>Status</th></tr>
+                  <tr><th>Asset</th><th>Status</th><th></th></tr>
                 </thead>
                 <tbody>
                   {assets.map((item) => (
-                    <tr
-                      key={item.assetId}
-                      onClick={() => navigate(`/assets/${item.assetId}`)}
-                      style={{ cursor: "pointer" }}
-                      title="Click to view full asset details"
-                    >
-                      <td>
+                    <tr key={item.assetId}>
+                      <td
+                        onClick={() => navigate(`/assets/${item.assetId}`)}
+                        style={{ cursor: "pointer" }}
+                        title="Click to view full asset details"
+                      >
                         <div style={{ fontWeight: 600, color: "var(--gray-900)" }}>{item.laptopName}</div>
                         <div style={{ fontSize: 11, color: "var(--gray-400)", marginTop: 1 }}>
                           {item.assetType}{item.brand ? ` · ${item.brand}` : ""}{item.model ? ` ${item.model}` : ""}
                         </div>
                       </td>
                       <td><StatusPill status={item.assetStatus} /></td>
+                      <td>
+                        {item.assetStatus === "Assigned" && onReturn && (
+                          <button
+                            className="btn btn-secondary btn-sm"
+                            title="Return this asset"
+                            onClick={(e) => { e.stopPropagation(); onReturn(item); }}
+                          >
+                            ↩ Return
+                          </button>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -842,6 +853,9 @@ export default function Employees() {
   // On Leave / Terminate modal state
   const [leaveTarget, setLeaveTarget] = useState(null);
   const [terminateTarget, setTerminateTarget] = useState(null);
+  // Return Asset modal state (launched from the detail drawer's Assigned Assets list)
+  const [returnTarget, setReturnTarget] = useState(null);
+  const [returning, setReturning] = useState(false);
 
   // ── Lifecycle status tab (Active / On Leave / Notice Period / Resigned / Terminated / All) ──
   const [statusTab, setStatusTab] = useState("Active");
@@ -984,6 +998,29 @@ export default function Employees() {
     // Refresh employees + clear expanded assets cache so they reload fresh
     setExpandedAssets({});
     loadEmployees();
+  };
+
+  const handleReturn = (assetId, { condition, nextStatus, sendReturnEmail }) => {
+    const employeeKey = viewingEmployee?.employeeId;
+    setReturning(true);
+    axios.put(`${API}/assets/return/${assetId}`, { condition, assetStatus: nextStatus, sendReturnEmail: sendReturnEmail ? "true" : "false" })
+      .then(() => {
+        toast(sendReturnEmail ? "Asset returned and return email sent to the employee." : "Asset returned and inventory updated.", "success");
+        setReturnTarget(null);
+        // Re-fetch just this employee's assigned assets so the drawer
+        // (and the directory's asset-count badge) reflect the return
+        // immediately, without a full page reload.
+        if (employeeKey) {
+          axios.get(`${API}/api/admin/employees/${employeeKey}/assets`)
+            .then((r) => {
+              setExpandedAssets((prev) => ({ ...prev, [employeeKey]: r.data }));
+              setAssetCounts((prev) => ({ ...prev, [employeeKey]: (r.data || []).length }));
+            })
+            .catch(() => {});
+        }
+      })
+      .catch((err) => toast(err.response?.data?.message || "Couldn't process return.", "error"))
+      .finally(() => setReturning(false));
   };
 
   const handleSeparationSuccess = () => {
@@ -1607,7 +1644,10 @@ export default function Employees() {
         onDelete={(emp) => { setViewingEmployee(null); deleteEmployee(emp); }}
         onAssign={(emp) => { setViewingEmployee(null); setAssignTarget(emp); }}
         onSeparation={(emp) => { setViewingEmployee(null); setSeparationTarget(emp); }}
+        onReturn={(asset) => setReturnTarget(asset)}
       />
+
+      <ReturnAssetDialog asset={returnTarget} onClose={() => setReturnTarget(null)} onConfirm={handleReturn} saving={returning} />
     </Layout>
   );
 }
